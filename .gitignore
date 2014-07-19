@@ -1,0 +1,64 @@
+# Autotools
+
+# automake
+Makefile.in
+
+# autoconf
+/autom4te.cache
+/aclocal.m4
+/compile
+/configure
+/depcomp
+/install-sh
+/missing
+/stamp-h1
+
+# C Code
+
+# Object files
+*.o
+*.ko
+*.obj
+*.elf
+
+# Libraries
+*.lib
+*.a
+*.la
+*.lai
+*.lo
+*.slo
+
+# Shared objects (inc. Windows DLLs)
+*.dll
+*.so
+*.so.*
+*.dylib
+
+# Executables
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
+
+# Perl Code
+/blib/
+/.build/
+_build/
+cover_db/
+inc/
+Build
+!Build/
+Build.bat
+.last_cover_stats
+/Makefile
+/Makefile.old
+/MANIFEST.bak
+/META.yml
+/META.json
+/MYMETA.*
+nytprof.out
+/pm_to_blib
+*.bs
