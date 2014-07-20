@@ -5,7 +5,6 @@ export CPPFLAGS="-g"
 export CXXFLAGS="-g"
 
 script_directory="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
+build_directory="${script_directory}"
 
 export LOG4C_RCPATH="${script_directory}/conf/log4crc"
-
-alias gcc=clang
