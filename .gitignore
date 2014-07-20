@@ -47,6 +47,7 @@ Makefile.in
 *.x86_64
 *.hex
 core
+vgcore.*
 
 src/sdn_sensor
 
