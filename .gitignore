@@ -48,6 +48,8 @@ Makefile.in
 *.hex
 core
 
+src/sdn_sensor
+
 # Perl Code
 /blib/
 /.build/
