@@ -6,15 +6,18 @@ SDN based network security and network management event sensor
 
 Features:
 
-1) Syslog processing
+1) Syslog Processing
 
 PCRE Chain
 
 syslog-ng trie
 
-2) Raw traffic processing
+2) Raw traffic Processing
 
 CIDR Table
 
 PCAP Chain
 
+3) sFlow Processing
+
+4) NetFlow / IPFIX Processing
