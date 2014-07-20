@@ -15,6 +15,10 @@ Makefile.in
 
 # C Code
 
+# Build Files
+*.bak
+*.new
+
 # Object files
 *.o
 *.ko
