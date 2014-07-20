@@ -18,20 +18,38 @@
 #define PROGRAM_PATH "/proc/self/exe"
 #define CONF_PATH "/../conf/sdn_sensor.json"
 
+int ss_conf_destroy(ss_conf_t* ss_conf) {
+    // XXX: destroy everything else in ss_conf_t
+    free(ss_conf);
+    return 0;
+}
+
 char* ss_conf_path_get() {
     size_t path_size = PATH_MAX;
+    char* program_directory = NULL;
+    
     char* program_path = calloc(1, path_size);
-    if (!program_path) return NULL;
+    if (program_path == NULL) {
+        goto error_out;
+    }
     
     ssize_t rv = readlink(PROGRAM_PATH, program_path, path_size);
-    if (rv < 0) return NULL;
+    if (rv < 0) {
+        goto error_out;
+    }
     
     char* directory = dirname(program_path);
-    char* program_directory = calloc(1, path_size);
+    
+    program_directory = calloc(1, path_size);
+    if (program_directory == NULL) {
+        goto error_out;
+    }
+    
     strlcpy(program_directory, directory, path_size);
     strlcat(program_directory, CONF_PATH, path_size);
     
-    if (program_directory == NULL) return NULL;
+    error_out:
+    if (program_path) free(program_path);
     
     return program_directory;
 }
@@ -42,43 +60,56 @@ char* ss_conf_file_read() {
     size_t srv;
     
     char* conf_path = ss_conf_path_get();
+    char* conf_content = NULL;
     
     FILE* conf_file = fopen(conf_path, "rb");
+    if (conf_file == NULL) {
+        is_ok = 0;
+        fprintf(stderr, "error: could not open configuration file %s\n", conf_path);
+        goto error_out;
+    }
+    
     rv = fseek(conf_file, 0L, SEEK_END);
     if (rv == -1) {
         is_ok = 0;
         fprintf(stderr, "error: could not seek to end of configuration file\n");
         goto error_out;
     }
-    size_t size = ftell(conf_file) + 1;
+    
+    size_t size = ftell(conf_file);
     if (size == (unsigned long) -1) {
         is_ok = 0;
         fprintf(stderr, "error: could not get size of configuration file\n");
         goto error_out;
     }
+    
     rewind(conf_file);
     
-    char* conf_content = calloc(1, size);
+    /* make room for terminating NUL */
+    size += 1;
+    
+    conf_content = calloc(1, size);
     if (conf_content == NULL) {
         is_ok = 0;
         fprintf(stderr, "error: could not allocate configuration file buffer\n");
         goto error_out;
     }
+    
     srv = fread(conf_content, 1, size, conf_file);
     if (srv != size) {
         is_ok = 0;
         fprintf(stderr, "error: could not load configuration file\n");
         goto error_out;
     }
-    conf_content[size - 1] = '\0';
     
-    return conf_content;
+    conf_content[size - 1] = '\0';
     
     error_out:
     if (conf_path)    { free(conf_path);    conf_path    = NULL; }
     if (conf_content) { free(conf_content); conf_content = NULL; }
     if (conf_file)    { fclose(conf_file);  conf_file    = NULL; }
-    return NULL;
+    
+    return conf_content;
 }
 
 struct cidr* ss_parse_cidr(char* cidr) {
@@ -109,15 +140,23 @@ ss_conf_t* ss_conf_file_parse() {
     json_error_t json_error      = json_tokener_success;
     
     conf_buffer     = ss_conf_file_read();
+    if (conf_buffer == NULL) {
+        is_ok = 0;
+        fprintf(stderr, "conf file read error\n");
+        goto error_out;
+    }
+    
     json_underlying = json_tokener_parse_verbose(conf_buffer, &json_error);
     if (json_underlying == NULL) {
         is_ok = 0;
         fprintf(stderr, "json parse error: %s\n", json_tokener_error_desc(json_error));
         goto error_out;
     }
+    
     json_conf       = json_object_get(json_underlying);
     is_ok           = json_object_is_type(json_conf, json_type_object);
     if (!is_ok) {
+        is_ok = 0;
         fprintf(stderr, "json root is not object\n");
         goto error_out;
     }
@@ -199,7 +238,7 @@ ss_conf_t* ss_conf_file_parse() {
     error_out:
     if (conf_buffer)       { free(conf_buffer);          conf_buffer = NULL; }
     if (json_conf)         { json_object_put(json_conf); json_conf   = NULL; }
-    if (!is_ok && ss_conf) { free(ss_conf);              ss_conf     = NULL; }
+    if (!is_ok && ss_conf) { ss_conf_destroy(ss_conf);   ss_conf     = NULL; }
     
     return ss_conf;
 }
