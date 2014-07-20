@@ -1,4 +1,8 @@
 {
+    "options": {
+        "promiscuous_mode": 1,
+    },
+    
     // matches Syslog messages against this list of PCRE's,
     // dispatches matches to nanomsg queues
     "re_chain": [
