@@ -36,7 +36,7 @@
             "nm_queue_type": "PIPELINE",
             "nm_queue_url": "tcp://127.0.0.1:10003",
         }
-    }
+    },
     
     // list of source CIDRs sending Syslog
     "syslog_udp_sources": {
