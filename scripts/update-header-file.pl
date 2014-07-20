@@ -22,7 +22,7 @@ die "code file $code_path does not exist"     unless -f $code_path   && $code_pa
 my $prototypes = `cproto $code_path`;
 my @prototypes = split("\n", $prototypes, -1);
 shift(@prototypes);
-@prototypes    = map { s/ \*/* /; $_; } (@prototypes);
+@prototypes    = map { s/ \*/* /g; $_; } (@prototypes);
 $prototypes    = join("\n", @prototypes);
 
 my $inside_prototypes = 0;
