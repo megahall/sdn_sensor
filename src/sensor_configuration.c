@@ -86,9 +86,7 @@ char* ss_conf_file_read() {
     rewind(conf_file);
     
     /* make room for terminating NUL */
-    size += 1;
-    
-    conf_content = calloc(1, size);
+    conf_content = calloc(1, size + 1);
     if (conf_content == NULL) {
         is_ok = 0;
         fprintf(stderr, "error: could not allocate configuration file buffer\n");
@@ -102,12 +100,13 @@ char* ss_conf_file_read() {
         goto error_out;
     }
     
+    /* insert terminating NUL */
     conf_content[size - 1] = '\0';
     
     error_out:
-    if (conf_path)    { free(conf_path);    conf_path    = NULL; }
-    if (conf_content) { free(conf_content); conf_content = NULL; }
-    if (conf_file)    { fclose(conf_file);  conf_file    = NULL; }
+    if (conf_path)              { free(conf_path);    conf_path    = NULL; }
+    if (conf_file)              { fclose(conf_file);  conf_file    = NULL; }
+    if (!is_ok && conf_content) { free(conf_content); conf_content = NULL; }
     
     return conf_content;
 }
@@ -162,7 +161,7 @@ ss_conf_t* ss_conf_file_parse() {
     }
     
     const char* content = json_object_to_json_string_ext(json_conf, JSON_C_TO_STRING_PRETTY);
-    printf("json configuration:\n%s", content);
+    fprintf(stderr, "json configuration:\n%s\n", content);
     
     ss_conf = calloc(1, sizeof(ss_conf_t));
     if (ss_conf == NULL) {
@@ -184,7 +183,7 @@ ss_conf_t* ss_conf_file_parse() {
     
     items = json_object_object_get(json_conf, "re_chain");
     if (items) {
-        is_ok = json_object_is_type(json_conf, json_type_array);
+        is_ok = json_object_is_type(items, json_type_array);
         if (!is_ok) {
             fprintf(stderr, "re_chain is not an array\n");
             goto error_out;
@@ -200,7 +199,7 @@ ss_conf_t* ss_conf_file_parse() {
 
     items = json_object_object_get(json_conf, "pcap_chain");
     if (items) {
-        is_ok = json_object_is_type(json_conf, json_type_array);
+        is_ok = json_object_is_type(items, json_type_array);
         if (!is_ok) {
             fprintf(stderr, "pcap_chain is not an array\n");
             goto error_out;
@@ -216,7 +215,7 @@ ss_conf_t* ss_conf_file_parse() {
 
     items = json_object_object_get(json_conf, "cidr_table");
     if (items) {
-        is_ok = json_object_is_type(json_conf, json_type_object);
+        is_ok = json_object_is_type(items, json_type_object);
         if (!is_ok) {
             fprintf(stderr, "cidr_table is not an object\n");
             goto error_out;
