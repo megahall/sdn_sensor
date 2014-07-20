@@ -9,6 +9,7 @@ CC ?= clang
 # XXX: -Wunused-but-set-variable doesn't work
 # See: http://llvm.org/bugs/show_bug.cgi?id=9824
 # -fcolor-diagnostics
+# -O2 -Os
 
 CFLAGS := -Wall -Wextra \
 -Wshadow -Wtrigraphs -Wunreachable-code -Wno-unused-label \
@@ -16,20 +17,19 @@ CFLAGS := -Wall -Wextra \
 -Wstrict-overflow -Warray-bounds \
 -Wpointer-arith -Wvolatile-register-var \
 -Wno-unused-parameter \
--fPIC -g -O2 -Os -fno-strict-aliasing $(CFLAGS)
+-fPIC -g -fno-strict-aliasing $(CFLAGS)
 
 ifneq ($(strip $(LESS)),)
     CFLAGS += -fcolor-diagnostics
 endif
 
-LDFLAGS = -shared
+#LDFLAGS = -shared
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c))
 
 HEADERS = $(wildcard *.h)
 
 sdn_sensor: $(OBJECTS)
-	@echo $(OBJECTS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) -lbsd -ljson-c -llog4c -lpcap -lpcre
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) -lbsd -ljson-c -llog4c -lmsgpack -lpcap -lpcre
 
 $(OBJECTS): $(HEADERS)
 
