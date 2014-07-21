@@ -24,6 +24,11 @@ print $header_file <<EOF;
 #define __${macro_name}_H__
 
 
+/* BEGIN PROTOTYPES */
+
+
+
+/* END PROTOTYPES */
 
 #endif /* __${macro_name}_H__ */
 EOF
