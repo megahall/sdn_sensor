@@ -12,6 +12,20 @@ typedef struct array_list array_list_t;
 struct ss_conf_s {
     // options
     int promiscuous_mode;
+    uint16_t mtu;
+    
+    struct sockaddr ipv4_address;
+    uint16_t ipv4_mask;
+    struct sockaddr ipv4_gateway;
+    
+    struct sockaddr ipv6_address;
+    uint16_t ipv6_mask;
+    struct sockaddr ipv6_gateway;
+    
+    char* port_mask;
+    char* eal_options;
+    char* queue_count;
+    char* timer_msec;
     
     ss_re_chain_t re_chain;
     ss_pcap_chain_t pcap_chain;
