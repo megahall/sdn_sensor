@@ -23,7 +23,7 @@ typedef struct ss_conf_s ss_conf_t;
 
 /* BEGIN PROTOTYPES */
 
-int ss_conf_destroy(ss_conf_t* conf);
+int ss_conf_destroy(ss_conf_t* ss_conf);
 char* ss_conf_path_get(void);
 char* ss_conf_file_read(void);
 struct cidr* ss_parse_cidr(char* cidr);
