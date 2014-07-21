@@ -1,6 +1,17 @@
 {
     "options": {
         "promiscuous_mode": 1,
+        "mtu":              1454,
+        "ipv4_address":     "192.168.0.7/24",
+        "ipv4_gateway":     "192.168.0.1",
+        "ipv6_address":     "2607:f1c0:800:102::7/64",
+        "ipv6_gateway":     "2607:f1c0:800:102::1",
+        
+        // XXX: DPDK options are always strings right now
+        "eal_options":      "-c 0xffffffffffffffff -n 2 --huge-dir /hugetlbfs --proc-type primary",
+        "port_mask":        "0xffffffff",
+        "queue_count":      "1",
+        "timer_msec":       "200",
     },
     
     // matches Syslog messages against this list of PCRE's,
