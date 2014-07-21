@@ -7,7 +7,15 @@
 #include <json-c/json.h>
 #include <pcap/pcap.h>
 #include <pcre.h>
-#include <uthash.h>
+#include <rte_lpm.h>
+
+/* CONSTANTS */
+
+/* should be enough for the nanomsg queue URL */
+#define NN_URL_MAX 256
+
+/* enough to hold [max_ipv6]/128 plus a bit extra */
+#define CIDR_LENGTH_MAX 64
 
 /* DATA TYPES */
 
@@ -21,6 +29,9 @@ struct {
 struct ss_re_entry_s {
     int match_count;
     int invert;
+    int nn_conn;
+    int nn_type;
+    char nn_url[NN_URL_MAX];
     pcre* re;
     TAILQ_ENTRY(ss_re_entry_s) entry;
 };
@@ -56,6 +67,9 @@ typedef struct ss_pcap_match_s ss_pcap_match_t;
 
 struct ss_pcap_entry_s {
     int match_count;
+    int nn_conn;
+    int nn_type;
+    char nn_url[NN_URL_MAX];
     char* filter;
     struct bpf_program bpf_filter;
     TAILQ_ENTRY(ss_pcap_entry_s) entry;
@@ -73,16 +87,24 @@ typedef struct ss_pcap_chain_s ss_pcap_chain_t;
 
 /* CIDR TABLE */
 
-/* enough to hold [max_ipv6]/128 plus a bit extra */
-#define CIDR_LENGTH_MAX 64
-
 struct ss_cidr_entry_s {
+    int match_count;
+    int nn_conn;
+    int nn_type;
+    char nn_url[NN_URL_MAX];
     char cidr[CIDR_LENGTH_MAX];
 };
 
 typedef struct ss_cidr_entry_s ss_cidr_entry_t;
 
+typedef struct rte_lpm rte_lpm4_t;
+typedef struct rte_lpm6 rte_lpm6_t;
+
 struct ss_cidr_table_s {
+    int match4_count;
+    int match6_count;
+    rte_lpm4_t* cidr4_table;
+    rte_lpm6_t* cidr6_table;
 };
 
 typedef struct ss_cidr_table_s ss_cidr_table_t;
