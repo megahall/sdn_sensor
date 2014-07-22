@@ -14,13 +14,10 @@ struct ss_conf_s {
     int promiscuous_mode;
     uint16_t mtu;
     
-    struct sockaddr ipv4_address;
-    uint16_t ipv4_mask;
-    struct sockaddr ipv4_gateway;
-    
-    struct sockaddr ipv6_address;
-    uint16_t ipv6_mask;
-    struct sockaddr ipv6_gateway;
+    struct ip_addr ipv4_address;
+    struct ip_addr ipv4_gateway;
+    struct ip_addr ipv6_address;
+    struct ip_addr ipv6_gateway;
     
     char* port_mask;
     char* eal_options;
