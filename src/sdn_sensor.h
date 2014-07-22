@@ -1,7 +1,7 @@
 #ifndef __SDN_SENSOR_H__
 #define __SDN_SENSOR_H__
 
-#define RTE_LOGTYPE_SS RTE_LOGTYPE_USER1
+#include "common.h"
 
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   8192
@@ -41,15 +41,14 @@
 #define MAX_TIMER_PERIOD 86400 /* 1 day max */
 
 struct mbuf_table {
-    unsigned len;
-    struct rte_mbuf* m_table[MAX_PKT_BURST];
-};
+    unsigned length;
+    struct rte_mbuf* mbufs[MAX_PKT_BURST];
+} __rte_cache_aligned;
 
 struct lcore_queue_conf {
-    unsigned n_rx_port;
+    unsigned rx_port_count;
     unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
-    struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
-
+    struct mbuf_table tx_table[RTE_MAX_ETHPORTS];
 } __rte_cache_aligned;
 
 struct ss_port_statistics {
