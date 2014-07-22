@@ -1,4 +1,3 @@
-#include <arpa/inet.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <libgen.h>
@@ -109,23 +108,6 @@ char* ss_conf_file_read() {
     if (!is_ok && conf_content) { free(conf_content); conf_content = NULL; }
     
     return conf_content;
-}
-
-struct cidr* ss_parse_cidr(char* cidr) {
-    return NULL;
-}
-
-struct sockaddr* ss_parse_ip(char* ip) {
-    int rv;
-    struct sockaddr* addr = calloc(1, sizeof(struct sockaddr));
-    
-    rv = inet_pton(AF_INET, ip, addr);
-    if (rv == 1) return addr;
-    
-    rv = inet_pton(AF_INET6, ip, addr);
-    
-    if (addr) free(addr);
-    return NULL;
 }
 
 ss_conf_t* ss_conf_file_parse() {
