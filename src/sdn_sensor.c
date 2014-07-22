@@ -456,21 +456,20 @@ int main(int argc, char* argv[]) {
         rte_eth_promiscuous_enable(port_id);
 
         printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
-                (unsigned) portid,
-                ss_ports_eth_addr[portid].addr_bytes[0],
-                ss_ports_eth_addr[portid].addr_bytes[1],
-                ss_ports_eth_addr[portid].addr_bytes[2],
-                ss_ports_eth_addr[portid].addr_bytes[3],
-                ss_ports_eth_addr[portid].addr_bytes[4],
-                ss_ports_eth_addr[portid].addr_bytes[5]);
+                (unsigned) port_id,
+                port_eth_addrs[port_id].addr_bytes[0],
+                port_eth_addrs[port_id].addr_bytes[1],
+                port_eth_addrs[port_id].addr_bytes[2],
+                port_eth_addrs[port_id].addr_bytes[3],
+                port_eth_addrs[port_id].addr_bytes[4],
+                port_eth_addrs[port_id].addr_bytes[5]);
 
         /* initialize port stats */
         memset(&port_statistics, 0, sizeof(port_statistics));
     }
 
     if (!nb_ports_available) {
-        rte_exit(EXIT_FAILURE,
-            "All available ports are disabled. Please set portmask.\n");
+        rte_exit(EXIT_FAILURE, "All available ports are disabled. Please set portmask.\n");
     }
 
     check_all_ports_link_status(nb_ports, ss_enabled_port_mask);
