@@ -384,75 +384,76 @@ int main(int argc, char* argv[]) {
     qconf = NULL;
 
     /* Initialize the port/queue configuration of each logical core */
-    for (portid = 0; portid < nb_ports; portid++) {
+    for (port_id = 0; port_id < nb_ports; port_id++) {
         /* skip ports that are not enabled */
-        if ((ss_enabled_port_mask & (1 << portid)) == 0)
+        if ((ss_enabled_port_mask & (1 << port_id)) == 0)
             continue;
 
         /* get the lcore_id for this port */
         while (rte_lcore_is_enabled(rx_lcore_id) == 0 ||
-               lcore_queue_conf[rx_lcore_id].n_rx_port ==
+               lcore_queue_conf[rx_lcore_id].rx_port_count ==
                ss_rx_queue_per_lcore) {
             rx_lcore_id++;
-            if (rx_lcore_id >= RTE_MAX_LCORE)
+            if (rx_lcore_id >= RTE_MAX_LCORE) {
                 rte_exit(EXIT_FAILURE, "Not enough cores\n");
+            }
         }
 
-        if (qconf != &lcore_queue_conf[rx_lcore_id])
+        if (qconf != &lcore_queue_conf[rx_lcore_id]) {
             /* Assigned a new logical core in the loop above. */
             qconf = &lcore_queue_conf[rx_lcore_id];
+        }
 
-        qconf->rx_port_list[qconf->n_rx_port] = portid;
-        qconf->n_rx_port++;
-        printf("Lcore %u: RX port %u\n", rx_lcore_id, (unsigned) portid);
+        qconf->rx_port_list[qconf->rx_port_count] = port_id;
+        qconf->rx_port_count++;
+        printf("Lcore %u: RX port %u\n", rx_lcore_id, (unsigned) port_id);
     }
 
     nb_ports_available = nb_ports;
 
     /* Initialise each port */
-    for (portid = 0; portid < nb_ports; portid++) {
+    for (port_id = 0; port_id < nb_ports; port_id++) {
         /* skip ports that are not enabled */
-        if ((ss_enabled_port_mask & (1 << portid)) == 0) {
-            printf("Skipping disabled port %u\n", (unsigned) portid);
+        if ((ss_enabled_port_mask & (1 << port_id)) == 0) {
+            printf("Skipping disabled port %u\n", (unsigned) port_id);
             nb_ports_available--;
             continue;
         }
         /* init port */
-        printf("Initializing port %u... ", (unsigned) portid);
+        printf("Initializing port %u... ", (unsigned) port_id);
         fflush(stdout);
-        ret = rte_eth_dev_configure(portid, 1, 1, &port_conf);
-        if (ret < 0)
-            rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n",
-                  ret, (unsigned) portid);
+        rv = rte_eth_dev_configure(port_id, 1, 1, &port_conf);
+        if (rv < 0) {
+            rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n", rv, (unsigned) port_id);
+        }
 
-        rte_eth_macaddr_get(portid,&ss_ports_eth_addr[portid]);
+        rte_eth_macaddr_get(port_id,&port_eth_addrs[port_id]);
 
         /* init one RX queue */
         fflush(stdout);
-        ret = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
-                         rte_eth_dev_socket_id(portid), &rx_conf,
+        rv = rte_eth_rx_queue_setup(port_id, 0, rxd_count,
+                         rte_eth_dev_socket_id(port_id), &rx_conf,
                          ss_pktmbuf_pool);
-        if (ret < 0)
-            rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup:err=%d, port=%u\n",
-                  ret, (unsigned) portid);
+        if (rv < 0) {
+            rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup:err=%d, port=%u\n", rv, (unsigned) port_id);
+        }
 
         /* init one TX queue on each port */
         fflush(stdout);
-        ret = rte_eth_tx_queue_setup(portid, 0, nb_txd,
-                rte_eth_dev_socket_id(portid), &tx_conf);
-        if (ret < 0)
-            rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup:err=%d, port=%u\n",
-                ret, (unsigned) portid);
+        rv = rte_eth_tx_queue_setup(port_id, 0, txd_count, rte_eth_dev_socket_id(port_id), &tx_conf);
+        if (rv < 0) {
+            rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup:err=%d, port=%u\n", rv, (unsigned) port_id);
+        }
 
         /* Start device */
-        ret = rte_eth_dev_start(portid);
-        if (ret < 0)
-            rte_exit(EXIT_FAILURE, "rte_eth_dev_start:err=%d, port=%u\n",
-                  ret, (unsigned) portid);
+        rv = rte_eth_dev_start(port_id);
+        if (rv < 0) {
+            rte_exit(EXIT_FAILURE, "rte_eth_dev_start:err=%d, port=%u\n", rv, (unsigned) port_id);
+        }
 
         printf("done: \n");
 
-        rte_eth_promiscuous_enable(portid);
+        rte_eth_promiscuous_enable(port_id);
 
         printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
                 (unsigned) portid,
