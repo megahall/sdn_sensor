@@ -61,11 +61,13 @@ struct ss_port_statistics {
 
 int ss_send_burst(struct lcore_queue_conf* qconf, unsigned int n, uint8_t port);
 int ss_send_packet(struct rte_mbuf* m, uint8_t port);
-void ss_simple_forward(struct rte_mbuf* m, unsigned int portid);
+void ss_process_frame(struct rte_mbuf* mbuf, unsigned int port_id);
+void ss_process_frame_ethernet(ss_frame_t* fbuf);
+void ss_process_frame_arp(ss_frame_t* fbuf);
+void ss_process_frame_icmpv4(void);
+void ss_process_frame_icmpv6(void);
 void ss_main_loop(void);
 int ss_launch_one_lcore(void* dummy);
-void ss_usage(const char* prgname);
-int ss_parse_args(int argc, char* *argv);
 int main(int argc, char* argv[]);
 
 /* END PROTOTYPES */
