@@ -1,15 +1,31 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
-#include <netinet/in.h>
-
 #include <bsd/sys/queue.h>
 #include <json-c/json.h>
 #include <pcap/pcap.h>
 #include <pcre.h>
+
+#include <rte_log.h>
 #include <rte_lpm.h>
+#include <rte_mbuf.h>
+
+#include <rte_ether.h>
+#include <rte_arp.h>
+#include <rte_ip.h>
+#include <rte_icmp.h>
+#include "ss_icmp6.h"
+#include <rte_tcp.h>
+#include <rte_udp.h>
 
 /* CONSTANTS */
+
+#define RTE_LOGTYPE_SS RTE_LOGTYPE_USER1
+
+#define SS_V4_ADDR_SIZE       4
+#define SS_V6_ADDR_SIZE      16
+#define SS_V4_PREFIX_MAX     32
+#define SS_V6_PREFIX_MAX    128
 
 /* should be enough for the nanomsg queue URL */
 #define NN_URL_MAX 256
@@ -17,12 +33,69 @@
 /* enough to hold [max_ipv6]/128 plus a bit extra */
 #define CIDR_LENGTH_MAX 64
 
+#define ETHER_TYPE_IPV4 ETHER_TYPE_IPv4
+#define ETHER_TYPE_IPV6 ETHER_TYPE_IPv6
+
+/* TYPEDEFS */
+
+typedef struct rte_mbuf rte_mbuf_t;
+
+typedef struct rte_hash rte_hash_t;
+typedef struct rte_lpm  rte_lpm4_t;
+typedef struct rte_lpm6 rte_lpm6_t;
+
+typedef struct icmp_hdr icmpv4_hdr;
+
 /* DATA TYPES */
 
-struct {
-    struct sockaddr ip;
+struct ip4_addr {
+    uint32_t addr;
+};
+
+typedef struct ip4_addr ip4_addr;
+
+struct ip6_addr {
+    uint8_t addr[16];
+};
+
+typedef struct ip6_addr ip6_addr;
+
+struct ip_addr {
+    uint8_t family;
+    uint8_t prefix;
+    union {
+        struct ip4_addr ipv4;
+        struct ip6_addr ipv6;
+    } addr;
+};
+
+typedef struct ip_addr ip_addr;
+
+struct ss_frame_s {
+    unsigned int      port_id;
+    rte_mbuf_t        mbuf;
+    
+    struct ether_hdr* ethernet;
+    struct arp_hdr*   arp;
+    struct ipv4_hdr*  ipv4;
+    struct ipv6_hdr*  ipv6;
+    struct icmp_hdr   icmp4;
+    struct icmp6_hdr  icmp6;
+    struct tcp_hdr    tcp;
+    struct udp_hdr    udp;
+};
+
+typedef struct ss_frame_s ss_frame_t;
+
+typedef void (*process_packet_fptr)(ss_frame_t*);
+
+struct ss_cidr_s {
+    int family;
+    //struct sockaddr ip;
     uint8_t mask;
-} ss_cidr_s;
+};
+
+typedef struct ss_cidr_s ss_cidr_t;
 
 /* RE CHAIN */
 
@@ -97,12 +170,14 @@ struct ss_cidr_entry_s {
 
 typedef struct ss_cidr_entry_s ss_cidr_entry_t;
 
-typedef struct rte_lpm rte_lpm4_t;
-typedef struct rte_lpm6 rte_lpm6_t;
-
 struct ss_cidr_table_s {
-    int match4_count;
-    int match6_count;
+    int hash_match4_count;
+    int hash_match6_count;
+    int cidr_match4_count;
+    int cidr_match6_count;
+    
+    rte_hash_t* hash4_table;
+    rte_hash_t* hash6_table;
     rte_lpm4_t* cidr4_table;
     rte_lpm6_t* cidr6_table;
 };
