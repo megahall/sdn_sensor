@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/queue.h>
 
@@ -40,15 +39,16 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 
+#include "common.h"
 #include "sdn_sensor.h"
 #include "dpdk.h"
 #include "sensor_configuration.h"
 
-static uint16_t nb_rxd = RTE_TEST_RX_DESC_DEFAULT;
-static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
+static uint16_t rxd_count = RTE_TEST_RX_DESC_DEFAULT;
+static uint16_t txd_count = RTE_TEST_TX_DESC_DEFAULT;
 
 /* ethernet addresses of ports */
-static struct ether_addr ss_ports_eth_addr[RTE_MAX_ETHPORTS];
+static struct ether_addr port_eth_addrs[RTE_MAX_ETHPORTS];
 
 /* mask of enabled ports */
 static uint32_t ss_enabled_port_mask = 0;
@@ -103,19 +103,19 @@ static int64_t timer_period = 10 * TIMER_MILLISECOND * 1000;
 
 /* Send the burst of packets on an output interface */
 int ss_send_burst(struct lcore_queue_conf *qconf, unsigned int n, uint8_t port) {
-    struct rte_mbuf **m_table;
-    unsigned int ret;
+    struct rte_mbuf** mbufs;
+    unsigned int rv;
     unsigned int queueid =0;
 
-    m_table = (struct rte_mbuf **)qconf->tx_mbufs[port].m_table;
+    mbufs = (struct rte_mbuf**) qconf->tx_table[port].mbufs;
 
-    ret = rte_eth_tx_burst(port, (uint16_t) queueid, m_table, (uint16_t) n);
-    port_statistics[port].tx += ret;
-    if (unlikely(ret < n)) {
-        port_statistics[port].dropped += (n - ret);
+    rv = rte_eth_tx_burst(port, (uint16_t) queueid, mbufs, (uint16_t) n);
+    port_statistics[port].tx += rv;
+    if (unlikely(rv < n)) {
+        port_statistics[port].dropped += (n - rv);
         do {
-            rte_pktmbuf_free(m_table[ret]);
-        } while (++ret < n);
+            rte_pktmbuf_free(mbufs[rv]);
+        } while (++rv < n);
     }
 
     return 0;
@@ -124,52 +124,87 @@ int ss_send_burst(struct lcore_queue_conf *qconf, unsigned int n, uint8_t port) 
 /* Enqueue packets for TX and prepare them to be sent */
 int ss_send_packet(struct rte_mbuf *m, uint8_t port) {
     unsigned int lcore_id;
-    unsigned int len;
+    unsigned int length;
     struct lcore_queue_conf *qconf;
 
     lcore_id = rte_lcore_id();
 
     qconf = &lcore_queue_conf[lcore_id];
-    len = qconf->tx_mbufs[port].len;
-    qconf->tx_mbufs[port].m_table[len] = m;
-    len++;
+    length = qconf->tx_table[port].length;
+    qconf->tx_table[port].mbufs[length] = m;
+    length++;
 
     /* enough pkts to be sent */
-    if (unlikely(len == MAX_PKT_BURST)) {
+    if (unlikely(length == MAX_PKT_BURST)) {
         ss_send_burst(qconf, MAX_PKT_BURST, port);
-        len = 0;
+        length = 0;
     }
 
-    qconf->tx_mbufs[port].len = len;
+    qconf->tx_table[port].length = length;
     return 0;
 }
 
-void ss_simple_forward(struct rte_mbuf *m, unsigned int portid) {
-    struct ether_hdr *eth;
-    void *tmp;
-    unsigned int dst_port;
-
-    dst_port = ss_dst_ports[portid];
-    eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
+void ss_process_frame(struct rte_mbuf* mbuf, unsigned int port_id) {
+    ss_frame_t fbuf;
+    void* tmp;
+    fbuf.ethernet = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
+    
+    switch (fbuf.ethernet->ether_type) {
+        case ETHER_TYPE_VLAN: {
+            RTE_LOG(INFO, SS, "port %u received unsupported VLAN frame\n", port_id);
+            rte_pktmbuf_dump(stdout, mbuf, rte_pktmbuf_pkt_len(mbuf));
+            break;
+        }
+        case ETHER_TYPE_ARP:  {
+            ss_process_frame_arp(&fbuf);
+            break;
+        }
+        case ETHER_TYPE_IPV4: {
+            break;
+        }
+        case ETHER_TYPE_IPV6: {
+            break;
+        }
+        default: {
+            RTE_LOG(INFO, SS, "port %u received unsupported 0x%04hx frame\n", port_id, fbuf.ethernet->ether_type);
+            rte_pktmbuf_dump(stdout, mbuf, rte_pktmbuf_pkt_len(mbuf));
+            break;
+        }
+    }
+    //d_addr, s_addr, ether_type;
 
     /* 02:00:00:00:00:xx */
-    tmp = &eth->d_addr.addr_bytes[0];
-    *((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)dst_port << 40);
+    tmp = &fbuf.ethernet->d_addr.addr_bytes[0];
+    *((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)port_id << 40);
 
     /* src addr */
-    ether_addr_copy(&ss_ports_eth_addr[dst_port], &eth->s_addr);
+    ether_addr_copy(&port_eth_addrs[port_id], &fbuf.ethernet->s_addr);
 
-    ss_send_packet(m, (uint8_t) dst_port);
+    rte_pktmbuf_free(mbuf);
+    // ss_send_packet(mbuf, (uint8_t) port_id);
+}
+
+// XXX: eventually allow VLAN to be recursive
+void ss_process_frame_ethernet(ss_frame_t* fbuf) {
+}
+
+void ss_process_frame_arp(ss_frame_t* fbuf) {
+}
+
+void ss_process_frame_icmpv4() {
+}
+
+void ss_process_frame_icmpv6() {
 }
 
 /* main processing loop */
 void ss_main_loop(void) {
-    struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
-    struct rte_mbuf *m;
+    struct rte_mbuf* pkts_burst[MAX_PKT_BURST];
+    struct rte_mbuf* m;
     unsigned int lcore_id;
     uint64_t prev_tsc, diff_tsc, cur_tsc, timer_tsc;
-    unsigned i, j, portid, nb_rx;
-    struct lcore_queue_conf *qconf;
+    unsigned i, j, port_id, rx_count;
+    struct lcore_queue_conf* qconf;
     const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
 
     prev_tsc = 0;
@@ -178,21 +213,19 @@ void ss_main_loop(void) {
     lcore_id = rte_lcore_id();
     qconf = &lcore_queue_conf[lcore_id];
 
-    if (qconf->n_rx_port == 0) {
+    if (qconf->rx_port_count == 0) {
         RTE_LOG(INFO, SS, "lcore %u has nothing to do\n", lcore_id);
         return;
     }
 
     RTE_LOG(INFO, SS, "entering main loop on lcore %u\n", lcore_id);
 
-    for (i = 0; i < qconf->n_rx_port; i++) {
-        portid = qconf->rx_port_list[i];
-        RTE_LOG(INFO, SS, " -- lcoreid=%u portid=%u\n", lcore_id,
-            portid);
+    for (i = 0; i < qconf->rx_port_count; i++) {
+        port_id = qconf->rx_port_list[i];
+        RTE_LOG(INFO, SS, " -- lcoreid=%u port_id=%u\n", lcore_id, port_id);
     }
 
     while (1) {
-
         cur_tsc = rte_rdtsc();
 
         /*
@@ -201,18 +234,15 @@ void ss_main_loop(void) {
         diff_tsc = cur_tsc - prev_tsc;
         if (unlikely(diff_tsc > drain_tsc)) {
 
-            for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++) {
-                if (qconf->tx_mbufs[portid].len == 0)
+            for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
+                if (qconf->tx_table[port_id].length == 0)
                     continue;
-                ss_send_burst(&lcore_queue_conf[lcore_id],
-                         qconf->tx_mbufs[portid].len,
-                         (uint8_t) portid);
-                qconf->tx_mbufs[portid].len = 0;
+                ss_send_burst(&lcore_queue_conf[lcore_id], qconf->tx_table[port_id].length, (uint8_t) port_id);
+                qconf->tx_table[port_id].length = 0;
             }
 
             /* if timer is enabled */
             if (timer_period > 0) {
-
                 /* advance the timer */
                 timer_tsc += diff_tsc;
 
@@ -234,18 +264,16 @@ void ss_main_loop(void) {
         /*
          * Read packet from RX queues
          */
-        for (i = 0; i < qconf->n_rx_port; i++) {
-
-            portid = qconf->rx_port_list[i];
-            nb_rx = rte_eth_rx_burst((uint8_t) portid, 0,
-                         pkts_burst, MAX_PKT_BURST);
-
-            port_statistics[portid].rx += nb_rx;
-
-            for (j = 0; j < nb_rx; j++) {
+        for (i = 0; i < qconf->rx_port_count; i++) {
+            port_id = qconf->rx_port_list[i];
+            rx_count = rte_eth_rx_burst((uint8_t) port_id, 0, pkts_burst, MAX_PKT_BURST);
+            
+            port_statistics[port_id].rx += rx_count;
+            
+            for (j = 0; j < rx_count; j++) {
                 m = pkts_burst[j];
                 rte_prefetch0(rte_pktmbuf_mtod(m, void *));
-                ss_simple_forward(m, portid);
+                ss_process_frame(m, port_id);
             }
         }
     }
@@ -256,34 +284,26 @@ int ss_launch_one_lcore(__attribute__((unused)) void *dummy) {
     return 0;
 }
 
-/* display usage */
-void ss_usage(const char *prgname) {
-    printf("%s [EAL options] -- -p PORTMASK [-q NQ]\n"
-           "  -p PORTMASK: hexadecimal bitmask of ports to configure\n"
-           "  -q NQ: number of queue (=ports) per lcore (default is 1)\n"
-           "  -T PERIOD: statistics will be refreshed each PERIOD seconds (0 to disable, 10 default, 86400 maximum)\n",
-           prgname);
-}
-
 int main(int argc, char* argv[]) {
     ss_conf_t* ss_conf = ss_conf_file_parse();
     
-    struct lcore_queue_conf *qconf;
+    struct lcore_queue_conf* qconf;
     struct rte_eth_dev_info dev_info;
-    int ret;
+    int rv;
     uint8_t nb_ports;
     uint8_t nb_ports_available;
-    uint8_t portid, last_port;
+    uint8_t port_id, last_port;
     unsigned int lcore_id;
     unsigned int rx_lcore_id;
     unsigned int nb_ports_in_mask = 0;
 
     /* init EAL */
-    ret = rte_eal_init(argc, argv);
-    if (ret < 0)
+    rv = rte_eal_init(argc, argv);
+    if (rv < 0) {
         rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
-    argc -= ret;
-    argv += ret;
+    }
+    argc -= rv;
+    argv += rv;
 
     /* parse application arguments (after the EAL ones) */
     ss_enabled_port_mask = ss_parse_portmask(ss_conf->port_mask);
@@ -312,42 +332,48 @@ int main(int argc, char* argv[]) {
                    rte_pktmbuf_pool_init, NULL,
                    rte_pktmbuf_init, NULL,
                    rte_socket_id(), 0);
-    if (ss_pktmbuf_pool == NULL)
+    if (ss_pktmbuf_pool == NULL) {
         rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
+    }
 
-    if (rte_eal_pci_probe() < 0)
+    if (rte_eal_pci_probe() < 0) {
         rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
+    }
 
     nb_ports = rte_eth_dev_count();
-    if (nb_ports == 0)
+    if (nb_ports == 0) {
         rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
+    }
 
-    if (nb_ports > RTE_MAX_ETHPORTS)
+    if (nb_ports > RTE_MAX_ETHPORTS) {
         nb_ports = RTE_MAX_ETHPORTS;
+    }
 
     /* reset ss_dst_ports */
-    for (portid = 0; portid < RTE_MAX_ETHPORTS; portid++)
-        ss_dst_ports[portid] = 0;
+    for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
+        ss_dst_ports[port_id] = 0;
+    }
+    
     last_port = 0;
 
     /*
      * Each logical core is assigned a dedicated TX queue on each port.
      */
-    for (portid = 0; portid < nb_ports; portid++) {
+    for (port_id = 0; port_id < nb_ports; port_id++) {
         /* skip ports that are not enabled */
-        if ((ss_enabled_port_mask & (1 << portid)) == 0)
+        if ((ss_enabled_port_mask & (1 << port_id)) == 0)
             continue;
 
         if (nb_ports_in_mask % 2) {
-            ss_dst_ports[portid] = last_port;
-            ss_dst_ports[last_port] = portid;
+            ss_dst_ports[port_id] = last_port;
+            ss_dst_ports[last_port] = port_id;
         }
         else
-            last_port = portid;
+            last_port = port_id;
 
         nb_ports_in_mask++;
 
-        rte_eth_dev_info_get(portid, &dev_info);
+        rte_eth_dev_info_get(port_id, &dev_info);
     }
     if (nb_ports_in_mask % 2) {
         printf("Notice: odd number of ports in portmask.\n");
