@@ -17,18 +17,97 @@
  * SOFTWARE.
  */
 
+#include <ctype.h>
+#include <errno.h>
+#include <inttypes.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
-#include <inttypes.h>
-#include <ctype.h>
 #include <string.h>
-#include <errno.h>
 
 #include <rte_log.h>
 
 #include "common.h"
 #include "ip_utils.h"
+
+int ss_dump_cidr(FILE* fd, const char* label, ip_addr* ip_addr) {
+    char tmp[SS_ADDR_STR_SIZE];
+    memset(tmp, 0, sizeof(tmp));
+    
+    if (fd == NULL) fd = stderr;
+    
+    if (ip_addr == NULL) {
+        fprintf(fd, "CIDR %s: NULL\n", label);
+        return -1;
+    }
+    
+    ss_inet_ntop(ip_addr->family, ip_addr, tmp, sizeof(tmp));
+    
+    fprintf(fd, "CIDR %s: %s\n", label, tmp);
+    return 0;
+}
+
+int ss_parse_cidr(const char* input, ip_addr* ip_addr) {
+    unsigned int input_len = 0;
+    int rv = -1;
+    char ip_str[SS_INET6_ADDRSTRLEN+4+1]; /* '+4' is for prefix (if any) */
+    char *prefix_start, *prefix_end;
+    long prefix = 0;
+    
+    if (!input || ! *input || !ip_addr)
+        return -1;
+    
+    input_len = strlen(input);
+    
+    /* if token is too big... */
+    if (input_len >= SS_INET6_ADDRSTRLEN+4)
+        return -1;
+    
+    snprintf(ip_str, input_len+1, "%s", input);
+    
+    /* convert the network prefix */
+    prefix_start = strrchr(ip_str, '/');
+    if (prefix_start == NULL) {
+        ip_addr->prefix = 0;
+    }
+    else {
+        *prefix_start = '\0';
+        prefix_start ++;
+        errno = 0;
+        prefix = strtol(prefix_start, &prefix_end, 10);
+        if (errno || (*prefix_end != '\0') || prefix < 0) {
+            return -1;
+        }
+        ip_addr->prefix = prefix;
+    }
+    
+    /* convert the IP addr */
+    /* IPv6 */
+    if (strchr(ip_str, ':') &&
+        ss_inet_pton(SS_AF_INET6, ip_str, ip_addr) == 1 &&
+        prefix <= SS_V6_PREFIX_MAX) {
+        ip_addr->family = SS_AF_INET6;
+        if (ip_addr->prefix == 0) {
+            ip_addr->prefix = SS_V6_PREFIX_MAX;
+        }
+        rv = 1;
+    }
+    else if (strchr(ip_str, '.') &&
+             ss_inet_pton(SS_AF_INET4, ip_str, ip_addr) == 1 &&
+             prefix <= SS_V4_PREFIX_MAX) {
+        ip_addr->family = SS_AF_INET4;
+        if (ip_addr->prefix == 0) {
+            ip_addr->prefix = SS_V4_PREFIX_MAX;
+        }
+        rv = 1;
+    }
+    else {
+        RTE_LOG(ERR, SS, "could not parse CIDR / IP: %s", ip_str);
+        memset(&ip_addr, 0, sizeof(ip_addr));
+    }
+    
+    return rv;
+}
 
 /* int
  * ss_inet_pton(af, src, dst)
@@ -41,15 +120,18 @@
  * author:
  *      Paul Vixie, 1996.
  */
-int ss_inet_pton(int af, const char* src, void* dst) {
+int ss_inet_pton(int af, const char* src, ip_addr* dst) {
     switch (af) {
-        case SS_AF_INET:
-            return (ss_inet_pton4(src, dst));
-        case SS_AF_INET6:
-            return (ss_inet_pton6(src, dst));
-        default:
+        case SS_AF_INET4: {
+            return (ss_inet_pton4(src, (uint8_t*) &dst->ipv4));
+        }
+        case SS_AF_INET6: {
+            return (ss_inet_pton6(src, (uint8_t*) &dst->ipv6));
+        }
+        default: {
             errno = EAFNOSUPPORT;
             return (-1);
+        }
     }
     /* NOTREACHED */
 }
@@ -64,7 +146,7 @@ int ss_inet_pton(int af, const char* src, void* dst) {
  * author:
  *      Paul Vixie, 1996.
  */
-int ss_inet_pton4(const char* src, unsigned char* dst) {
+int ss_inet_pton4(const char* src, uint8_t* dst) {
     static const char digits[] = "0123456789";
     int saw_digit, octets, ch;
     unsigned char tmp[SS_V4_ADDR_SIZE], *tp;
@@ -85,7 +167,7 @@ int ss_inet_pton4(const char* src, unsigned char* dst) {
                     return (0);
                 saw_digit = 1;
             }
-            *tp = (unsigned char)new;
+            *tp = (uint8_t)new;
         } else if (ch == '.' && saw_digit) {
             if (octets == 4)
                 return (0);
@@ -96,13 +178,13 @@ int ss_inet_pton4(const char* src, unsigned char* dst) {
     }
     if (octets < 4)
         return (0);
-
+    
     memcpy(dst, tmp, SS_V4_ADDR_SIZE);
     return (1);
 }
 
 /* int
- * inet_pton6(src, dst)
+ * ss_inet_pton6(src, dst)
  *      convert presentation level address to network order binary form.
  * return:
  *      1 if `src' is a valid [RFC1884 2.2] address, else 0.
@@ -114,7 +196,7 @@ int ss_inet_pton4(const char* src, unsigned char* dst) {
  * author:
  *      Paul Vixie, 1996.
  */
-int ss_inet_pton6(const char* src, unsigned char* dst) {
+int ss_inet_pton6(const char* src, uint8_t* dst) {
     static const char xdigits_l[] = "0123456789abcdef";
     static const char xdigits_u[] = "0123456789ABCDEF";
     unsigned char tmp[SS_V6_ADDR_SIZE], *tp = 0, *endp = 0, *colonp = 0;
@@ -175,7 +257,7 @@ int ss_inet_pton6(const char* src, unsigned char* dst) {
             tp += SS_V4_ADDR_SIZE;
             saw_xdigit = 0;
             dbloct_count += 2;
-            break;  /* '\0' was seen by inet_pton4(). */
+            break;  /* '\0' was seen by ss_inet_pton4(). */
         }
         return (0);
     }
@@ -204,70 +286,155 @@ int ss_inet_pton6(const char* src, unsigned char* dst) {
         }
         tp = endp;
     }
-    if (tp != endp)
+    if (tp != endp) {
         return (0);
+    }
+    
     memcpy(dst, tmp, SS_V6_ADDR_SIZE);
     return (1);
 }
 
-int ss_parse_cidr(const char* input, ip_addr* ip_addr) {
-    unsigned int input_len = 0;
-    int rv = -1;
-    char ip_str[SS_INET6_ADDRSTRLEN+4+1]; /* '+4' is for prefix (if any) */
-    char *prefix_start, *prefix_end;
-    long prefix = 0;
-    
-    if (!input || ! *input || !ip_addr)
-        return -1;
-    
-    input_len = strlen(input);
-    
-    /* if token is too big... */
-    if (input_len >= SS_INET6_ADDRSTRLEN+4)
-        return -1;
-    
-    snprintf(ip_str, input_len+1, "%s", input);
-    
-    /* convert the network prefix */
-    prefix_start = strrchr(ip_str, '/');
-    if (prefix_start == NULL) {
-        ip_addr->prefix = 0;
-    }
-    else {
-        *prefix_start = '\0';
-        prefix_start ++;
-        errno = 0;
-        prefix = strtol(prefix_start, &prefix_end, 10);
-        if (errno || (*prefix_end != '\0') || prefix < 0) {
-            return -1;
+/* char *
+ * ss_inet_ntop(af, src, dst, size)
+ *      convert a network format address to presentation format.
+ * return:
+ *      pointer to presentation format address (`dst'), or NULL (see errno).
+ * author:
+ *      Paul Vixie, 1996.
+ */
+const char * ss_inet_ntop(int af, const void* src, char* dst, unsigned int size) {
+    switch (af) {
+        case SS_AF_INET4: {
+            return (ss_inet_ntop4(src, dst, size));
         }
-        ip_addr->prefix = prefix;
+        case SS_AF_INET6: {
+            return (ss_inet_ntop6(src, dst, size));
+        }
+        default: {
+            errno = EAFNOSUPPORT;
+            return (NULL);
+        }
+    }
+    /* NOTREACHED */
+}
+
+/* const char *
+ * ss_inet_ntop4(src, dst, size)
+ *      format an IPv4 address
+ * return:
+ *      `dst' (as a const)
+ * notes:
+ *      (1) uses no statics
+ *      (2) takes a u_char* not an in_addr as input
+ * author:
+ *      Paul Vixie, 1996.
+ */
+const char* ss_inet_ntop4(const uint8_t* src, char* dst, unsigned int size) {
+    static const char fmt[] = "%u.%u.%u.%u";
+    char tmp[sizeof "255.255.255.255"];
+
+    if (sprintf(tmp, fmt, src[0], src[1], src[2], src[3]) >= (int) size) {
+        errno = ENOSPC;
+        return (NULL);
     }
     
-    /* convert the IP addr */
-    /* IPv6 */
-    if (strchr(ip_str, ':') &&
-        ss_inet_pton(SS_AF_INET6, ip_str, &ip_addr->addr.ipv6) == 1 &&
-        prefix <= SS_V6_PREFIX_MAX) {
-        ip_addr->family = SS_AF_INET6;
-        if (ip_addr->prefix == 0) {
-            ip_addr->prefix = SS_V6_PREFIX_MAX;
+    return strcpy(dst, tmp);
+}
+
+/* const char *
+ * inet_ntop6(src, dst, size)
+ *      convert IPv6 binary address into presentation (printable) format
+ * author:
+ *      Paul Vixie, 1996.
+ */
+const char* ss_inet_ntop6(const uint8_t* src, char* dst, unsigned int size) {
+    /*
+     * Note that int32_t and int16_t need only be "at least" large enough
+     * to contain a value of the specified size.
+     */
+    char tmp[sizeof "ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255"], *tp;
+    struct { int base, len; } best, cur;
+    u_int words[SS_V6_ADDR_SIZE / SS_INT16_SIZE];
+    int i;
+
+    /*
+     * Preprocess:
+     *      Copy the input (bytewise) array into a wordwise array.
+     *      Find the longest run of 0x00's in src[] for :: shorthanding.
+     */
+    memset(words, '\0', sizeof words);
+    for (i = 0; i < SS_V6_ADDR_SIZE; i += 2) {
+        words[i / 2] = (src[i] << 8) | src[i + 1];
+    }
+    best.base = -1;
+    cur.base = -1;
+    best.len = 0;
+    cur.len = 0;
+    for (i = 0; i < (SS_V6_ADDR_SIZE / SS_INT16_SIZE); i++) {
+        if (words[i] == 0) {
+            if (cur.base == -1) {
+                cur.base = i, cur.len = 1;
+            }
+            else {
+                cur.len++;
+            }
         }
-        rv = input_len;
-    }
-    else if (strchr(ip_str, '.') &&
-             ss_inet_pton(SS_AF_INET, ip_str, &ip_addr->addr.ipv4) == 1 &&
-             prefix <= SS_V4_PREFIX_MAX) {
-        ip_addr->family = SS_AF_INET;
-        if (ip_addr->prefix == 0) {
-            ip_addr->prefix = SS_V4_PREFIX_MAX;
+        else {
+            if (cur.base != -1) {
+                if (best.base == -1 || cur.len > best.len) {
+                    best = cur;
+                }
+                cur.base = -1;
+            }
         }
-        rv = input_len;
     }
-    else {
-        RTE_LOG(ERR, SS, "could not parse CIDR / IP: %s", ip_str);
-        memset(&ip_addr->addr, 0, sizeof(ip_addr->addr));
+    if (cur.base != -1) {
+        if (best.base == -1 || cur.len > best.len) {
+            best = cur;
+        }
     }
-    
-    return input_len;
+    if (best.base != -1 && best.len < 2) {
+        best.base = -1;
+    }
+
+    /*
+     * Format the result.
+     */
+    tp = tmp;
+    for (i = 0; i < (SS_V6_ADDR_SIZE / SS_INT16_SIZE); i++) {
+        /* Are we inside the best run of 0x00's? */
+        if (best.base != -1 && i >= best.base && i < (best.base + best.len)) {
+            if (i == best.base) {
+                *tp++ = ':';
+            }
+            continue;
+        }
+        /* Are we following an initial run of 0x00s or any real hex? */
+        if (i != 0)
+            *tp++ = ':';
+        /* Is this address an encapsulated IPv4? */
+        if (i == 6 && best.base == 0 &&
+            (best.len == 6 || (best.len == 5 && words[5] == 0xffff))) {
+            if (!ss_inet_ntop4(src+12, tp, sizeof tmp - (tp - tmp))) {
+                return (NULL);
+            }
+            tp += strlen(tp);
+            break;
+        }
+        tp += sprintf(tp, "%x", words[i]);
+    }
+    /* Was it a trailing run of 0x00's? */
+    if (best.base != -1 && (best.base + best.len) == (SS_V6_ADDR_SIZE / SS_INT16_SIZE)) {
+        *tp++ = ':';
+    }
+    *tp++ = '\0';
+
+    /*
+     * Check for overflow, copy, and we're done.
+     */
+    if ((unsigned int)(tp - tmp) > size) {
+        errno = ENOSPC;
+        return (NULL);
+    }
+    return strcpy(dst, tmp);
 }
