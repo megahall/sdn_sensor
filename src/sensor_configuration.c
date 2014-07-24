@@ -7,11 +7,13 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <wordexp.h>
 
 #include <bsd/string.h>
 #include <json-c/json.h>
 
 #include "common.h"
+#include "ip_utils.h"
 #include "sensor_configuration.h"
 
 #define PROGRAM_PATH "/proc/self/exe"
@@ -110,8 +112,87 @@ char* ss_conf_file_read() {
     return conf_content;
 }
 
+int ss_conf_network_parse(ss_conf_t* ss_conf, json_object* items) {
+    int rv;
+    json_object* item = NULL;
+    item = json_object_object_get(items, "promiscuous_mode");
+    if (item) {
+        if (!json_object_is_type(item, json_type_boolean)) {
+            fprintf(stderr, "promiscuous_mode is not boolean\n");
+            return -1;
+        }
+        ss_conf->promiscuous_mode = json_object_get_boolean(item);
+    }
+    item = json_object_object_get(items, "mtu");
+    if (item) {
+        if (!json_object_is_type(item, json_type_int)) {
+            fprintf(stderr, "mtu is not int\n");
+            return -1;
+        }
+        ss_conf->mtu = json_object_get_int(item);
+    }
+    item = json_object_object_get(items, "ipv4_address");
+    if (item) {
+        if (!json_object_is_type(item, json_type_string)) {
+            fprintf(stderr, "ipv4_address is not string\n");
+            return -1;
+        }
+        fprintf(stderr, "parse ipv4 address %s\n", json_object_get_string(item));
+        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ipv4_address);
+        if (rv != 1) {
+            fprintf(stderr, "invalid ipv4 address %s\n", json_object_get_string(item));
+            return -1;
+        }
+        ss_dump_cidr(NULL, "ipv4_address", &ss_conf->ipv4_address);
+    }
+    item = json_object_object_get(items, "ipv4_gateway");
+    if (item) {
+        if (!json_object_is_type(item, json_type_string)) {
+            fprintf(stderr, "ipv4_gateway is not string\n");
+            return -1;
+        }
+        fprintf(stderr, "parse ipv4 gateway %s\n", json_object_get_string(item));
+        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ipv4_gateway);
+        if (rv != 1) {
+            fprintf(stderr, "invalid ipv4 gateway %s\n", json_object_get_string(item));
+            return -1;
+        }
+        ss_dump_cidr(NULL, "ipv4_gateway", &ss_conf->ipv4_gateway);
+    }
+    item = json_object_object_get(items, "ipv6_address");
+    if (item) {
+        if (!json_object_is_type(item, json_type_string)) {
+            fprintf(stderr, "ipv6_address is not string\n");
+            return -1;
+        }
+        fprintf(stderr, "parse ipv6 address %s\n", json_object_get_string(item));
+        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ipv6_address);
+        if (rv != 1) {
+            fprintf(stderr, "invalid ipv6 address %s\n", json_object_get_string(item));
+            return -1;
+        }
+        ss_dump_cidr(NULL, "ipv6_address", &ss_conf->ipv6_address);
+    }
+    item = json_object_object_get(items, "ipv6_gateway");
+    if (item) {
+        if (!json_object_is_type(item, json_type_string)) {
+            fprintf(stderr, "ipv6_gateway is not string\n");
+            return -1;
+        }
+        fprintf(stderr, "parse ipv6 gateway %s\n", json_object_get_string(item));
+        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ipv6_gateway);
+        if (rv != 1) {
+            fprintf(stderr, "invalid ipv6 gateway %s\n", json_object_get_string(item));
+            return -1;
+        }
+        ss_dump_cidr(NULL, "ipv6_gateway", &ss_conf->ipv6_gateway);
+    }
+    return 0;
+}
+
 ss_conf_t* ss_conf_file_parse() {
     int is_ok = 1;
+    int rv;
     ss_conf_t* ss_conf           = NULL;
     char* conf_buffer            = NULL;
     json_object* json_underlying = NULL;
@@ -120,48 +201,80 @@ ss_conf_t* ss_conf_file_parse() {
     json_object* item            = NULL;
     json_error_t json_error      = json_tokener_success;
     
-    conf_buffer     = ss_conf_file_read();
+    conf_buffer                  = ss_conf_file_read();
     if (conf_buffer == NULL) {
-        is_ok = 0;
         fprintf(stderr, "conf file read error\n");
-        goto error_out;
+        is_ok = 0; goto error_out;
     }
     
     json_underlying = json_tokener_parse_verbose(conf_buffer, &json_error);
     if (json_underlying == NULL) {
         is_ok = 0;
         fprintf(stderr, "json parse error: %s\n", json_tokener_error_desc(json_error));
-        goto error_out;
+        is_ok = 0; goto error_out;
     }
     
     json_conf       = json_object_get(json_underlying);
     is_ok           = json_object_is_type(json_conf, json_type_object);
     if (!is_ok) {
         is_ok = 0;
-        fprintf(stderr, "json root is not object\n");
-        goto error_out;
+        fprintf(stderr, "json configuration root is not object\n");
+        is_ok = 0; goto error_out;
     }
     
-    const char* content = json_object_to_json_string_ext(json_conf, JSON_C_TO_STRING_PRETTY);
-    fprintf(stderr, "json configuration:\n%s\n", content);
+    //const char* content = json_object_to_json_string_ext(json_conf, JSON_C_TO_STRING_PRETTY);
+    //fprintf(stderr, "json configuration:\n%s\n", content);
     
     ss_conf = calloc(1, sizeof(ss_conf_t));
     if (ss_conf == NULL) {
-        is_ok = 0;
         fprintf(stderr, "could not allocate sdn_sensor configuration\n");
-        goto error_out;    
+        is_ok = 0; goto error_out;
     }
     
-    items = json_object_object_get(json_conf, "options");
+    items = json_object_object_get(json_conf, "network");
     if (items == NULL) {
-        is_ok = 0;
-        fprintf(stderr, "could not get options\n");
-        goto error_out;
+        fprintf(stderr, "could not load network configuration\n");
+        is_ok = 0; goto error_out;
     }
-    item = json_object_object_get(items, "promiscuous_mode");
+    if (!json_object_is_type(items, json_type_object)) {
+        fprintf(stderr, "network configuration is not object\n");
+        is_ok = 0; goto error_out;
+    }
+    
+    rv = ss_conf_network_parse(ss_conf, items);
+    if (rv) {
+        fprintf(stderr, "could not parse network configuration\n");
+        is_ok = 0; goto error_out;
+    }
+    
+    items = json_object_object_get(json_conf, "dpdk");
+    if (items == NULL) {
+        fprintf(stderr, "could not load dpdk configuration\n");
+        is_ok = 0; goto error_out;
+    }
+    if (!json_object_is_type(items, json_type_object)) {
+        fprintf(stderr, "dpdk configuration is not object\n");
+        is_ok = 0; goto error_out;
+    }
+    
+    item = json_object_object_get(items, "eal_options");
     if (item) {
-        ss_conf->promiscuous_mode = json_object_get_boolean(item);
+        if (!json_object_is_type(item, json_type_string)) {
+            fprintf(stderr, "eal_options is not string\n");
+            is_ok = 0; goto error_out;
+        }
+        fprintf(stderr, "parse eal options %s\n", json_object_get_string(item));
+        int wordexp(const char *s, wordexp_t *p, int flags);
+        memset(&ss_conf->eal_vector, 0, sizeof(ss_conf->eal_vector));
+        rv = wordexp(json_object_get_string(item), &ss_conf->eal_vector, WRDE_NOCMD);
+        if (rv) {
+            fprintf(stderr, "could not parse eal options: %d\n", rv);
+            is_ok = 0; goto error_out;
+        }
     }
+    item = json_object_object_get(items, "port_mask");
+    item = json_object_object_get(items, "queue_count");
+    item = json_object_object_get(items, "timer_msec");
     
     items = json_object_object_get(json_conf, "re_chain");
     if (items) {
