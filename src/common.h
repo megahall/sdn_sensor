@@ -22,6 +22,9 @@
 
 #define RTE_LOGTYPE_SS RTE_LOGTYPE_USER1
 
+#define SS_INT16_SIZE         2
+#define SS_ADDR_STR_SIZE     64
+
 #define SS_V4_ADDR_SIZE       4
 #define SS_V6_ADDR_SIZE      16
 #define SS_V4_PREFIX_MAX     32
@@ -66,7 +69,7 @@ struct ip_addr {
     union {
         struct ip4_addr ipv4;
         struct ip6_addr ipv6;
-    } addr;
+    };
 };
 
 typedef struct ip_addr ip_addr;
