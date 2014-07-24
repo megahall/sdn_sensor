@@ -1,6 +1,8 @@
 #ifndef __SENSOR_CONFIGURATION_H__
 #define __SENSOR_CONFIGURATION_H__
 
+#include <wordexp.h>
+
 #include <json-c/json.h>
 
 #include "common.h"
@@ -24,6 +26,8 @@ struct ss_conf_s {
     char* queue_count;
     char* timer_msec;
     
+    wordexp_t eal_vector;
+    
     ss_re_chain_t re_chain;
     ss_pcap_chain_t pcap_chain;
     ss_cidr_table_t cidr_table;
@@ -37,8 +41,7 @@ typedef struct ss_conf_s ss_conf_t;
 int ss_conf_destroy(ss_conf_t* ss_conf);
 char* ss_conf_path_get(void);
 char* ss_conf_file_read(void);
-struct cidr* ss_parse_cidr(char* cidr);
-struct sockaddr* ss_parse_ip(char* ip);
+int ss_conf_network_parse(ss_conf_t* ss_conf, json_object* items);
 ss_conf_t* ss_conf_file_parse(void);
 
 /* END PROTOTYPES */
