@@ -286,6 +286,10 @@ int ss_launch_one_lcore(__attribute__((unused)) void *dummy) {
 
 int main(int argc, char* argv[]) {
     ss_conf_t* ss_conf = ss_conf_file_parse();
+    if (ss_conf == NULL) {
+        fprintf(stderr, "could not parse sdn_sensor configuration\n");
+        exit(1);
+    }
     
     struct lcore_queue_conf* qconf;
     struct rte_eth_dev_info dev_info;
@@ -298,7 +302,7 @@ int main(int argc, char* argv[]) {
     unsigned int nb_ports_in_mask = 0;
 
     /* init EAL */
-    rv = rte_eal_init(argc, argv);
+    rv = rte_eal_init(ss_conf->eal_vector.we_wordc, ss_conf->eal_vector.we_wordv);
     if (rv < 0) {
         rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
     }
