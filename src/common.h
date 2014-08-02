@@ -47,7 +47,13 @@ typedef struct rte_hash rte_hash_t;
 typedef struct rte_lpm  rte_lpm4_t;
 typedef struct rte_lpm6 rte_lpm6_t;
 
-typedef struct icmp_hdr icmpv4_hdr;
+typedef struct ether_hdr ether_hdr_t;
+typedef struct ipv4_hdr  ipv4_hdr_t;
+typedef struct ipv6_hdr  ipv6_hdr_t;
+typedef struct icmp_hdr  icmpv4_hdr_t;
+typedef struct icmp6_hdr icmpv6_hdr_t;
+typedef struct tcp_hdr   tcp_hdr_t;
+typedef struct udp_hdr   udp_hdr_t;
 
 /* DATA TYPES */
 
@@ -76,9 +82,10 @@ typedef struct ip_addr ip_addr;
 
 struct ss_frame_s {
     unsigned int      port_id;
-    rte_mbuf_t        mbuf;
+    uint32_t          length;
+    rte_mbuf_t*       mbuf;
     
-    struct ether_hdr* ethernet;
+    struct ether_hdr* eth;
     struct arp_hdr*   arp;
     struct ipv4_hdr*  ipv4;
     struct ipv6_hdr*  ipv6;
