@@ -21,7 +21,7 @@ WARNINGS = \
 -Wpointer-arith -Wvolatile-register-var \
 -Wno-unused-parameter
 
-FLAGS          = -fPIC -g -fno-strict-aliasing
+FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -pthread -march=native
 INCLUDE_FILES  = -include $(RTE_SDK)/build/include/rte_config.h
 INCLUDE_PATHS  = -I$(RTE_SDK)/build/include
 CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS)
@@ -29,6 +29,8 @@ CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS
 ifneq ($(strip $(LESS)),)
     CFLAGS += -fcolor-diagnostics
 endif
+
+DPDK_LINK = -Wl,--whole-archive -Wl,--start-group -lintel_dpdk -Wl,--end-group -Wl,--no-whole-archive
 
 LDFLAGS = -L$(RTE_SDK)/build/lib
 
@@ -38,7 +40,8 @@ HEADERS = $(wildcard *.h)
 .PHONY: clean cproto
 
 sdn_sensor: $(OBJECTS)
-	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) -lbsd -ldl -lintel_dpdk -ljson-c -llog4c -lmsgpack -lpcap -lpcre -lpthread
+	@echo 'Linking sdn_sensor...'
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) -lbsd -ldl -ljson-c -lm -lmsgpack -lnanomsg -lpcap -lpcre -lpthread -lrt
 
 $(OBJECTS): $(HEADERS)
 
