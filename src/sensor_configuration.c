@@ -13,6 +13,7 @@
 #include <json-c/json.h>
 
 #include "common.h"
+#include "dpdk.h"
 #include "ip_utils.h"
 #include "sensor_configuration.h"
 
@@ -272,9 +273,53 @@ ss_conf_t* ss_conf_file_parse() {
             is_ok = 0; goto error_out;
         }
     }
+    
+    // XXX: eventually support hex numbers
     item = json_object_object_get(items, "port_mask");
+    if (item) {
+        if (!json_object_is_type(item, json_type_int)) {
+            fprintf(stderr, "port_mask is not integer\n");
+            is_ok = 0; goto error_out;
+        }
+        ss_conf->port_mask = json_object_get_int(item);
+    }
+    else {
+        ss_conf->port_mask = 0xFFFFFFFF;
+    }
+
     item = json_object_object_get(items, "queue_count");
+    if (item) {
+        if (!json_object_is_type(item, json_type_int)) {
+            fprintf(stderr, "queue_count is not integer\n");
+            is_ok = 0; goto error_out;
+        }
+        ss_conf->queue_count = json_object_get_int(item);
+        if (ss_conf->queue_count > MAX_RX_QUEUE_PER_LCORE) {
+            fprintf(stderr, "queue_count larger than %d\n", MAX_RX_QUEUE_PER_LCORE);
+            is_ok = 0; goto error_out;
+        }
+    }
+    else {
+        ss_conf->queue_count = 1;
+    }
+    
     item = json_object_object_get(items, "timer_msec");
+    if (item) {
+        if (!json_object_is_type(item, json_type_int)) {
+            fprintf(stderr, "queue_count is not integer\n");
+            is_ok = 0; goto error_out;
+        }
+        ss_conf->timer_msec = json_object_get_int(item);
+        if (ss_conf->timer_msec > MAX_TIMER_PERIOD) {
+            fprintf(stderr, "timer_msec larger than %d\n", MAX_TIMER_PERIOD);
+            is_ok = 0; goto error_out;
+        }
+    }
+    else {
+        /* A TSC-based timer responsible for triggering statistics printout */
+        /* default period is 10 seconds */
+        ss_conf->timer_msec = 10 * TIMER_MILLISECOND * 1000;
+    }
     
     items = json_object_object_get(json_conf, "re_chain");
     if (items) {
@@ -328,7 +373,6 @@ ss_conf_t* ss_conf_file_parse() {
     }
     
     // XXX: do more stuff
-    
     error_out:
     if (conf_buffer)       { free(conf_buffer);          conf_buffer = NULL; }
     if (json_conf)         { json_object_put(json_conf); json_conf   = NULL; }
