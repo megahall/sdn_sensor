@@ -21,10 +21,11 @@ struct ss_conf_s {
     struct ip_addr ipv6_address;
     struct ip_addr ipv6_gateway;
     
-    char* port_mask;
     char* eal_options;
-    char* queue_count;
-    char* timer_msec;
+    uint32_t port_mask;
+    uint32_t queue_count;
+    uint64_t timer_msec;
+    int port_count;
     
     wordexp_t eal_vector;
     
