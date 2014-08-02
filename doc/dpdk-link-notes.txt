@@ -1,0 +1,11 @@
+# This Makefile code will link properly against DPDK.
+
+DPDK_LIBS = \
+-lrte_distributor -lrte_pipeline -lrte_table -lrte_port -lrte_timer -lrte_hash \
+-lrte_lpm -lrte_power -lrte_acl -lrte_meter -lrte_sched -lrte_kvargs \
+-lrte_mbuf -lrte_ip_frag -lethdev -lrte_malloc -lrte_mempool -lrte_ring \
+-lrte_eal -lrte_cmdline -lrte_cfgfile -lrte_pmd_bond -lrte_pmd_vmxnet3_uio \
+-lrte_pmd_virtio_uio -lrte_pmd_e1000 -lrte_pmd_ring -lrte_pmd_pcap
+
+# For use in LDFLAGS
+#DPDK_LINK = -Wl,-export-dynamic -Wl,--whole-archive -Wl,--start-group $(DPDK_LIBS) -Wl,--end-group -Wl,--no-whole-archive
