@@ -23,7 +23,7 @@
  */
 #define TX_PTHRESH 36 /**< Default values of TX prefetch threshold reg. */
 #define TX_HTHRESH 0  /**< Default values of TX host threshold reg. */
-#define TX_WTHRESH 0  /**< Default values of TX write-back threshold reg. */
+#define TX_WTHRESH 8  /**< Default values of TX write-back threshold reg. */
 
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
@@ -59,13 +59,14 @@ struct ss_port_statistics {
 
 /* BEGIN PROTOTYPES */
 
-int ss_send_burst(struct lcore_queue_conf* qconf, unsigned int n, uint8_t port);
+int ss_send_burst(struct lcore_queue_conf* queue_conf, unsigned int n, uint8_t port);
 int ss_send_packet(struct rte_mbuf* m, uint8_t port);
 void ss_process_frame(struct rte_mbuf* mbuf, unsigned int port_id);
-void ss_process_frame_ethernet(ss_frame_t* fbuf);
-void ss_process_frame_arp(ss_frame_t* fbuf);
-void ss_process_frame_icmpv4(void);
-void ss_process_frame_icmpv6(void);
+int ss_process_frame_eth(ss_frame_t* fbuf);
+int ss_process_frame_ipv6(ss_frame_t* fbuf);
+int ss_process_frame_arp(ss_frame_t* fbuf);
+int ss_process_frame_icmpv4(void);
+int ss_process_frame_icmpv6(void);
 void ss_main_loop(void);
 int ss_launch_one_lcore(void* dummy);
 int main(int argc, char* argv[]);
