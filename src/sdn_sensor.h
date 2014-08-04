@@ -1,6 +1,12 @@
 #ifndef __SDN_SENSOR_H__
 #define __SDN_SENSOR_H__
 
+#include <stdint.h>
+
+#include <rte_config.h>
+#include <rte_mbuf.h>
+#include <rte_memory.h>
+
 #include "common.h"
 
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
@@ -61,12 +67,15 @@ struct ss_port_statistics {
 
 int ss_send_burst(struct lcore_queue_conf* queue_conf, unsigned int n, uint8_t port);
 int ss_send_packet(struct rte_mbuf* m, uint8_t port);
-void ss_process_frame(struct rte_mbuf* mbuf, unsigned int port_id);
-int ss_process_frame_eth(ss_frame_t* fbuf);
-int ss_process_frame_ipv6(ss_frame_t* fbuf);
-int ss_process_frame_arp(ss_frame_t* fbuf);
-int ss_process_frame_icmpv4(void);
-int ss_process_frame_icmpv6(void);
+void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int port_id);
+int ss_frame_handle_eth(ss_frame_t* rxbuf, ss_frame_t* txbuf);
+int ss_frame_handle_ipv4(ss_frame_t* rxbuf, ss_frame_t* txbuf);
+int ss_frame_handle_ipv6(ss_frame_t* rxbuf, ss_frame_t* txbuf);
+int ss_frame_handle_ip(ss_frame_t* rxbuf, ss_frame_t* txbuf);
+int ss_frame_prep_eth(ss_frame_t* txbuf, int port_id, eth_addr_t* d_addr, uint16_t type);
+int ss_frame_handle_arp(ss_frame_t* rxbuf, ss_frame_t* txbuf);
+int ss_frame_handle_icmpv4(ss_frame_t* rxbuf, ss_frame_t* txbuf);
+int ss_frame_handle_icmpv6(ss_frame_t* rxbuf, ss_frame_t* txbuf);
 void ss_main_loop(void);
 int ss_launch_one_lcore(void* dummy);
 int main(int argc, char* argv[]);
