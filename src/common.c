@@ -1,4 +1,5 @@
-#include <json-c/json.h>
+#include <stddef.h>
+#include <sys/time.h>
 
 #include "common.h"
 

@@ -1,22 +1,31 @@
 #ifndef __COMMON_H__
 #define __COMMON_H__
 
+#include <stdint.h>
+
 #include <bsd/sys/queue.h>
 #include <json-c/json.h>
 #include <pcap/pcap.h>
 #include <pcre.h>
 
-#include <rte_log.h>
-#include <rte_lpm.h>
-#include <rte_mbuf.h>
+/*
+#include <net/ethernet.h>
+#include <netinet/ether.h>
+#include <netinet/if_ether.h>
+*/
+#include <net/if_arp.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
+#include <netinet/ip_icmp.h>
+#include <netinet/icmp6.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
 
 #include <rte_ether.h>
-#include <rte_arp.h>
-#include <rte_ip.h>
-#include <rte_icmp.h>
-#include "ss_icmp6.h"
-#include <rte_tcp.h>
-#include <rte_udp.h>
+#include <rte_log.h>
+#include <rte_lpm.h>
+#include <rte_memory.h>
+#include <rte_mbuf.h>
 
 /* CONSTANTS */
 
@@ -25,8 +34,8 @@
 #define SS_INT16_SIZE         2
 #define SS_ADDR_STR_SIZE     64
 
-#define SS_V4_ADDR_SIZE       4
-#define SS_V6_ADDR_SIZE      16
+#define IPV4_ADDR_LEN         4
+#define IPV6_ADDR_LEN        16
 #define SS_V4_PREFIX_MAX     32
 #define SS_V6_PREFIX_MAX    128
 
@@ -47,13 +56,15 @@ typedef struct rte_hash rte_hash_t;
 typedef struct rte_lpm  rte_lpm4_t;
 typedef struct rte_lpm6 rte_lpm6_t;
 
-typedef struct ether_hdr ether_hdr_t;
-typedef struct ipv4_hdr  ipv4_hdr_t;
-typedef struct ipv6_hdr  ipv6_hdr_t;
-typedef struct icmp_hdr  icmpv4_hdr_t;
-typedef struct icmp6_hdr icmpv6_hdr_t;
-typedef struct tcp_hdr   tcp_hdr_t;
-typedef struct udp_hdr   udp_hdr_t;
+typedef struct ether_addr eth_addr_t;
+typedef struct ether_hdr  eth_hdr_t;
+typedef struct ether_arp  arp_hdr_t;
+typedef struct iphdr      ipv4_hdr_t;
+typedef struct ip6_hdr    ipv6_hdr_t;
+typedef struct icmphdr    icmpv4_hdr_t;
+typedef struct icmp6_hdr  icmpv6_hdr_t;
+typedef struct tcp_hdr    tcp_hdr_t;
+typedef struct udp_hdr    udp_hdr_t;
 
 /* DATA TYPES */
 
@@ -80,20 +91,37 @@ struct ip_addr {
 
 typedef struct ip_addr ip_addr;
 
-struct ss_frame_s {
-    unsigned int      port_id;
-    uint32_t          length;
-    rte_mbuf_t*       mbuf;
-    
-    struct ether_hdr* eth;
-    struct arp_hdr*   arp;
-    struct ipv4_hdr*  ipv4;
-    struct ipv6_hdr*  ipv6;
-    struct icmp_hdr   icmp4;
-    struct icmp6_hdr  icmp6;
-    struct tcp_hdr    tcp;
-    struct udp_hdr    udp;
+#define ETH_ALEN  6
+#define IPV4_ALEN 4
+
+struct  ether_arp {
+    struct  arphdr ea_hdr;          /* fixed-size header */
+    uint8_t arp_sha[ETH_ALEN];     /* sender hardware address */
+    uint8_t arp_spa[IPV4_ALEN];    /* sender protocol address */
+    uint8_t arp_tha[ETH_ALEN];     /* target hardware address */
+    uint8_t arp_tpa[IPV4_ALEN];    /* target protocol address */
 };
+#define arp_hrd ea_hdr.ar_hrd
+#define arp_pro ea_hdr.ar_pro
+#define arp_hln ea_hdr.ar_hln
+#define arp_pln ea_hdr.ar_pln
+#define arp_op  ea_hdr.ar_op
+
+struct ss_frame_s {
+    unsigned int  active;
+    unsigned int  port_id;
+    unsigned int  length;
+    rte_mbuf_t*   mbuf;
+    
+    eth_hdr_t*    eth;
+    arp_hdr_t*    arp;
+    ipv4_hdr_t*   ipv4;
+    ipv6_hdr_t*   ipv6;
+    icmpv4_hdr_t* icmp4;
+    icmpv6_hdr_t* icmp6;
+    tcp_hdr_t*    tcp;
+    udp_hdr_t*    udp;
+} __rte_cache_aligned;
 
 typedef struct ss_frame_s ss_frame_t;
 
@@ -117,7 +145,7 @@ struct ss_re_entry_s {
     char nn_url[NN_URL_MAX];
     pcre* re;
     TAILQ_ENTRY(ss_re_entry_s) entry;
-};
+} __rte_cache_aligned;
 
 typedef struct ss_re_entry_s ss_re_entry_t;
 
@@ -126,7 +154,7 @@ typedef struct ss_re_list_s ss_re_list_t;
 
 struct ss_re_chain_s {
     ss_re_list_t re_list;
-};
+} __rte_cache_aligned;
 
 typedef struct ss_re_chain_s ss_re_chain_t;
 
@@ -134,7 +162,7 @@ struct ss_re_match_s {
     int match_count;
     char** match_list;
     json_object* match_result;
-};
+} __rte_cache_aligned;
 
 typedef struct ss_re_match_s ss_re_match_t;
 
@@ -144,7 +172,7 @@ struct ss_pcap_match_s {
     struct pcap_pkthdr pcap_header;
     uint8_t* packet;
     json_object* match_result;
-};
+} __rte_cache_aligned;
 
 typedef struct ss_pcap_match_s ss_pcap_match_t;
 
@@ -156,7 +184,7 @@ struct ss_pcap_entry_s {
     char* filter;
     struct bpf_program bpf_filter;
     TAILQ_ENTRY(ss_pcap_entry_s) entry;
-};
+} __rte_cache_aligned;
 typedef struct ss_pcap_entry_s ss_pcap_entry_t;
 
 TAILQ_HEAD(ss_pcap_list_s, ss_pcap_entry_s);
@@ -164,7 +192,7 @@ typedef struct ss_pcap_list_s ss_pcap_list_t;
 
 struct ss_pcap_chain_s {
     ss_pcap_list_t pcap_list;
-};
+} __rte_cache_aligned;
 
 typedef struct ss_pcap_chain_s ss_pcap_chain_t;
 
@@ -176,7 +204,7 @@ struct ss_cidr_entry_s {
     int nn_type;
     char nn_url[NN_URL_MAX];
     char cidr[CIDR_LENGTH_MAX];
-};
+} __rte_cache_aligned;
 
 typedef struct ss_cidr_entry_s ss_cidr_entry_t;
 
@@ -190,14 +218,14 @@ struct ss_cidr_table_s {
     rte_hash_t* hash6_table;
     rte_lpm4_t* cidr4_table;
     rte_lpm6_t* cidr6_table;
-};
+} __rte_cache_aligned;
 
 typedef struct ss_cidr_table_s ss_cidr_table_t;
 
 /* STRING TRIE */
 
 struct ss_string_trie_s {
-};
+} __rte_cache_aligned;
 
 typedef struct ss_string_trie_s ss_string_trie_t;
 
