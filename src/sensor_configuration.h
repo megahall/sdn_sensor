@@ -1,6 +1,7 @@
 #ifndef __SENSOR_CONFIGURATION_H__
 #define __SENSOR_CONFIGURATION_H__
 
+#include <stdint.h>
 #include <wordexp.h>
 
 #include <json-c/json.h>

@@ -1,11 +1,9 @@
-#include <errno.h>
-#include <fcntl.h>
 #include <libgen.h>
 #include <limits.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <unistd.h>
 #include <wordexp.h>
 
@@ -13,8 +11,8 @@
 #include <json-c/json.h>
 
 #include "common.h"
-#include "dpdk.h"
 #include "ip_utils.h"
+#include "sdn_sensor.h"
 #include "sensor_configuration.h"
 
 #define PROGRAM_PATH "/proc/self/exe"
