@@ -1,7 +1,7 @@
 #ifndef __DPDK_H__
 #define __DPDK_H__
 
-#include "sdn_sensor.h"
+#include <stdint.h>
 
 /* BEGIN PROTOTYPES */
 
