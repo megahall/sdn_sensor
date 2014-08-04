@@ -12,7 +12,7 @@ sudo aptitude -y install gawk strace ltrace telnet netcat-traditional tshark ssh
 
 sudo aptitude -y install libjson-pp-perl libperl6-slurp-perl
 
-sudo aptitude -y install build-essential libc6-dbg clang flex bison gdb-multiarch gdb-doc valgrind autoconf automake libtool git git-man git-email manpages-dev manpages-posix-dev
+sudo aptitude -y install build-essential libc6-dbg clang flex bison iwyu gdb-multiarch gdb-doc valgrind autoconf automake libtool git git-man git-email manpages-dev manpages-posix-dev
 
 sudo aptitude -y install uthash-dev libbsd-dev libpcre3-dev zlib1g-dev libglib2.0-dev gnulib libjson-c-dev libjson-c-doc liblog4c-dev liblog4c-doc libpcap-dev libfuse-dev libevtlog-dev libgeoip-dev geoip-bin libnet1-dev
 
