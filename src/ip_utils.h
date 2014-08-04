@@ -1,6 +1,10 @@
 #ifndef __IP_UTILS_H__
 #define __IP_UTILS_H__
 
+#include <stdint.h>
+#include <stdio.h>
+#include "common.h"
+
 /* CONSTANTS */
 
 #define SS_PF_INET   2          /* IPv4 */
