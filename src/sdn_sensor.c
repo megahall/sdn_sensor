@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <wordexp.h>
 
 #include <bsd/sys/queue.h>
@@ -33,12 +34,15 @@
 #include <rte_byteorder.h>
 #include <rte_hexdump.h>
 
+#include "checksum.h"
 #include "common.h"
 #include "sdn_sensor.h"
 #include "dpdk.h"
 #include "sensor_configuration.h"
 
 ss_conf_t* ss_conf = NULL;
+
+//const char* icmp_payload = "mhallmhallmhallmhallmhallmhallmhallmhall!!!!!!!!";
 
 static uint16_t rxd_count = RTE_TEST_RX_DESC_DEFAULT;
 static uint16_t txd_count = RTE_TEST_TX_DESC_DEFAULT;
@@ -132,6 +136,39 @@ int ss_send_packet(struct rte_mbuf *m, uint8_t port_id) {
     return 0;
 }
 
+int ss_frame_prep_eth(ss_frame_t* tx_buf, int port_id, eth_addr_t* d_addr, uint16_t type) {
+    tx_buf->port_id = port_id;
+    
+    tx_buf->mbuf = rte_pktmbuf_alloc(ss_pool);
+    if (tx_buf->mbuf == NULL) {
+        RTE_LOG(ERR, SS, "could not allocate ethernet mbuf\n");
+        goto error_out;
+    }
+    
+    rte_pktmbuf_reset(tx_buf->mbuf);
+    tx_buf->eth = (eth_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(eth_hdr_t));
+    if (tx_buf->eth == NULL) {
+        RTE_LOG(ERR, SS, "could not allocate ethernet mbuf\n");
+        goto error_out;
+    }
+    ether_addr_copy(d_addr, &tx_buf->eth->d_addr);
+    ether_addr_copy(&port_eth_addrs[port_id], &tx_buf->eth->s_addr);
+    tx_buf->eth->ether_type = rte_bswap16(type);
+    rte_memdump(stdout, "prep eth src", &tx_buf->eth->s_addr, sizeof(tx_buf->eth->s_addr));
+    rte_memdump(stdout, "prep eth dst", &tx_buf->eth->d_addr, sizeof(tx_buf->eth->d_addr));
+    tx_buf->active = 1;
+    
+    return 0;
+    
+    error_out:
+    if (tx_buf->mbuf) {
+        tx_buf->active = 0;
+        rte_pktmbuf_free(tx_buf->mbuf);
+        tx_buf->mbuf = NULL;
+    }
+    return -1;
+}
+
 void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int port_id) {
     int rv;
     ss_frame_t rx_buf;
@@ -152,7 +189,8 @@ void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int port_id) {
     rte_memdump(stdout, "eth src", &rx_buf.eth->s_addr, sizeof(rx_buf.eth->s_addr));
     rte_memdump(stdout, "eth dst", &rx_buf.eth->d_addr, sizeof(rx_buf.eth->d_addr));
     
-    switch (rte_bswap16(rx_buf.eth->ether_type)) {
+    uint16_t ether_type = rte_bswap16(rx_buf.eth->ether_type);
+    switch (ether_type) {
         case ETHER_TYPE_VLAN: {
             RTE_LOG(INFO, SS, "port %u received unsupported VLAN frame:\n", port_id);
             rte_pktmbuf_dump(stdout, mbuf, rte_pktmbuf_pkt_len(mbuf));
@@ -163,25 +201,25 @@ void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int port_id) {
             break;
         }
         case ETHER_TYPE_IPV4: {
-            if (rx_buf.length < sizeof(eth_hdr_t) + sizeof(ipv4_hdr_t)) {
+            if (rx_buf.length < sizeof(eth_hdr_t) + sizeof(ip4_hdr_t)) {
                 RTE_LOG(ERR, SS, "received runt IPv4 frame of length %u:\n", rx_buf.length);
                 rte_pktmbuf_dump(stdout, mbuf, rte_pktmbuf_pkt_len(mbuf));
                 goto out;
             }
-            ss_frame_handle_ipv4(&rx_buf, &tx_buf);
+            ss_frame_handle_ip4(&rx_buf, &tx_buf);
             break;
         }
         case ETHER_TYPE_IPV6: {
-            if (rx_buf.length < sizeof(eth_hdr_t) + sizeof(ipv6_hdr_t)) {
+            if (rx_buf.length < sizeof(eth_hdr_t) + sizeof(ip6_hdr_t)) {
                 RTE_LOG(ERR, SS, "received runt IPv6 frame of length %u:\n", rx_buf.length);
                 rte_pktmbuf_dump(stdout, mbuf, rte_pktmbuf_pkt_len(mbuf));
                 goto out;
             }
-            ss_frame_handle_ipv6(&rx_buf, &tx_buf);
+            ss_frame_handle_ip6(&rx_buf, &tx_buf);
             break;
         }
         default: {
-            RTE_LOG(INFO, SS, "port %u received unsupported 0x%04hx frame:\n", port_id, rx_buf.eth->ether_type);
+            RTE_LOG(INFO, SS, "port %u received unsupported 0x%04hx frame:\n", port_id, ether_type);
             rte_pktmbuf_dump(stdout, mbuf, rte_pktmbuf_pkt_len(mbuf));
             break;
         }
@@ -219,66 +257,107 @@ int ss_frame_handle_eth(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     return 0;
 }
 
-int ss_frame_handle_ipv4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
-    rx_buf->ipv4 = (ipv4_hdr_t*) rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*) + sizeof(eth_hdr_t);
-    rte_memdump(stdout, "ipv4 src", &rx_buf->ipv4->saddr, sizeof(rx_buf->ipv4->saddr));
-    rte_memdump(stdout, "ipv4 dst", &rx_buf->ipv4->daddr, sizeof(rx_buf->ipv4->daddr));
-    return 0;
+int ss_frame_handle_ip4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
+    int rv = 0;
+    
+    rx_buf->ip4 = (ip4_hdr_t*) ((uint8_t*) rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*) + sizeof(eth_hdr_t));
+    rte_memdump(stdout, "ipv4 src", &rx_buf->ip4->saddr, sizeof(rx_buf->ip4->saddr));
+    rte_memdump(stdout, "ipv4 dst", &rx_buf->ip4->daddr, sizeof(rx_buf->ip4->daddr));
+    // XXX: check if this packet is for us
+    
+    // XXX: walk through extension headers eventually
+    printf("ip4 protocol %hhu\n", rx_buf->ip4->protocol);
+    switch (rx_buf->ip4->protocol) {
+        case IPPROTO_ICMP: {
+            rv = ss_frame_handle_icmp4(rx_buf, tx_buf);
+            break;
+        }
+        default: {
+            RTE_LOG(INFO, SS, "port %u received unsupported ipv4 0x%04hhx frame:\n", rx_buf->port_id, rx_buf->ip4->protocol);
+            rte_pktmbuf_dump(stdout, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+            rv = -1;
+            break;
+        }
+    }
+    
+    return rv;
 }
 
-int ss_frame_handle_ipv6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
-    rx_buf->ipv6 = (ipv6_hdr_t*) rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*) + sizeof(eth_hdr_t);
-    rte_memdump(stdout, "ipv6 src", &rx_buf->ipv6->ip6_src, sizeof(rx_buf->ipv6->ip6_src));
-    rte_memdump(stdout, "ipv6 dst", &rx_buf->ipv6->ip6_dst, sizeof(rx_buf->ipv6->ip6_dst));
-    return 0;
+int ss_frame_handle_ip6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
+    int rv = 0;
+    
+    rx_buf->ip6 = (ip6_hdr_t*) ((uint8_t*) rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*) + sizeof(eth_hdr_t));
+    rte_memdump(stdout, "ipv6 hdr", rx_buf->ip6, sizeof(ip6_hdr_t));
+    rte_memdump(stdout, "ipv6 src", &rx_buf->ip6->ip6_src, sizeof(rx_buf->ip6->ip6_src));
+    rte_memdump(stdout, "ipv6 dst", &rx_buf->ip6->ip6_dst, sizeof(rx_buf->ip6->ip6_dst));
+    // XXX: check if this packet is for us
+    
+    // XXX: walk through extension headers eventually
+    switch (rx_buf->ip6->ip6_nxt) {
+        case IPPROTO_ICMPV6: {
+            rv = ss_frame_handle_icmp6(rx_buf, tx_buf);
+            break;
+        }
+        default: {
+            RTE_LOG(INFO, SS, "port %u received unsupported ipv6 0x%04hhx frame:\n", rx_buf->port_id, rx_buf->ip6->ip6_nxt);
+            rte_pktmbuf_dump(stdout, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+            rv = -1;
+            break;
+        }
+    }
+    
+    return rv;
 }
 
 int ss_frame_handle_ip(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
+    uint8_t protocol;
+    
+    if (rx_buf->ip4) {
+        protocol = rx_buf->ip4->protocol;
+    }
+    else if (rx_buf->ip6) {
+        protocol = rx_buf->ip6->ip6_nxt;
+    }
+    else {
+        RTE_LOG(ERR, SS, "unknown IP packet with EtherType %02hx\n", rx_buf->eth->ether_type);
+        return -1;
+    }
+    
+    switch (protocol) {
+        // ICMP
+        // IGMP
+        // TCP
+        // UDP
+        // DCCP
+        // IPv4 tunneled, IPv6 tunneled
+        // GRE
+        // ICMPv6
+        // ESP
+        // AH
+        // SCTP
+    }
+    
     return 0;
-}
-
-int ss_frame_prep_eth(ss_frame_t* tx_buf, int port_id, eth_addr_t* d_addr, uint16_t type) {
-    tx_buf->port_id = port_id;
-    
-    tx_buf->mbuf = rte_pktmbuf_alloc(ss_pool);
-    if (tx_buf->mbuf == NULL) {
-        RTE_LOG(ERR, SS, "could not allocate ethernet mbuf\n");
-        goto error_out;
-    }
-    
-    rte_pktmbuf_reset(tx_buf->mbuf);
-    tx_buf->eth = (eth_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(eth_hdr_t));
-    if (tx_buf->eth == NULL) {
-        RTE_LOG(ERR, SS, "could not allocate ethernet mbuf\n");
-        goto error_out;
-    }
-    ether_addr_copy(d_addr, &tx_buf->eth->d_addr);
-    ether_addr_copy(&port_eth_addrs[port_id], &tx_buf->eth->s_addr);
-    tx_buf->eth->ether_type = rte_bswap16(type);
-    rte_memdump(stdout, "prep eth src", &tx_buf->eth->s_addr, sizeof(tx_buf->eth->s_addr));
-    rte_memdump(stdout, "prep eth dst", &tx_buf->eth->d_addr, sizeof(tx_buf->eth->d_addr));
-    tx_buf->active = 1;
-    
-    return 0;
-    
-    error_out:
-    if (tx_buf->mbuf) {
-        tx_buf->active = 0;
-        rte_pktmbuf_free(tx_buf->mbuf);
-        tx_buf->mbuf = NULL;
-    }
-    return -1;
 }
 
 int ss_frame_handle_arp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
     
-    rx_buf->arp = (arp_hdr_t*) rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*) + sizeof(arp_hdr_t);
+    rx_buf->arp = (arp_hdr_t*) ((uint8_t*) rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*) + sizeof(eth_hdr_t));
+    printf("eth size %ld\n", (uint8_t*) rx_buf->arp - (uint8_t*) rx_buf->eth);
     
     rte_memdump(stdout, "arp src", &rx_buf->arp->arp_sha, sizeof(rx_buf->arp->arp_sha));
     rte_memdump(stdout, "arp dst", &rx_buf->arp->arp_tha, sizeof(rx_buf->arp->arp_tha));
     rte_memdump(stdout, "ip src",  &rx_buf->arp->arp_spa, sizeof(rx_buf->arp->arp_spa));
     rte_memdump(stdout, "ip dst",  &rx_buf->arp->arp_tpa, sizeof(rx_buf->arp->arp_tpa));
+    rte_memdump(stdout, "in dst",  &ss_conf->ip4_address.ip4, IPV4_ADDR_LEN);
+    rte_pktmbuf_dump(stdout, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+    
+    int is_ip_daddr_ok = memcmp(&rx_buf->arp->arp_tpa, &ss_conf->ip4_address.ip4, IPV4_ADDR_LEN) == 0;
+    if (!is_ip_daddr_ok) {
+        RTE_LOG(INFO, SS, "arp request is not for this system, ignoring\n");
+        goto error_out;
+    }
     
     rv = ss_frame_prep_eth(tx_buf, rx_buf->port_id, (eth_addr_t*) &rx_buf->eth->s_addr, ETHER_TYPE_ARP);
     if (rv) {
@@ -299,7 +378,7 @@ int ss_frame_handle_arp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     // copy port eth_addr     into tx arp_src_eth_addr
     // copy rx   eth_src_addr into tx arp_dst_eth_addr
     ether_addr_copy(&port_eth_addrs[rx_buf->port_id], (eth_addr_t*) &tx_buf->arp->arp_sha);
-    rte_memcpy(&tx_buf->arp->arp_spa, &ss_conf->ipv4_address.ipv4, IPV4_ADDR_LEN);
+    rte_memcpy(&tx_buf->arp->arp_spa, &ss_conf->ip4_address.ip4, IPV4_ADDR_LEN);
     ether_addr_copy((eth_addr_t*) &rx_buf->eth->s_addr, (eth_addr_t*) tx_buf->arp->arp_tha);
     rte_memcpy(&tx_buf->arp->arp_tpa, &rx_buf->arp->arp_spa, IPV4_ADDR_LEN);
     
@@ -315,13 +394,309 @@ int ss_frame_handle_arp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     return -1;
 }
 
-int ss_frame_handle_icmpv4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
+int ss_frame_handle_ndp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
+    int rv = 0;
+
+    rx_buf->ndp_rx = (ndp_request_t*) ((uint8_t*) rx_buf->ip6 + sizeof(ip6_hdr_t));
     
+    rte_memdump(stdout, "ndp  dst", &rx_buf->ndp_rx->hdr.nd_ns_target, sizeof(rx_buf->ndp_rx->hdr.nd_ns_target));
+    rte_memdump(stdout, "self    ", &ss_conf->ip6_address.ip6, sizeof(ss_conf->ip6_address.ip6));
+    rte_pktmbuf_dump(stdout, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+    
+    int is_ndp_saddr_ok = memcmp(&rx_buf->ndp_rx->hdr.nd_ns_target, &ss_conf->ip6_address.ip6, sizeof(rx_buf->ndp_rx->hdr.nd_ns_target)) == 0;
+    if (!is_ndp_saddr_ok) {
+        RTE_LOG(INFO, SS, "ndp request is not for this system, ignoring\n");
+        goto error_out;
+    }
+    
+    rv = ss_frame_prep_eth(tx_buf, rx_buf->port_id, (eth_addr_t*) &rx_buf->eth->s_addr, ETHER_TYPE_IPV6);
+    if (rv) {
+        RTE_LOG(ERR, SS, "could not prepare ethernet mbuf\n");
+        goto error_out;
+    }
+    
+    tx_buf->ip6 = (ip6_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(ip6_hdr_t));
+    if (tx_buf->ip6 == NULL) {
+        RTE_LOG(ERR, SS, "could not allocate mbuf ipv6 header\n");
+        goto error_out;
+    }
+    tx_buf->ip6->ip6_flow = rte_bswap32(0x60000000);
+    tx_buf->ip6->ip6_plen = rte_bswap16(sizeof(ndp_reply_t));
+    tx_buf->ip6->ip6_hlim = 0x0ff; // XXX: use constant
+    tx_buf->ip6->ip6_nxt  = IPPROTO_ICMPV6;
+    rte_memcpy(&tx_buf->ip6->ip6_dst, &rx_buf->ip6->ip6_src, sizeof(tx_buf->ip6->ip6_dst));
+    rte_memcpy(&tx_buf->ip6->ip6_src, &ss_conf->ip6_address.ip6, sizeof(tx_buf->ip6->ip6_src));
+    
+    tx_buf->ndp_tx = (ndp_reply_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(ndp_reply_t));
+    tx_buf->icmp6  = (icmp6_hdr_t*) tx_buf->ndp_tx;
+    if (tx_buf->ndp_tx == NULL) {
+        RTE_LOG(ERR, SS, "could not allocate mbuf ndp header\n");
+        goto error_out;
+    }
+    tx_buf->ndp_tx->hdr.nd_na_type     = ND_NEIGHBOR_ADVERT;
+    tx_buf->ndp_tx->hdr.nd_na_code     = 0;
+    tx_buf->ndp_tx->hdr.nd_na_cksum    = 0;
+    // Flags:
+    // Router:    0 (not router)
+    // Solicited: 1 (requested by remote node)
+    // Override:  1 (override old mapping)
+    tx_buf->ndp_tx->hdr.nd_na_flags_reserved = rte_bswap32(0x60000000);
+    tx_buf->ndp_tx->lhdr.nd_opt_type         = ND_OPT_TARGET_LINKADDR;
+    // XXX: length needs to be 1 8-byte width
+    // XXX: find a nicer way to code this
+    tx_buf->ndp_tx->lhdr.nd_opt_len          = 1;
+    
+    memset(&tx_buf->ndp_tx->nd_addr, 0, NDP_ADDR_LEN);
+    // copy port eth_addr     into tx ndp_src_eth_addr
+    ether_addr_copy(&port_eth_addrs[rx_buf->port_id], (eth_addr_t*) &tx_buf->ndp_tx->nd_addr);
+    rte_memcpy(&tx_buf->ndp_tx->hdr.nd_na_target, &ss_conf->ip6_address.ip6, IPV6_ALEN);
+    
+    rv = ss_frame_prepare_icmp6(tx_buf, (uint8_t*) tx_buf->ndp_tx, sizeof(ndp_reply_t));
+    if (rv) {
+        RTE_LOG(ERR, SS, "could not prepare ndp frame\n");
+        goto error_out;
+    }
+
     return 0;
+    
+    error_out:
+    if (tx_buf->mbuf) {
+        RTE_LOG(ERR, SS, "could not process ndp frame\n");
+        tx_buf->active = 0;
+        rte_pktmbuf_free(tx_buf->mbuf);
+        tx_buf->mbuf = NULL;
+    }
+    return -1;
 }
 
-int ss_frame_handle_icmpv6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
+// ICMPv6 Pseudo Header
+// 
+// Source Address
+// Destination Address
+// 
+// ICMPv6 Length (32 bits)
+// Zeros         (24 bits)
+// Next Header   ( 8 bits)
+int ss_frame_prepare_icmp6(ss_frame_t* tx_buf, uint8_t* pl_ptr, uint32_t pl_len) {
+    rte_mbuf_t* pmbuf = NULL;
+    uint8_t* pptr;
+    uint32_t icmp_len;
+    uint32_t zeros_nxt;
+    uint16_t checksum;
+    
+    pmbuf = rte_pktmbuf_alloc(ss_pool);
+    if (pmbuf == NULL) {
+        RTE_LOG(ERR, SS, "could not allocate mbuf icmp6 pseudo header\n");
+        goto error_out;
+    }
+    icmp_len  = rte_bswap32(pl_len);
+    zeros_nxt = rte_bswap32((uint32_t) tx_buf->ip6->ip6_nxt);
+    
+    pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, sizeof(tx_buf->ip6->ip6_src));
+    rte_memcpy(pptr, &tx_buf->ip6->ip6_src, sizeof(tx_buf->ip6->ip6_src));
+    pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, sizeof(tx_buf->ip6->ip6_dst));
+    rte_memcpy(pptr, &tx_buf->ip6->ip6_dst, sizeof(tx_buf->ip6->ip6_dst));
+    pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, 4);
+    rte_memcpy(pptr, &icmp_len, sizeof(icmp_len));
+    pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, 4);
+    rte_memcpy(pptr, &zeros_nxt, sizeof(zeros_nxt));
+    pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, pl_len);
+    printf("icmp6 tx size %u\n", pl_len);
+    rte_memcpy(pptr, pl_ptr, pl_len);
+    printf("pseudo-header:\n");
+    rte_pktmbuf_dump(stdout, pmbuf, rte_pktmbuf_pkt_len(pmbuf));
+    checksum = ss_in_cksum(rte_pktmbuf_mtod(pmbuf, uint16_t*), rte_pktmbuf_pkt_len(pmbuf));
+    rte_pktmbuf_free(pmbuf);
+    tx_buf->icmp6->icmp6_cksum = checksum;
+    //tx_buf->ndp_tx->hdr.nd_na_cksum = checksum;
+
     return 0;
+    
+    error_out:
+    if (tx_buf->mbuf) {
+        RTE_LOG(ERR, SS, "could not process ndp frame\n");
+        tx_buf->active = 0;
+        rte_pktmbuf_free(tx_buf->mbuf);
+        tx_buf->mbuf = NULL;
+    }
+    return -1;
+}
+
+int ss_frame_handle_echo4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
+    int rv = 0;
+    uint16_t checksum;
+    uint8_t* dptr;
+    
+    rv = ss_frame_prep_eth(tx_buf, rx_buf->port_id, (eth_addr_t*) &rx_buf->eth->s_addr, ETHER_TYPE_IPV4);
+    if (rv) {
+        RTE_LOG(ERR, SS, "could not prepare ethernet mbuf\n");
+        goto error_out;
+    }
+    
+    tx_buf->ip4 = (ip4_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(ip4_hdr_t));
+    if (tx_buf->ip4 == NULL) {
+        RTE_LOG(ERR, SS, "could not allocate mbuf ipv4 header\n");
+        goto error_out;
+    }
+    tx_buf->ip4->version             = 0x4;
+    tx_buf->ip4->ihl                 = 20 / 4;
+    tx_buf->ip4->tos                 = 0x0;
+    //tx_buf->ip4->tot_len             = ????;
+    tx_buf->ip4->id                  = rte_bswap16(0x0000);
+    tx_buf->ip4->frag_off            = 0;
+    tx_buf->ip4->ttl                 = 0xff; // XXX: use constant
+    tx_buf->ip4->protocol            = IPPROTO_ICMP;
+    tx_buf->ip4->check               = rte_bswap16(0x0000);
+    tx_buf->ip4->saddr               = ss_conf->ip4_address.ip4.addr; // bswap ?????
+    tx_buf->ip4->daddr               = rx_buf->ip4->saddr;
+    
+    tx_buf->icmp4 = (icmp4_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(icmp4_hdr_t));
+    if (tx_buf->icmp4 == NULL) {
+        RTE_LOG(ERR, SS, "could not allocate mbuf icmp4 header\n");
+        goto error_out;
+    }
+    tx_buf->icmp4->type              = ICMP_ECHOREPLY;
+    tx_buf->icmp4->code              = 0;
+    tx_buf->icmp4->checksum          = rte_bswap16(0x0000);
+    tx_buf->icmp4->un.echo.id        = rx_buf->icmp4->un.echo.id;
+    tx_buf->icmp4->un.echo.sequence  = rx_buf->icmp4->un.echo.sequence;
+    dptr = (uint8_t*) rte_pktmbuf_append(tx_buf->mbuf, rte_bswap16(rx_buf->ip4->tot_len) - sizeof(ip4_hdr_t) - sizeof(icmp4_hdr_t));
+    if (dptr == NULL) {
+        RTE_LOG(ERR, SS, "could not allocate mbuf icmp4 dptr\n");
+        goto error_out;
+    }
+    memcpy(dptr, (uint8_t*) rx_buf->icmp4 + sizeof(icmp4_hdr_t), rx_buf->ip4->tot_len - sizeof(ip4_hdr_t) - sizeof(icmp4_hdr_t));
+    
+    checksum = ss_in_cksum((uint16_t*) tx_buf->icmp4, rte_pktmbuf_pkt_len(tx_buf->mbuf) - ((uint8_t*) tx_buf->icmp4 - rte_pktmbuf_mtod(tx_buf->mbuf, uint8_t*)));
+    tx_buf->icmp4->checksum          = checksum;
+    
+    tx_buf->ip4->tot_len             = rte_bswap16(rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t)); // XXX: better way?
+    checksum = ss_in_cksum((uint16_t*) tx_buf->ip4, sizeof(ip4_hdr_t));
+    tx_buf->ip4->check               = checksum;
+    
+    return 0;
+    
+    error_out:
+    if (tx_buf->mbuf) {
+        RTE_LOG(ERR, SS, "could not process icmp4 frame\n");
+        tx_buf->active = 0;
+        rte_pktmbuf_free(tx_buf->mbuf);
+        tx_buf->mbuf = NULL;
+    }
+    return -1;
+}
+
+int ss_frame_handle_echo6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
+    int rv = 0;
+    uint8_t* dptr;
+    uint16_t rx_dlen;
+    uint16_t tx_plen;
+    
+    rv = ss_frame_prep_eth(tx_buf, rx_buf->port_id, (eth_addr_t*) &rx_buf->eth->s_addr, ETHER_TYPE_IPV6);
+    if (rv) {
+        RTE_LOG(ERR, SS, "could not prepare ethernet mbuf\n");
+        goto error_out;
+    }
+    
+    tx_buf->ip6 = (ip6_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(ip6_hdr_t));
+    if (tx_buf->ip6 == NULL) {
+        RTE_LOG(ERR, SS, "could not allocate mbuf ipv6 header\n");
+        goto error_out;
+    }
+    tx_buf->ip6->ip6_flow = rte_bswap32(0x60000000);
+    tx_buf->ip6->ip6_hlim = 0x0ff; // XXX: use constant
+    tx_buf->ip6->ip6_nxt  = IPPROTO_ICMPV6;
+    rte_memcpy(&tx_buf->ip6->ip6_dst, &rx_buf->ip6->ip6_src, sizeof(tx_buf->ip6->ip6_dst));
+    rte_memcpy(&tx_buf->ip6->ip6_src, &ss_conf->ip6_address.ip6, sizeof(tx_buf->ip6->ip6_src));
+    
+    tx_buf->icmp6 = (icmp6_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(icmp6_hdr_t));
+    if (tx_buf->icmp6 == NULL) {
+        RTE_LOG(ERR, SS, "could not allocate mbuf icmp6 header\n");
+        goto error_out;
+    }
+    tx_buf->icmp6->icmp6_type        = ICMP6_ECHO_REPLY;
+    tx_buf->icmp6->icmp6_code        = 0;
+    tx_buf->icmp6->icmp6_cksum       = rte_bswap16(0x0000);
+    tx_buf->icmp6->icmp6_data16[0]   = rx_buf->icmp6->icmp6_data16[0]; // ICMP ID
+    tx_buf->icmp6->icmp6_data16[1]   = rx_buf->icmp6->icmp6_data16[1]; // Sequence Number
+    rx_dlen                          = rte_bswap16(rx_buf->ip6->ip6_plen) - sizeof(icmp6_hdr_t);
+    dptr = (uint8_t*) rte_pktmbuf_append(tx_buf->mbuf, rx_dlen);
+    if (dptr == NULL) {
+        RTE_LOG(ERR, SS, "could not allocate mbuf icmp6 dptr\n");
+        goto error_out;
+    }
+    memcpy(dptr, (uint8_t*) rx_buf->icmp6 + sizeof(icmp6_hdr_t), rx_dlen);
+    tx_plen                          = rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t) - sizeof(ip6_hdr_t); // XXX: better way?
+    tx_buf->ip6->ip6_plen            = rte_bswap16(tx_plen);
+    
+    rv = ss_frame_prepare_icmp6(tx_buf, (uint8_t*) tx_buf->icmp6, tx_plen);
+    if (rv) {
+        RTE_LOG(ERR, SS, "could not prepare echo6 frame\n");
+        goto error_out;
+    }
+    // mhall
+    printf("debug echo6\n");
+    rte_pktmbuf_dump(stdout, tx_buf->mbuf, rte_pktmbuf_pkt_len(tx_buf->mbuf));
+
+    return 0;
+    
+    error_out:
+    if (tx_buf->mbuf) {
+        RTE_LOG(ERR, SS, "could not process icmp6 frame\n");
+        tx_buf->active = 0;
+        rte_pktmbuf_free(tx_buf->mbuf);
+        tx_buf->mbuf = NULL;
+    }
+    return -1;
+}
+
+int ss_frame_handle_icmp4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
+    int rv = 0;
+    
+    rx_buf->icmp4 = (icmp4_hdr_t*) ((uint8_t*) rx_buf->ip4 + sizeof(ip4_hdr_t));
+    
+    uint8_t icmp_type = rx_buf->icmp4->type;
+    switch (icmp_type) {
+        case ICMP_ECHO: {
+            rv = ss_frame_handle_echo4(rx_buf, tx_buf);
+            break;
+        }
+        default: {
+            RTE_LOG(INFO, SS, "port %u received unsupported icmpv4 0x%04hhx frame:\n", rx_buf->port_id, icmp_type);
+            rte_pktmbuf_dump(stdout, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+            rv = -1;
+            break;
+        }
+    }
+    
+    return rv;
+}
+
+int ss_frame_handle_icmp6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
+    int rv = 0;
+    
+    rx_buf->icmp6 = (icmp6_hdr_t*) ((uint8_t*) rx_buf->ip6 + sizeof(ip6_hdr_t));
+    
+    // XXX: add the PMTUD request
+    uint8_t icmp_type = rx_buf->icmp6->icmp6_type;
+    switch (icmp_type) {
+        case ICMP6_ECHO_REQUEST: {
+            rv = ss_frame_handle_echo6(rx_buf, tx_buf);
+            break;
+        }
+        case ND_NEIGHBOR_SOLICIT: {
+            rv = ss_frame_handle_ndp(rx_buf, tx_buf);
+            break;
+        }
+        default: {
+            RTE_LOG(INFO, SS, "port %u received unsupported icmpv6 0x%04hhx frame:\n", rx_buf->port_id, icmp_type);
+            rte_pktmbuf_dump(stdout, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+            rv = -1;
+            break;
+        }
+    }
+    
+    return rv;
 }
 
 /* main processing loop */
