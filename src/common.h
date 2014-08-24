@@ -27,6 +27,10 @@
 #include <rte_memory.h>
 #include <rte_mbuf.h>
 
+/* MACROS */
+
+#define SS_ROUND_UP(N, S) ((((N) + (S) - 1) / (S)) * (S))
+
 /* CONSTANTS */
 
 #define RTE_LOGTYPE_SS RTE_LOGTYPE_USER1
@@ -56,15 +60,15 @@ typedef struct rte_hash rte_hash_t;
 typedef struct rte_lpm  rte_lpm4_t;
 typedef struct rte_lpm6 rte_lpm6_t;
 
-typedef struct ether_addr eth_addr_t;
-typedef struct ether_hdr  eth_hdr_t;
-typedef struct ether_arp  arp_hdr_t;
-typedef struct iphdr      ipv4_hdr_t;
-typedef struct ip6_hdr    ipv6_hdr_t;
-typedef struct icmphdr    icmpv4_hdr_t;
-typedef struct icmp6_hdr  icmpv6_hdr_t;
-typedef struct tcp_hdr    tcp_hdr_t;
-typedef struct udp_hdr    udp_hdr_t;
+typedef struct ether_addr          eth_addr_t;
+typedef struct ether_hdr           eth_hdr_t;
+typedef struct ether_arp           arp_hdr_t;
+typedef struct iphdr               ip4_hdr_t;
+typedef struct ip6_hdr             ip6_hdr_t;
+typedef struct icmphdr             icmp4_hdr_t;
+typedef struct icmp6_hdr           icmp6_hdr_t;
+typedef struct tcp_hdr             tcp_hdr_t;
+typedef struct udp_hdr             udp_hdr_t;
 
 /* DATA TYPES */
 
@@ -84,18 +88,19 @@ struct ip_addr {
     uint8_t family;
     uint8_t prefix;
     union {
-        struct ip4_addr ipv4;
-        struct ip6_addr ipv6;
+        struct ip4_addr ip4;
+        struct ip6_addr ip6;
     };
 };
 
 typedef struct ip_addr ip_addr;
 
-#define ETH_ALEN  6
-#define IPV4_ALEN 4
+#define ETH_ALEN   6
+#define IPV4_ALEN  4
+#define IPV6_ALEN 16
 
-struct  ether_arp {
-    struct  arphdr ea_hdr;          /* fixed-size header */
+struct ether_arp {
+    struct  arphdr ea_hdr;         /* fixed-size header */
     uint8_t arp_sha[ETH_ALEN];     /* sender hardware address */
     uint8_t arp_spa[IPV4_ALEN];    /* sender protocol address */
     uint8_t arp_tha[ETH_ALEN];     /* target hardware address */
@@ -107,20 +112,46 @@ struct  ether_arp {
 #define arp_pln ea_hdr.ar_pln
 #define arp_op  ea_hdr.ar_op
 
+struct ndp_request_s {
+    struct  nd_neighbor_solicit hdr;
+    struct  nd_opt_hdr          lhdr;
+    union {
+        uint8_t nd_addr[ETHER_ADDR_LEN];
+        //uint8_t nd_padding[SS_ROUND_UP(ETHER_ADDR_LEN, 8)];
+    };
+};
+
+typedef struct ndp_request_s ndp_request_t;
+
+#define NDP_ADDR_LEN (SS_ROUND_UP(ETHER_ADDR_LEN, 8))
+
+struct ndp_reply_s {
+    struct  nd_neighbor_advert  hdr;
+    struct  nd_opt_hdr          lhdr;
+    union {
+        uint8_t nd_addr[ETHER_ADDR_LEN];
+        //uint8_t nd_padding[NDP_ADDR_LEN];
+    };
+};
+
+typedef struct ndp_reply_s ndp_reply_t;
+
 struct ss_frame_s {
-    unsigned int  active;
-    unsigned int  port_id;
-    unsigned int  length;
-    rte_mbuf_t*   mbuf;
+    unsigned int   active;
+    unsigned int   port_id;
+    unsigned int   length;
+    rte_mbuf_t*    mbuf;
     
-    eth_hdr_t*    eth;
-    arp_hdr_t*    arp;
-    ipv4_hdr_t*   ipv4;
-    ipv6_hdr_t*   ipv6;
-    icmpv4_hdr_t* icmp4;
-    icmpv6_hdr_t* icmp6;
-    tcp_hdr_t*    tcp;
-    udp_hdr_t*    udp;
+    eth_hdr_t*     eth;
+    arp_hdr_t*     arp;
+    ndp_request_t* ndp_rx;
+    ndp_reply_t*   ndp_tx;
+    ip4_hdr_t*     ip4;
+    ip6_hdr_t*     ip6;
+    icmp4_hdr_t*   icmp4;
+    icmp6_hdr_t*   icmp6;
+    tcp_hdr_t*     tcp;
+    udp_hdr_t*     udp;
 } __rte_cache_aligned;
 
 typedef struct ss_frame_s ss_frame_t;
