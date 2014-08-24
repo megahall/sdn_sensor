@@ -66,16 +66,20 @@ struct ss_port_statistics {
 /* BEGIN PROTOTYPES */
 
 int ss_send_burst(struct lcore_queue_conf* queue_conf, unsigned int n, uint8_t port);
-int ss_send_packet(struct rte_mbuf* m, uint8_t port);
+int ss_send_packet(struct rte_mbuf* m, uint8_t port_id);
+int ss_frame_prep_eth(ss_frame_t* tx_buf, int port_id, eth_addr_t* d_addr, uint16_t type);
 void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int port_id);
-int ss_frame_handle_eth(ss_frame_t* rxbuf, ss_frame_t* txbuf);
-int ss_frame_handle_ipv4(ss_frame_t* rxbuf, ss_frame_t* txbuf);
-int ss_frame_handle_ipv6(ss_frame_t* rxbuf, ss_frame_t* txbuf);
-int ss_frame_handle_ip(ss_frame_t* rxbuf, ss_frame_t* txbuf);
-int ss_frame_prep_eth(ss_frame_t* txbuf, int port_id, eth_addr_t* d_addr, uint16_t type);
-int ss_frame_handle_arp(ss_frame_t* rxbuf, ss_frame_t* txbuf);
-int ss_frame_handle_icmpv4(ss_frame_t* rxbuf, ss_frame_t* txbuf);
-int ss_frame_handle_icmpv6(ss_frame_t* rxbuf, ss_frame_t* txbuf);
+int ss_frame_handle_eth(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
+int ss_frame_handle_ip4(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
+int ss_frame_handle_ip6(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
+int ss_frame_handle_ip(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
+int ss_frame_handle_arp(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
+int ss_frame_handle_ndp(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
+int ss_frame_prepare_icmp6(ss_frame_t* tx_buf, uint8_t* pl_ptr, uint32_t pl_len);
+int ss_frame_handle_echo4(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
+int ss_frame_handle_echo6(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
+int ss_frame_handle_icmp4(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
+int ss_frame_handle_icmp6(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
 void ss_main_loop(void);
 int ss_launch_one_lcore(void* dummy);
 int main(int argc, char* argv[]);
