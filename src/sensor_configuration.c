@@ -137,12 +137,12 @@ int ss_conf_network_parse(ss_conf_t* ss_conf, json_object* items) {
             return -1;
         }
         fprintf(stderr, "parse ipv4 address %s\n", json_object_get_string(item));
-        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ipv4_address);
+        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ip4_address);
         if (rv != 1) {
             fprintf(stderr, "invalid ipv4 address %s\n", json_object_get_string(item));
             return -1;
         }
-        ss_dump_cidr(NULL, "ipv4_address", &ss_conf->ipv4_address);
+        ss_dump_cidr(NULL, "ipv4_address", &ss_conf->ip4_address);
     }
     item = json_object_object_get(items, "ipv4_gateway");
     if (item) {
@@ -151,12 +151,12 @@ int ss_conf_network_parse(ss_conf_t* ss_conf, json_object* items) {
             return -1;
         }
         fprintf(stderr, "parse ipv4 gateway %s\n", json_object_get_string(item));
-        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ipv4_gateway);
+        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ip4_gateway);
         if (rv != 1) {
             fprintf(stderr, "invalid ipv4 gateway %s\n", json_object_get_string(item));
             return -1;
         }
-        ss_dump_cidr(NULL, "ipv4_gateway", &ss_conf->ipv4_gateway);
+        ss_dump_cidr(NULL, "ipv4_gateway", &ss_conf->ip4_gateway);
     }
     item = json_object_object_get(items, "ipv6_address");
     if (item) {
@@ -165,12 +165,12 @@ int ss_conf_network_parse(ss_conf_t* ss_conf, json_object* items) {
             return -1;
         }
         fprintf(stderr, "parse ipv6 address %s\n", json_object_get_string(item));
-        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ipv6_address);
+        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ip6_address);
         if (rv != 1) {
             fprintf(stderr, "invalid ipv6 address %s\n", json_object_get_string(item));
             return -1;
         }
-        ss_dump_cidr(NULL, "ipv6_address", &ss_conf->ipv6_address);
+        ss_dump_cidr(NULL, "ipv6_address", &ss_conf->ip6_address);
     }
     item = json_object_object_get(items, "ipv6_gateway");
     if (item) {
@@ -179,12 +179,12 @@ int ss_conf_network_parse(ss_conf_t* ss_conf, json_object* items) {
             return -1;
         }
         fprintf(stderr, "parse ipv6 gateway %s\n", json_object_get_string(item));
-        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ipv6_gateway);
+        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ip6_gateway);
         if (rv != 1) {
             fprintf(stderr, "invalid ipv6 gateway %s\n", json_object_get_string(item));
             return -1;
         }
-        ss_dump_cidr(NULL, "ipv6_gateway", &ss_conf->ipv6_gateway);
+        ss_dump_cidr(NULL, "ipv6_gateway", &ss_conf->ip6_gateway);
     }
     return 0;
 }
