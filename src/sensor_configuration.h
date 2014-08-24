@@ -17,10 +17,10 @@ struct ss_conf_s {
     int promiscuous_mode;
     uint16_t mtu;
     
-    struct ip_addr ipv4_address;
-    struct ip_addr ipv4_gateway;
-    struct ip_addr ipv6_address;
-    struct ip_addr ipv6_gateway;
+    struct ip_addr ip4_address;
+    struct ip_addr ip4_gateway;
+    struct ip_addr ip6_address;
+    struct ip_addr ip6_gateway;
     
     char* eal_options;
     uint32_t port_mask;
