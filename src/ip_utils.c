@@ -121,10 +121,10 @@ int ss_parse_cidr(const char* input, ip_addr* ip_addr) {
 int ss_inet_pton(int af, const char* src, ip_addr* dst) {
     switch (af) {
         case SS_AF_INET4: {
-            return (ss_inet_pton4(src, (uint8_t*) &dst->ipv4));
+            return (ss_inet_pton4(src, (uint8_t*) &dst->ip4));
         }
         case SS_AF_INET6: {
-            return (ss_inet_pton6(src, (uint8_t*) &dst->ipv6));
+            return (ss_inet_pton6(src, (uint8_t*) &dst->ip6));
         }
         default: {
             errno = EAFNOSUPPORT;
