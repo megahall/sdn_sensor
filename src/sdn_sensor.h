@@ -8,6 +8,13 @@
 #include <rte_memory.h>
 
 #include "common.h"
+#include "sensor_configuration.h"
+
+/* GLOBAL VARIABLES */
+
+extern ss_conf_t*        ss_conf;
+extern rte_mempool_t*    ss_pool;
+extern struct ether_addr port_eth_addrs[];
 
 #define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
 #define NB_MBUF   8192
