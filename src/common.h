@@ -55,6 +55,7 @@
 /* TYPEDEFS */
 
 typedef struct rte_mbuf rte_mbuf_t;
+typedef struct rte_mempool rte_mempool_t;
 
 typedef struct rte_hash rte_hash_t;
 typedef struct rte_lpm  rte_lpm4_t;
