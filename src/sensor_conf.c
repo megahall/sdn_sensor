@@ -13,7 +13,7 @@
 #include "common.h"
 #include "ip_utils.h"
 #include "sdn_sensor.h"
-#include "sensor_configuration.h"
+#include "sensor_conf.h"
 
 #define PROGRAM_PATH "/proc/self/exe"
 #define CONF_PATH "/../conf/sdn_sensor.json"

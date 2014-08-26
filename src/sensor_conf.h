@@ -1,5 +1,5 @@
-#ifndef __SENSOR_CONFIGURATION_H__
-#define __SENSOR_CONFIGURATION_H__
+#ifndef __SENSOR_CONF_H__
+#define __SENSOR_CONF_H__
 
 #include <stdint.h>
 #include <wordexp.h>
@@ -48,4 +48,4 @@ ss_conf_t* ss_conf_file_parse(void);
 
 /* END PROTOTYPES */
 
-#endif /* __SENSOR_CONFIGURATION_H__ */
+#endif /* __SENSOR_CONF_H__ */

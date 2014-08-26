@@ -8,7 +8,7 @@
 #include <rte_memory.h>
 
 #include "common.h"
-#include "sensor_configuration.h"
+#include "sensor_conf.h"
 
 /* GLOBAL VARIABLES */
 

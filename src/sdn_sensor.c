@@ -38,7 +38,7 @@
 #include "common.h"
 #include "sdn_sensor.h"
 #include "dpdk.h"
-#include "sensor_configuration.h"
+#include "sensor_conf.h"
 
 /* GLOBAL VARIABLES */
 
