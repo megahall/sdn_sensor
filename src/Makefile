@@ -58,4 +58,4 @@ iwyu: $(HEADERS) $(SOURCES)
 
 clean:
 	@echo 'Cleaning sdn_sensor...'
-	@rm -f sdn_sensor *.o
+	@rm -f sdn_sensor *.o *.h.bak
