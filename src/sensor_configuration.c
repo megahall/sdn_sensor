@@ -18,7 +18,7 @@
 #define PROGRAM_PATH "/proc/self/exe"
 #define CONF_PATH "/../conf/sdn_sensor.json"
 
-int ss_conf_destroy(ss_conf_t* ss_conf) {
+int ss_conf_destroy() {
     // XXX: destroy everything else in ss_conf_t
     free(ss_conf);
     return 0;
@@ -111,7 +111,7 @@ char* ss_conf_file_read() {
     return conf_content;
 }
 
-int ss_conf_network_parse(ss_conf_t* ss_conf, json_object* items) {
+int ss_conf_network_parse(json_object* items) {
     int rv;
     json_object* item = NULL;
     item = json_object_object_get(items, "promiscuous_mode");
@@ -192,7 +192,6 @@ int ss_conf_network_parse(ss_conf_t* ss_conf, json_object* items) {
 ss_conf_t* ss_conf_file_parse() {
     int is_ok = 1;
     int rv;
-    ss_conf_t* ss_conf           = NULL;
     char* conf_buffer            = NULL;
     json_object* json_underlying = NULL;
     json_object* json_conf       = NULL;
@@ -240,7 +239,7 @@ ss_conf_t* ss_conf_file_parse() {
         is_ok = 0; goto error_out;
     }
     
-    rv = ss_conf_network_parse(ss_conf, items);
+    rv = ss_conf_network_parse(items);
     if (rv) {
         fprintf(stderr, "could not parse network configuration\n");
         is_ok = 0; goto error_out;
@@ -374,7 +373,7 @@ ss_conf_t* ss_conf_file_parse() {
     error_out:
     if (conf_buffer)       { free(conf_buffer);          conf_buffer = NULL; }
     if (json_conf)         { json_object_put(json_conf); json_conf   = NULL; }
-    if (!is_ok && ss_conf) { ss_conf_destroy(ss_conf);   ss_conf     = NULL; }
+    if (!is_ok && ss_conf) { ss_conf_destroy();          ss_conf     = NULL; }
     
     return ss_conf;
 }
