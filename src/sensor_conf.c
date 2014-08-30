@@ -228,6 +228,9 @@ ss_conf_t* ss_conf_file_parse() {
         fprintf(stderr, "could not allocate sdn_sensor configuration\n");
         is_ok = 0; goto error_out;
     }
+    TAILQ_INIT(&ss_conf->re_chain.re_list);
+    TAILQ_INIT(&ss_conf->pcap_chain.pcap_list);
+    // XXX: init more objects here
     
     items = json_object_object_get(json_conf, "network");
     if (items == NULL) {
