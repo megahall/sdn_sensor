@@ -2,6 +2,8 @@
 #define __ETHERNET_H__
 
 #include "common.h"
+#include "ip.h"
+#include "icmp.h"
 #include "sdn_sensor.h"
 
 /* BEGIN PROTOTYPES */
