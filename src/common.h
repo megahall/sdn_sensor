@@ -73,28 +73,30 @@ typedef struct udp_hdr             udp_hdr_t;
 
 /* DATA TYPES */
 
-struct ip4_addr {
+struct ip4_addr_s {
     uint32_t addr;
 };
 
-typedef struct ip4_addr ip4_addr;
+typedef struct ip4_addr_s ip4_addr_t;
 
-struct ip6_addr {
+struct ip6_addr_s {
     uint8_t addr[16];
 };
 
-typedef struct ip6_addr ip6_addr;
+typedef struct ip6_addr_s ip6_addr_t;
 
-struct ip_addr {
+struct ip_addr_s {
     uint8_t family;
     uint8_t prefix;
     union {
-        struct ip4_addr ip4;
-        struct ip6_addr ip6;
-    };
+        ip4_addr_t ip4;
+        ip6_addr_t ip6;
+    } addr;
 };
+#define ip4_addr addr.ip4
+#define ip6_addr addr.ip6
 
-typedef struct ip_addr ip_addr;
+typedef struct ip_addr_s ip_addr_t;
 
 #define ETH_ALEN   6
 #define IPV4_ALEN  4
@@ -137,10 +139,18 @@ struct ndp_reply_s {
 
 typedef struct ndp_reply_s ndp_reply_t;
 
+enum direction_e {
+    SS_FRAME_RX,
+    SS_FRAME_TX,
+};
+
+typedef enum direction_e direction_t;
+
 struct ss_frame_s {
     unsigned int   active;
     unsigned int   port_id;
     unsigned int   length;
+    direction_t    direction;
     rte_mbuf_t*    mbuf;
     
     eth_hdr_t*     eth;
@@ -159,22 +169,28 @@ typedef struct ss_frame_s ss_frame_t;
 
 typedef void (*process_packet_fptr)(ss_frame_t*);
 
-struct ss_cidr_s {
-    int family;
-    //struct sockaddr ip;
-    uint8_t mask;
+enum nn_queue_format_e {
+    NN_FORMAT_METADATA = 1,
+    NN_FORMAT_PACKET   = 2,
 };
 
-typedef struct ss_cidr_s ss_cidr_t;
+typedef enum nn_queue_format_e nn_queue_format_t;
+
+struct nn_queue_s {
+    int               conn;
+    nn_queue_format_t format;
+    int               type;
+    char              url[NN_URL_MAX];
+};
+
+typedef struct nn_queue_s nn_queue_t;
 
 /* RE CHAIN */
 
 struct ss_re_entry_s {
-    int match_count;
+    uint64_t match_count;
     int invert;
-    int nn_conn;
-    int nn_type;
-    char nn_url[NN_URL_MAX];
+    nn_queue_t nn_queue;
     pcre* re;
     TAILQ_ENTRY(ss_re_entry_s) entry;
 } __rte_cache_aligned;
@@ -191,7 +207,7 @@ struct ss_re_chain_s {
 typedef struct ss_re_chain_s ss_re_chain_t;
 
 struct ss_re_match_s {
-    int match_count;
+    uint64_t match_count;
     char** match_list;
     json_object* match_result;
 } __rte_cache_aligned;
@@ -201,7 +217,7 @@ typedef struct ss_re_match_s ss_re_match_t;
 /* PCAP CHAIN */
 
 struct ss_pcap_match_s {
-    struct pcap_pkthdr pcap_header;
+    struct pcap_pkthdr header;
     uint8_t* packet;
     json_object* match_result;
 } __rte_cache_aligned;
@@ -209,12 +225,11 @@ struct ss_pcap_match_s {
 typedef struct ss_pcap_match_s ss_pcap_match_t;
 
 struct ss_pcap_entry_s {
-    int match_count;
-    int nn_conn;
-    int nn_type;
-    char nn_url[NN_URL_MAX];
-    char* filter;
     struct bpf_program bpf_filter;
+    uint64_t match_count;
+    nn_queue_t nn_queue;
+    char* name;
+    char* filter;
     TAILQ_ENTRY(ss_pcap_entry_s) entry;
 } __rte_cache_aligned;
 typedef struct ss_pcap_entry_s ss_pcap_entry_t;
@@ -223,6 +238,7 @@ TAILQ_HEAD(ss_pcap_list_s, ss_pcap_entry_s);
 typedef struct ss_pcap_list_s ss_pcap_list_t;
 
 struct ss_pcap_chain_s {
+    uint64_t match_count;
     ss_pcap_list_t pcap_list;
 } __rte_cache_aligned;
 
@@ -231,20 +247,18 @@ typedef struct ss_pcap_chain_s ss_pcap_chain_t;
 /* CIDR TABLE */
 
 struct ss_cidr_entry_s {
-    int match_count;
-    int nn_conn;
-    int nn_type;
-    char nn_url[NN_URL_MAX];
+    uint64_t match_count;
+    nn_queue_t nn_queue;
     char cidr[CIDR_LENGTH_MAX];
 } __rte_cache_aligned;
 
 typedef struct ss_cidr_entry_s ss_cidr_entry_t;
 
 struct ss_cidr_table_s {
-    int hash_match4_count;
-    int hash_match6_count;
-    int cidr_match4_count;
-    int cidr_match6_count;
+    uint64_t hash_match4_count;
+    uint64_t hash_match6_count;
+    uint64_t cidr_match4_count;
+    uint64_t cidr_match6_count;
     
     rte_hash_t* hash4_table;
     rte_hash_t* hash6_table;
@@ -263,7 +277,9 @@ typedef struct ss_string_trie_s ss_string_trie_t;
 
 /* BEGIN PROTOTYPES */
 
-ss_re_chain_t* ss_re_chain_create(void);
+char* ss_json_string_get(json_object* items, const char* key);
+int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue);
+int ss_nn_queue_destroy(nn_queue_t* nn_queue);
 int ss_re_chain_destroy(ss_re_chain_t* re_chain);
 ss_re_entry_t* ss_re_entry_create(json_object* re_json);
 int ss_re_entry_destroy(ss_re_entry_t* re_entry);
@@ -271,16 +287,13 @@ int ss_re_chain_add(ss_re_chain_t* re_chain, ss_re_entry_t* re_entry);
 int ss_re_chain_remove_index(ss_re_chain_t* re_chain, int index);
 int ss_re_chain_remove_re(ss_re_chain_t* re_chain, char* re);
 int ss_re_chain_match(ss_re_chain_t* re_chain, char* input);
-ss_pcap_match_t* ss_pcap_match_create(void);
-int ss_pcap_match_destroy(ss_pcap_match_t* pcap_match);
-ss_pcap_chain_t* ss_pcap_chain_create(void);
 int ss_pcap_chain_destroy(ss_pcap_chain_t* pcap_chain);
 ss_pcap_entry_t* ss_pcap_entry_create(json_object* pcap_json);
 int ss_pcap_entry_destroy(ss_pcap_entry_t* pcap_entry);
 int ss_pcap_chain_add(ss_pcap_chain_t* pcap_match, ss_pcap_entry_t* pcap_entry);
 int ss_pcap_chain_remove_index(ss_pcap_chain_t* pcap_match, int index);
 int ss_pcap_chain_remove_filter(ss_pcap_chain_t* pcap_match, char* filter);
-int ss_pcap_match_init(ss_pcap_match_t* pcap_match, struct timeval* time, uint8_t* input, unsigned int length);
+int ss_pcap_match_prepare(ss_pcap_match_t* pcap_match, uint8_t* packet, uint16_t length);
 int ss_pcap_match(ss_pcap_chain_t* pcap_chain, ss_pcap_match_t* pcap_match);
 ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_table_json);
 int ss_cidr_table_destroy(ss_cidr_table_t* cidr_table);
