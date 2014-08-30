@@ -1,6 +1,8 @@
 #include <rte_byteorder.h>
 #include <rte_hexdump.h>
 
+#include "ethernet.h"
+
 #include "common.h"
 #include "sdn_sensor.h"
 
@@ -135,10 +137,10 @@ int ss_frame_handle_arp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     rte_memdump(stdout, "arp dst", &rx_buf->arp->arp_tha, sizeof(rx_buf->arp->arp_tha));
     rte_memdump(stdout, "ip src",  &rx_buf->arp->arp_spa, sizeof(rx_buf->arp->arp_spa));
     rte_memdump(stdout, "ip dst",  &rx_buf->arp->arp_tpa, sizeof(rx_buf->arp->arp_tpa));
-    rte_memdump(stdout, "in dst",  &ss_conf->ip4_address.ip4, IPV4_ADDR_LEN);
+    rte_memdump(stdout, "in dst",  &ss_conf->ip4_address.ip4_addr, IPV4_ADDR_LEN);
     rte_pktmbuf_dump(stdout, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
 
-    int is_ip_daddr_ok = memcmp(&rx_buf->arp->arp_tpa, &ss_conf->ip4_address.ip4, IPV4_ADDR_LEN) == 0;
+    int is_ip_daddr_ok = memcmp(&rx_buf->arp->arp_tpa, &ss_conf->ip4_address.ip4_addr, IPV4_ADDR_LEN) == 0;
     if (!is_ip_daddr_ok) {
         RTE_LOG(INFO, SS, "arp request is not for this system, ignoring\n");
         goto error_out;
@@ -163,7 +165,7 @@ int ss_frame_handle_arp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     // copy port eth_addr     into tx arp_src_eth_addr
     // copy rx   eth_src_addr into tx arp_dst_eth_addr
     ether_addr_copy(&port_eth_addrs[rx_buf->port_id], (eth_addr_t*) &tx_buf->arp->arp_sha);
-    rte_memcpy(&tx_buf->arp->arp_spa, &ss_conf->ip4_address.ip4, IPV4_ADDR_LEN);
+    rte_memcpy(&tx_buf->arp->arp_spa, &ss_conf->ip4_address.ip4_addr, IPV4_ADDR_LEN);
     ether_addr_copy((eth_addr_t*) &rx_buf->eth->s_addr, (eth_addr_t*) tx_buf->arp->arp_tha);
     rte_memcpy(&tx_buf->arp->arp_tpa, &rx_buf->arp->arp_spa, IPV4_ADDR_LEN);
 
@@ -185,10 +187,10 @@ int ss_frame_handle_ndp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     rx_buf->ndp_rx = (ndp_request_t*) ((uint8_t*) rx_buf->ip6 + sizeof(ip6_hdr_t));
 
     rte_memdump(stdout, "ndp  dst", &rx_buf->ndp_rx->hdr.nd_ns_target, sizeof(rx_buf->ndp_rx->hdr.nd_ns_target));
-    rte_memdump(stdout, "self    ", &ss_conf->ip6_address.ip6, sizeof(ss_conf->ip6_address.ip6));
+    rte_memdump(stdout, "self    ", &ss_conf->ip6_address.ip6_addr, sizeof(ss_conf->ip6_address.ip6_addr));
     rte_pktmbuf_dump(stdout, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
 
-    int is_ndp_saddr_ok = memcmp(&rx_buf->ndp_rx->hdr.nd_ns_target, &ss_conf->ip6_address.ip6, sizeof(rx_buf->ndp_rx->hdr.nd_ns_target)) == 0;
+    int is_ndp_saddr_ok = memcmp(&rx_buf->ndp_rx->hdr.nd_ns_target, &ss_conf->ip6_address.ip6_addr, sizeof(rx_buf->ndp_rx->hdr.nd_ns_target)) == 0;
     if (!is_ndp_saddr_ok) {
         RTE_LOG(INFO, SS, "ndp request is not for this system, ignoring\n");
         goto error_out;
@@ -210,7 +212,7 @@ int ss_frame_handle_ndp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     tx_buf->ip6->ip6_hlim = 0x0ff; // XXX: use constant
     tx_buf->ip6->ip6_nxt  = IPPROTO_ICMPV6;
     rte_memcpy(&tx_buf->ip6->ip6_dst, &rx_buf->ip6->ip6_src, sizeof(tx_buf->ip6->ip6_dst));
-    rte_memcpy(&tx_buf->ip6->ip6_src, &ss_conf->ip6_address.ip6, sizeof(tx_buf->ip6->ip6_src));
+    rte_memcpy(&tx_buf->ip6->ip6_src, &ss_conf->ip6_address.ip6_addr, sizeof(tx_buf->ip6->ip6_src));
 
     tx_buf->ndp_tx = (ndp_reply_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(ndp_reply_t));
     tx_buf->icmp6  = (icmp6_hdr_t*) tx_buf->ndp_tx;
@@ -234,7 +236,7 @@ int ss_frame_handle_ndp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     memset(&tx_buf->ndp_tx->nd_addr, 0, NDP_ADDR_LEN);
     // copy port eth_addr     into tx ndp_src_eth_addr
     ether_addr_copy(&port_eth_addrs[rx_buf->port_id], (eth_addr_t*) &tx_buf->ndp_tx->nd_addr);
-    rte_memcpy(&tx_buf->ndp_tx->hdr.nd_na_target, &ss_conf->ip6_address.ip6, IPV6_ALEN);
+    rte_memcpy(&tx_buf->ndp_tx->hdr.nd_na_target, &ss_conf->ip6_address.ip6_addr, IPV6_ALEN);
 
     rv = ss_frame_prepare_icmp6(tx_buf, (uint8_t*) tx_buf->ndp_tx, sizeof(ndp_reply_t));
     if (rv) {
