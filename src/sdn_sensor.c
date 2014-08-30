@@ -34,14 +34,18 @@
 #include <rte_byteorder.h>
 #include <rte_hexdump.h>
 
+#include <pcap/pcap.h>
+
 #include "checksum.h"
 #include "common.h"
+#include "ethernet.h"
 #include "sdn_sensor.h"
 #include "dpdk.h"
 #include "sensor_conf.h"
 
 /* GLOBAL VARIABLES */
 
+pcap_t* ss_pcap = NULL;
 ss_conf_t* ss_conf = NULL;
 rte_mempool_t* ss_pool = NULL;
 
@@ -229,6 +233,14 @@ int ss_launch_one_lcore(__attribute__((unused)) void *dummy) {
 }
 
 int main(int argc, char* argv[]) {
+    fprintf(stderr, "launching sdn_sensor version %s\n", SS_VERSION);
+    
+    ss_pcap = pcap_open_dead(DLT_EN10MB, 65536);
+    if (ss_pcap == NULL) {
+        fprintf(stderr, "could not prepare pcap_t\n");
+        exit(1);
+    }
+    
     ss_conf = ss_conf_file_parse();
     if (ss_conf == NULL) {
         fprintf(stderr, "could not parse sdn_sensor configuration\n");
