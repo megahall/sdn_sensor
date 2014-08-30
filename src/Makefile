@@ -21,10 +21,12 @@ WARNINGS = \
 -Wpointer-arith -Wvolatile-register-var \
 -Wno-unused-parameter
 
+SS_VERSION := $(shell echo `date "+%Y%m%d-%H%M%S"`-`git rev-parse --short HEAD`)
+
 FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -pthread -march=native
 INCLUDE_FILES  = -include $(RTE_SDK)/build/include/rte_config.h
 INCLUDE_PATHS  = -I$(RTE_SDK)/build/include
-CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS)
+CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) -DSS_VERSION="\"$(SS_VERSION)\""
 
 # XXX: work around bugs in iwyu utility
 IWYU_PATHS = -I/usr/local/include -I/usr/lib/llvm-3.4/lib/clang/3.4/include -I/usr/lib/gcc/x86_64-linux-gnu/4.8/include -I/usr/include/x86_64-linux-gnu -I/usr/include
