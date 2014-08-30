@@ -1,6 +1,7 @@
 #include <rte_hexdump.h>
 
 #include "common.h"
+#include "ethernet.h"
 #include "sdn_sensor.h"
 
 int ss_frame_handle_ip4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
