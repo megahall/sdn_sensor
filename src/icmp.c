@@ -2,6 +2,7 @@
 
 #include "checksum.h"
 #include "common.h"
+#include "ethernet.h"
 #include "sdn_sensor.h"
 
 // ICMPv6 Pseudo Header
@@ -82,7 +83,7 @@ int ss_frame_handle_echo4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     tx_buf->ip4->ttl                 = 0xff; // XXX: use constant
     tx_buf->ip4->protocol            = IPPROTO_ICMP;
     tx_buf->ip4->check               = rte_bswap16(0x0000);
-    tx_buf->ip4->saddr               = ss_conf->ip4_address.ip4.addr; // bswap ?????
+    tx_buf->ip4->saddr               = ss_conf->ip4_address.ip4_addr.addr; // bswap ?????
     tx_buf->ip4->daddr               = rx_buf->ip4->saddr;
 
     tx_buf->icmp4 = (icmp4_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(icmp4_hdr_t));
@@ -142,7 +143,7 @@ int ss_frame_handle_echo6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     tx_buf->ip6->ip6_hlim = 0x0ff; // XXX: use constant
     tx_buf->ip6->ip6_nxt  = IPPROTO_ICMPV6;
     rte_memcpy(&tx_buf->ip6->ip6_dst, &rx_buf->ip6->ip6_src, sizeof(tx_buf->ip6->ip6_dst));
-    rte_memcpy(&tx_buf->ip6->ip6_src, &ss_conf->ip6_address.ip6, sizeof(tx_buf->ip6->ip6_src));
+    rte_memcpy(&tx_buf->ip6->ip6_src, &ss_conf->ip6_address.ip6_addr, sizeof(tx_buf->ip6->ip6_src));
 
     tx_buf->icmp6 = (icmp6_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(icmp6_hdr_t));
     if (tx_buf->icmp6 == NULL) {
