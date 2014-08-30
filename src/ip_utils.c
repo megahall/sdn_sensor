@@ -28,28 +28,29 @@
 #include "common.h"
 #include "ip_utils.h"
 
-int ss_dump_cidr(FILE* fd, const char* label, ip_addr* ip_addr) {
+int ss_dump_cidr(FILE* fd, const char* label, ip_addr_t* ip_addr) {
     char tmp[SS_ADDR_STR_SIZE];
     memset(tmp, 0, sizeof(tmp));
     
     if (fd == NULL) fd = stderr;
     
     if (ip_addr == NULL) {
-        fprintf(fd, "CIDR %s: NULL\n", label);
+        fprintf(fd, "cidr %s: null\n", label);
         return -1;
     }
     
     ss_inet_ntop(ip_addr->family, ip_addr, tmp, sizeof(tmp));
     
-    fprintf(fd, "CIDR %s: %s\n", label, tmp);
+    fprintf(fd, "cidr %s: %s\n", label, tmp);
     return 0;
 }
 
-int ss_parse_cidr(const char* input, ip_addr* ip_addr) {
+int ss_parse_cidr(const char* input, ip_addr_t* ip_addr) {
     unsigned int input_len = 0;
     int rv = -1;
     char ip_str[SS_INET6_ADDRSTRLEN+4+1]; /* '+4' is for prefix (if any) */
-    char *prefix_start, *prefix_end;
+    char* prefix_start;
+    char* prefix_end;
     long prefix = 0;
     
     if (!input || ! *input || !ip_addr)
@@ -118,13 +119,13 @@ int ss_parse_cidr(const char* input, ip_addr* ip_addr) {
  * author:
  *      Paul Vixie, 1996.
  */
-int ss_inet_pton(int af, const char* src, ip_addr* dst) {
+int ss_inet_pton(int af, const char* src, ip_addr_t* dst) {
     switch (af) {
         case SS_AF_INET4: {
-            return (ss_inet_pton4(src, (uint8_t*) &dst->ip4));
+            return (ss_inet_pton4(src, (uint8_t*) &dst->ip4_addr));
         }
         case SS_AF_INET6: {
-            return (ss_inet_pton6(src, (uint8_t*) &dst->ip6));
+            return (ss_inet_pton6(src, (uint8_t*) &dst->ip6_addr));
         }
         default: {
             errno = EAFNOSUPPORT;
@@ -153,7 +154,7 @@ int ss_inet_pton4(const char* src, uint8_t* dst) {
     octets = 0;
     *(tp = tmp) = 0;
     while ((ch = *src++) != '\0') {
-        const char *pch;
+        const char* pch;
 
         if ((pch = strchr(digits, ch)) != NULL) {
             unsigned int new = *tp * 10 + (pch - digits);
@@ -198,7 +199,8 @@ int ss_inet_pton6(const char* src, uint8_t* dst) {
     static const char xdigits_l[] = "0123456789abcdef";
     static const char xdigits_u[] = "0123456789ABCDEF";
     unsigned char tmp[IPV6_ADDR_LEN], *tp = 0, *endp = 0, *colonp = 0;
-    const char *xdigits = 0, *curtok = 0;
+    const char* xdigits = 0;
+    const char* curtok = 0;
     int ch = 0, saw_xdigit = 0, count_xdigit = 0;
     unsigned int val = 0;
     unsigned dbloct_count = 0;
@@ -215,7 +217,7 @@ int ss_inet_pton6(const char* src, uint8_t* dst) {
     val = 0;
 
     while ((ch = *src++) != '\0') {
-        const char *pch;
+        const char* pch;
 
         if ((pch = strchr((xdigits = xdigits_l), ch)) == NULL)
             pch = strchr((xdigits = xdigits_u), ch);
@@ -292,7 +294,7 @@ int ss_inet_pton6(const char* src, uint8_t* dst) {
     return (1);
 }
 
-/* char *
+/* char*
  * ss_inet_ntop(af, src, dst, size)
  *      convert a network format address to presentation format.
  * return:
@@ -300,13 +302,13 @@ int ss_inet_pton6(const char* src, uint8_t* dst) {
  * author:
  *      Paul Vixie, 1996.
  */
-const char * ss_inet_ntop(int af, const void* src, char* dst, unsigned int size) {
+const char* ss_inet_ntop(int af, const ip_addr_t* src, char* dst, unsigned int size) {
     switch (af) {
         case SS_AF_INET4: {
-            return (ss_inet_ntop4(src, dst, size));
+            return (ss_inet_ntop4((uint8_t*) &src->ip4_addr, dst, size));
         }
         case SS_AF_INET6: {
-            return (ss_inet_ntop6(src, dst, size));
+            return (ss_inet_ntop6((uint8_t*) &src->ip6_addr, dst, size));
         }
         default: {
             errno = EAFNOSUPPORT;
@@ -316,7 +318,7 @@ const char * ss_inet_ntop(int af, const void* src, char* dst, unsigned int size)
     /* NOTREACHED */
 }
 
-/* const char *
+/* const char*
  * ss_inet_ntop4(src, dst, size)
  *      format an IPv4 address
  * return:
@@ -339,7 +341,7 @@ const char* ss_inet_ntop4(const uint8_t* src, char* dst, unsigned int size) {
     return strcpy(dst, tmp);
 }
 
-/* const char *
+/* const char*
  * inet_ntop6(src, dst, size)
  *      convert IPv6 binary address into presentation (printable) format
  * author:
