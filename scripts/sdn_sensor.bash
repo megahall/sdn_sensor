@@ -49,7 +49,7 @@ export PCI_ID_2="0000:01:00.1"
 
 modprobe igb || true
 ip link set dev em1 up
-ip addr add 192.168.1.6/24 dev em1 || true
+ip addr add 192.168.2.6/24 dev em1 || true
 
 if [[ $setup -gt 0 ]]; then
     echo "setup only, stopping"
