@@ -2,10 +2,10 @@
     "network": {
         "promiscuous_mode": true,
         "mtu":              1454,
-        "ipv4_address":     "192.168.1.7/24",
-        "ipv4_gateway":     "192.168.1.1",
-        "ipv6_address":     "2607:f1c0:800:103::7/64",
-        "ipv6_gateway":     "2607:f1c0:800:103::1",
+        "ipv4_address":     "192.168.2.7/24",
+        "ipv4_gateway":     "192.168.2.1",
+        "ipv6_address":     "2602:306:322e:5ae8::7/64",
+        "ipv6_gateway":     "2602:306:322e:5ae8::1",
     },
     
     "dpdk": {
@@ -23,7 +23,7 @@
             "name": "",
             "re": "",
             "nm_queue_format": "json_object",
-            "nm_queue_type": "PIPELINE",
+            "nm_queue_type": "PUSH",
             "nm_queue_url": "tcp://127.0.0.1:10001",
         },
     ],
@@ -35,7 +35,7 @@
             "name": "http_get_request",
             "filter": "(port 80 or port 443) and (tcp[((tcp[12:1] & 0xf0) >> 2):4] = 0x47455420 or tcp[((tcp[12:1] & 0xf0) >> 2)+8:4] = 0x20323030)",
             "nm_queue_format": "metadata",
-            "nm_queue_type": "PIPELINE",
+            "nm_queue_type": "PUSH",
             "nm_queue_url": "tcp://127.0.0.1:10002",
         },
     ],
@@ -46,7 +46,7 @@
         "10.0.0.0/8" : {
             "name": "rfc_1918_10.0.0.0/8",
             "nm_queue_format": "metadata",
-            "nm_queue_type": "PIPELINE",
+            "nm_queue_type": "PUSH",
             "nm_queue_url": "tcp://127.0.0.1:10003",
         }
     },
