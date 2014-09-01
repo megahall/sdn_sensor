@@ -43,54 +43,28 @@ char* ss_json_string_get(json_object* items, const char* key) {
     return rv;
 }
 
-int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
-    char* value;
+int ss_metadata_prepare(ss_frame_t* fbuf) {
+    ss_metadata_t* m = &fbuf->data;
     
-    value = ss_json_string_get(items, "nm_queue_url");
-    if (value == NULL) {
-        fprintf(stderr, "nm_queue_url is null\n");
-        goto error_out;
-    }
-    strlcpy(nn_queue->url, value, sizeof(nn_queue->url));
+    m->json        = NULL;
+    m->port_id     = -1;
+    m->direction   = -1;
+    m->self        = 0;
+    m->length      = 0;
+    memset(m->smac, 0, sizeof(m->smac));
+    memset(m->dmac, 0, sizeof(m->dmac));
+    m->eth_type    = 0x0000;
+    memset(m->sip, 0, sizeof(m->sip));
+    memset(m->dip, 0, sizeof(m->dip));
+    m->ip_protocol = -1;
+    m->ttl         = 0;
+    m->l4_length   = -1;
+    m->icmp_type   = -1;
+    m->icmp_code   = -1;
+    m->tcp_flags   = 0;
+    m->sport       = 0;
+    m->dport       = 0;
     
-    value = ss_json_string_get(items, "nm_queue_type");
-    if (value == NULL) {
-        fprintf(stderr, "nm_queue_type is null\n");
-        goto error_out;
-    }
-    if      (!strcasecmp(value, "BUS"))        nn_queue->type = NN_BUS;
-    else if (!strcasecmp(value, "PAIR"))       nn_queue->type = NN_PAIR;
-    else if (!strcasecmp(value, "PUSH"))       nn_queue->type = NN_PUSH;
-    else if (!strcasecmp(value, "PULL"))       nn_queue->type = NN_PULL;
-    else if (!strcasecmp(value, "PUB"))        nn_queue->type = NN_PUB;
-    else if (!strcasecmp(value, "SUB"))        nn_queue->type = NN_SUB;
-    else if (!strcasecmp(value, "REQ"))        nn_queue->type = NN_REQ;
-    else if (!strcasecmp(value, "REP"))        nn_queue->type = NN_REP;
-    else if (!strcasecmp(value, "SURVEYOR"))   nn_queue->type = NN_SURVEYOR;
-    else if (!strcasecmp(value, "RESPONDENT")) nn_queue->type = NN_RESPONDENT;
-    else {
-        fprintf(stderr, "unknown nm_queue_type %s\n", value);
-    }
-    
-    nn_queue->conn = nn_socket(AF_SP, nn_queue->type);
-    if (nn_queue->conn < 0) {
-        fprintf(stderr, "could not allocate nm queue socket: %s\n", nn_strerror(nn_errno()));
-        goto error_out;
-    }
-    
-    fprintf(stderr, "created nm_queue type %s url %s\n", value, nn_queue->url);
-    
-    return 0;
-    
-    error_out:
-    ss_nn_queue_destroy(nn_queue);
-    return -1;
-}
-
-int ss_nn_queue_destroy(nn_queue_t* nn_queue) {
-    if (nn_queue->conn >= 0) { nn_close(nn_queue->conn); nn_queue->conn = -1; }
-    nn_queue->type = -1;
-    memset(nn_queue->url, 0, sizeof(nn_queue->url));
     return 0;
 }
 
@@ -200,11 +174,29 @@ int ss_pcap_chain_add(ss_pcap_chain_t* pcap_match, ss_pcap_entry_t* pcap_entry) 
 }
 
 int ss_pcap_chain_remove_index(ss_pcap_chain_t* pcap_match, int index) {
-    return 0;
+    int counter = 0;
+    ss_pcap_entry_t* pptr;
+    ss_pcap_entry_t* ptmp;
+    TAILQ_FOREACH_SAFE(pptr, &ss_conf->pcap_chain.pcap_list, entry, ptmp) {
+        if (counter == index) {
+            TAILQ_REMOVE(&ss_conf->pcap_chain.pcap_list, pptr, entry);
+            return 0;
+        }
+        ++counter;
+    }
+    return -1;
 }
 
 int ss_pcap_chain_remove_filter(ss_pcap_chain_t* pcap_match, char* filter) {
-    return 0;
+    ss_pcap_entry_t* pptr;
+    ss_pcap_entry_t* ptmp;
+    TAILQ_FOREACH_SAFE(pptr, &ss_conf->pcap_chain.pcap_list, entry, ptmp) {
+        if (!strcasecmp(filter, pptr->filter)) {
+            TAILQ_REMOVE(&ss_conf->pcap_chain.pcap_list, pptr, entry);
+            return 0;
+        }
+    }
+    return -1;
 }
 
 int ss_pcap_match_prepare(ss_pcap_match_t* pcap_match, uint8_t* packet, uint16_t length) {
@@ -217,7 +209,12 @@ int ss_pcap_match_prepare(ss_pcap_match_t* pcap_match, uint8_t* packet, uint16_t
     return 0;
 }
 
-int ss_pcap_match(ss_pcap_chain_t* pcap_chain, ss_pcap_match_t* pcap_match) {
+/*
+ * Checks for a pcap filter match between a given pcap filter and a given 
+ * packet. Returns >0 for match, 0, for non-match, <0 for error.
+ */
+int ss_pcap_match(ss_pcap_entry_t* pcap_entry, ss_pcap_match_t* pcap_match) {
+    
     return 0;
 }
 
