@@ -23,7 +23,7 @@ WARNINGS = \
 
 SS_VERSION := $(shell echo `date "+%Y%m%d-%H%M%S"`-`git rev-parse --short HEAD`)
 
-FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -pthread -march=native
+FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -pthread -march=native -std=gnu11
 INCLUDE_FILES  = -include $(RTE_SDK)/build/include/rte_config.h
 INCLUDE_PATHS  = -I$(RTE_SDK)/build/include
 CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) -DSS_VERSION="\"$(SS_VERSION)\""
@@ -47,7 +47,7 @@ HEADERS = $(wildcard *.h)
 
 sdn_sensor: $(OBJECTS)
 	@echo 'Linking sdn_sensor...'
-	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) -lbsd -ldl -ljson-c -lm -lmsgpack -lnanomsg -lpcap -lpcre -lpthread -lrt
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) -lbsd -ldl -ljson-c -lm -lnanomsg -lpcap -lpcre -lpthread -lrt
 
 $(OBJECTS): $(HEADERS) $(SOURCES)
 
