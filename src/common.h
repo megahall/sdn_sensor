@@ -8,11 +8,6 @@
 #include <pcap/pcap.h>
 #include <pcre.h>
 
-/*
-#include <net/ethernet.h>
-#include <netinet/ether.h>
-#include <netinet/if_ether.h>
-*/
 #include <net/if_arp.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
@@ -25,7 +20,10 @@
 #include <rte_log.h>
 #include <rte_lpm.h>
 #include <rte_memory.h>
+#include <rte_mempool.h>
 #include <rte_mbuf.h>
+
+#include "nn_queue.h"
 
 /* MACROS */
 
@@ -38,13 +36,12 @@
 #define SS_INT16_SIZE         2
 #define SS_ADDR_STR_SIZE     64
 
-#define IPV4_ADDR_LEN         4
-#define IPV6_ADDR_LEN        16
 #define SS_V4_PREFIX_MAX     32
 #define SS_V6_PREFIX_MAX    128
 
-/* should be enough for the nanomsg queue URL */
-#define NN_URL_MAX 256
+#define ETH_ALEN   6
+#define IPV4_ALEN  4
+#define IPV6_ALEN 16
 
 /* enough to hold [max_ipv6]/128 plus a bit extra */
 #define CIDR_LENGTH_MAX 64
@@ -52,24 +49,31 @@
 #define ETHER_TYPE_IPV4 ETHER_TYPE_IPv4
 #define ETHER_TYPE_IPV6 ETHER_TYPE_IPv6
 
+#define IPPROTO_ICMPV4 IPPROTO_ICMP
+
+#define L4_PORT_SYSLOG      514
+#define L4_PORT_SYSLOG_TLS  601
+#define L4_PORT_SFLOW      6343
+#define L4_PORT_NETFLOW    9996
+
 /* TYPEDEFS */
 
-typedef struct rte_mbuf rte_mbuf_t;
+typedef struct rte_mbuf    rte_mbuf_t;
 typedef struct rte_mempool rte_mempool_t;
 
-typedef struct rte_hash rte_hash_t;
-typedef struct rte_lpm  rte_lpm4_t;
-typedef struct rte_lpm6 rte_lpm6_t;
+typedef struct rte_hash    rte_hash_t;
+typedef struct rte_lpm     rte_lpm4_t;
+typedef struct rte_lpm6    rte_lpm6_t;
 
-typedef struct ether_addr          eth_addr_t;
-typedef struct ether_hdr           eth_hdr_t;
-typedef struct ether_arp           arp_hdr_t;
-typedef struct iphdr               ip4_hdr_t;
-typedef struct ip6_hdr             ip6_hdr_t;
-typedef struct icmphdr             icmp4_hdr_t;
-typedef struct icmp6_hdr           icmp6_hdr_t;
-typedef struct tcp_hdr             tcp_hdr_t;
-typedef struct udp_hdr             udp_hdr_t;
+typedef struct ether_addr  eth_addr_t;
+typedef struct ether_hdr   eth_hdr_t;
+typedef struct ether_arp   arp_hdr_t;
+typedef struct iphdr       ip4_hdr_t;
+typedef struct ip6_hdr     ip6_hdr_t;
+typedef struct icmphdr     icmp4_hdr_t;
+typedef struct icmp6_hdr   icmp6_hdr_t;
+typedef struct tcphdr      tcp_hdr_t;
+typedef struct udphdr      udp_hdr_t;
 
 /* DATA TYPES */
 
@@ -98,9 +102,14 @@ struct ip_addr_s {
 
 typedef struct ip_addr_s ip_addr_t;
 
-#define ETH_ALEN   6
-#define IPV4_ALEN  4
-#define IPV6_ALEN 16
+struct eth_vhdr_s {
+    uint16_t ether_type;
+    uint16_t tag      : 12;
+    uint16_t drop     :  1;
+    uint16_t priority :  3;
+};
+
+typedef struct eth_vhdr_s eth_vhdr_t;
 
 struct ether_arp {
     struct  arphdr ea_hdr;         /* fixed-size header */
@@ -140,20 +149,46 @@ struct ndp_reply_s {
 typedef struct ndp_reply_s ndp_reply_t;
 
 enum direction_e {
-    SS_FRAME_RX,
-    SS_FRAME_TX,
+    SS_FRAME_RX = 1,
+    SS_FRAME_TX = 2,
+    SS_FRAME_MAX,
 };
 
 typedef enum direction_e direction_t;
 
+struct ss_metadata_s {
+    json_object* json;
+    
+    uint32_t port_id;
+    uint8_t  direction;
+    uint8_t  self;
+    uint16_t length;
+    uint8_t  smac[ETHER_ADDR_LEN];
+    uint8_t  dmac[ETHER_ADDR_LEN];
+    uint16_t eth_type;
+    uint8_t  sip[IPV6_ALEN];
+    uint8_t  dip[IPV6_ALEN];
+    uint8_t  ip_protocol;
+    uint8_t  ttl;
+    uint16_t l4_length;
+    uint8_t  icmp_type;
+    uint8_t  icmp_code;
+    uint8_t  tcp_flags;
+    uint16_t sport;
+    uint16_t dport;
+} __rte_cache_aligned;
+
+typedef struct ss_metadata_s ss_metadata_t;
+
 struct ss_frame_s {
     unsigned int   active;
-    unsigned int   port_id;
-    unsigned int   length;
-    direction_t    direction;
+    //unsigned int   port_id;
+    //unsigned int   length;
+    //direction_t    direction;
     rte_mbuf_t*    mbuf;
     
     eth_hdr_t*     eth;
+    eth_vhdr_t*    ethv;
     arp_hdr_t*     arp;
     ndp_request_t* ndp_rx;
     ndp_reply_t*   ndp_tx;
@@ -163,27 +198,11 @@ struct ss_frame_s {
     icmp6_hdr_t*   icmp6;
     tcp_hdr_t*     tcp;
     udp_hdr_t*     udp;
+    
+    ss_metadata_t  data;
 } __rte_cache_aligned;
 
 typedef struct ss_frame_s ss_frame_t;
-
-typedef void (*process_packet_fptr)(ss_frame_t*);
-
-enum nn_queue_format_e {
-    NN_FORMAT_METADATA = 1,
-    NN_FORMAT_PACKET   = 2,
-};
-
-typedef enum nn_queue_format_e nn_queue_format_t;
-
-struct nn_queue_s {
-    int               conn;
-    nn_queue_format_t format;
-    int               type;
-    char              url[NN_URL_MAX];
-};
-
-typedef struct nn_queue_s nn_queue_t;
 
 /* RE CHAIN */
 
@@ -278,8 +297,7 @@ typedef struct ss_string_trie_s ss_string_trie_t;
 /* BEGIN PROTOTYPES */
 
 char* ss_json_string_get(json_object* items, const char* key);
-int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue);
-int ss_nn_queue_destroy(nn_queue_t* nn_queue);
+int ss_metadata_prepare(ss_frame_t* fbuf);
 int ss_re_chain_destroy(ss_re_chain_t* re_chain);
 ss_re_entry_t* ss_re_entry_create(json_object* re_json);
 int ss_re_entry_destroy(ss_re_entry_t* re_entry);
@@ -294,7 +312,7 @@ int ss_pcap_chain_add(ss_pcap_chain_t* pcap_match, ss_pcap_entry_t* pcap_entry);
 int ss_pcap_chain_remove_index(ss_pcap_chain_t* pcap_match, int index);
 int ss_pcap_chain_remove_filter(ss_pcap_chain_t* pcap_match, char* filter);
 int ss_pcap_match_prepare(ss_pcap_match_t* pcap_match, uint8_t* packet, uint16_t length);
-int ss_pcap_match(ss_pcap_chain_t* pcap_chain, ss_pcap_match_t* pcap_match);
+int ss_pcap_match(ss_pcap_entry_t* pcap_entry, ss_pcap_match_t* pcap_match);
 ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_table_json);
 int ss_cidr_table_destroy(ss_cidr_table_t* cidr_table);
 ss_cidr_entry_t* ss_cidr_entry_create(json_object* cidr_json);
