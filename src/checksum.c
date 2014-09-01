@@ -1,4 +1,4 @@
-#include <inttypes.h>
+#include <stdint.h>
 
 uint16_t ss_in_cksum(uint16_t* data, int len) {
     register int sum     = 0;

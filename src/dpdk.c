@@ -9,7 +9,7 @@
 #include "dpdk.h"
 
 /* Print out statistics on packets dropped */
-void ss_port_stats_print(struct ss_port_statistics* port_statistics, unsigned int port_limit) {
+void ss_port_stats_print(ss_port_statistics_t* port_statistics, unsigned int port_limit) {
     uint64_t total_packets_dropped, total_packets_tx, total_packets_rx;
     unsigned int port_id;
 

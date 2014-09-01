@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include <rte_config.h>
+#include <rte_ether.h>
 #include <rte_mbuf.h>
 #include <rte_memory.h>
 
@@ -61,17 +62,23 @@ struct mbuf_table {
     struct rte_mbuf* mbufs[MAX_PKT_BURST];
 } __rte_cache_aligned;
 
+typedef struct mbuf_table mbuf_table_t;
+
 struct lcore_queue_conf {
     unsigned rx_port_count;
     unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
     struct mbuf_table tx_table[RTE_MAX_ETHPORTS];
 } __rte_cache_aligned;
 
+typedef struct lcore_queue_conf lcore_queue_conf_t;
+
 struct ss_port_statistics {
     uint64_t tx;
     uint64_t rx;
     uint64_t dropped;
 } __rte_cache_aligned;
+
+typedef struct ss_port_statistics ss_port_statistics_t;
 
 /* BEGIN PROTOTYPES */
 

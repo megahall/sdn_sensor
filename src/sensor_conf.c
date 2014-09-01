@@ -8,6 +8,7 @@
 #include <wordexp.h>
 
 #include <bsd/string.h>
+#include <bsd/sys/queue.h>
 #include <json-c/json.h>
 
 #include "common.h"

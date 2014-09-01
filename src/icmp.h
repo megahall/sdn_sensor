@@ -1,8 +1,9 @@
 #ifndef __ICMP_H__
 #define __ICMP_H__
 
+#include <stdint.h>
+
 #include "common.h"
-#include "sdn_sensor.h"
 
 /* BEGIN PROTOTYPES */
 

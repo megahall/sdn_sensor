@@ -148,7 +148,7 @@ int ss_inet_pton(int af, const char* src, ip_addr_t* dst) {
 int ss_inet_pton4(const char* src, uint8_t* dst) {
     static const char digits[] = "0123456789";
     int saw_digit, octets, ch;
-    unsigned char tmp[IPV4_ADDR_LEN], *tp;
+    unsigned char tmp[IPV4_ALEN], *tp;
 
     saw_digit = 0;
     octets = 0;
@@ -178,7 +178,7 @@ int ss_inet_pton4(const char* src, uint8_t* dst) {
     if (octets < 4)
         return (0);
     
-    memcpy(dst, tmp, IPV4_ADDR_LEN);
+    memcpy(dst, tmp, IPV4_ALEN);
     return (1);
 }
 
@@ -198,15 +198,15 @@ int ss_inet_pton4(const char* src, uint8_t* dst) {
 int ss_inet_pton6(const char* src, uint8_t* dst) {
     static const char xdigits_l[] = "0123456789abcdef";
     static const char xdigits_u[] = "0123456789ABCDEF";
-    unsigned char tmp[IPV6_ADDR_LEN], *tp = 0, *endp = 0, *colonp = 0;
+    unsigned char tmp[IPV6_ALEN], *tp = 0, *endp = 0, *colonp = 0;
     const char* xdigits = 0;
     const char* curtok = 0;
     int ch = 0, saw_xdigit = 0, count_xdigit = 0;
     unsigned int val = 0;
     unsigned dbloct_count = 0;
 
-    memset((tp = tmp), '\0', IPV6_ADDR_LEN);
-    endp = tp + IPV6_ADDR_LEN;
+    memset((tp = tmp), '\0', IPV6_ALEN);
+    endp = tp + IPV6_ALEN;
     colonp = NULL;
     /* Leading :: requires some special handling. */
     if (*src == ':')
@@ -252,9 +252,9 @@ int ss_inet_pton6(const char* src, uint8_t* dst) {
             dbloct_count++;
             continue;
         }
-        if (ch == '.' && ((tp + IPV4_ADDR_LEN) <= endp) &&
+        if (ch == '.' && ((tp + IPV4_ALEN) <= endp) &&
             ss_inet_pton4(curtok, tp) > 0) {
-            tp += IPV4_ADDR_LEN;
+            tp += IPV4_ALEN;
             saw_xdigit = 0;
             dbloct_count += 2;
             break;  /* '\0' was seen by ss_inet_pton4(). */
@@ -290,7 +290,7 @@ int ss_inet_pton6(const char* src, uint8_t* dst) {
         return (0);
     }
     
-    memcpy(dst, tmp, IPV6_ADDR_LEN);
+    memcpy(dst, tmp, IPV6_ALEN);
     return (1);
 }
 
@@ -354,7 +354,7 @@ const char* ss_inet_ntop6(const uint8_t* src, char* dst, unsigned int size) {
      */
     char tmp[sizeof "ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255"], *tp;
     struct { int base, len; } best, cur;
-    u_int words[IPV6_ADDR_LEN / SS_INT16_SIZE];
+    u_int words[IPV6_ALEN / SS_INT16_SIZE];
     int i;
 
     /*
@@ -363,14 +363,14 @@ const char* ss_inet_ntop6(const uint8_t* src, char* dst, unsigned int size) {
      *      Find the longest run of 0x00's in src[] for :: shorthanding.
      */
     memset(words, '\0', sizeof words);
-    for (i = 0; i < IPV6_ADDR_LEN; i += 2) {
+    for (i = 0; i < IPV6_ALEN; i += 2) {
         words[i / 2] = (src[i] << 8) | src[i + 1];
     }
     best.base = -1;
     cur.base = -1;
     best.len = 0;
     cur.len = 0;
-    for (i = 0; i < (IPV6_ADDR_LEN / SS_INT16_SIZE); i++) {
+    for (i = 0; i < (IPV6_ALEN / SS_INT16_SIZE); i++) {
         if (words[i] == 0) {
             if (cur.base == -1) {
                 cur.base = i, cur.len = 1;
@@ -401,7 +401,7 @@ const char* ss_inet_ntop6(const uint8_t* src, char* dst, unsigned int size) {
      * Format the result.
      */
     tp = tmp;
-    for (i = 0; i < (IPV6_ADDR_LEN / SS_INT16_SIZE); i++) {
+    for (i = 0; i < (IPV6_ALEN / SS_INT16_SIZE); i++) {
         /* Are we inside the best run of 0x00's? */
         if (best.base != -1 && i >= best.base && i < (best.base + best.len)) {
             if (i == best.base) {
@@ -424,7 +424,7 @@ const char* ss_inet_ntop6(const uint8_t* src, char* dst, unsigned int size) {
         tp += sprintf(tp, "%x", words[i]);
     }
     /* Was it a trailing run of 0x00's? */
-    if (best.base != -1 && (best.base + best.len) == (IPV6_ADDR_LEN / SS_INT16_SIZE)) {
+    if (best.base != -1 && (best.base + best.len) == (IPV6_ALEN / SS_INT16_SIZE)) {
         *tp++ = ':';
     }
     *tp++ = '\0';

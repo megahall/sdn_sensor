@@ -1,6 +1,7 @@
 #ifndef __EXTRACTOR_H__
 #define __EXTRACTOR_H__
 
+#include "common.h"
 
 /* BEGIN PROTOTYPES */
 
