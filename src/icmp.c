@@ -1,9 +1,22 @@
+#include <stdint.h>
+#include <stdio.h>
+#include <string.h>
+
+#include <netinet/icmp6.h>
+#include <netinet/in.h>
+#include <netinet/ip6.h>
+#include <netinet/ip_icmp.h>
+
 #include <rte_byteorder.h>
+#include <rte_log.h>
+#include <rte_mbuf.h>
+#include <rte_memcpy.h>
 
 #include "checksum.h"
 #include "common.h"
 #include "ethernet.h"
 #include "sdn_sensor.h"
+#include "sensor_conf.h"
 
 // ICMPv6 Pseudo Header
 // 
@@ -63,7 +76,7 @@ int ss_frame_handle_echo4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     uint16_t checksum;
     uint8_t* dptr;
 
-    rv = ss_frame_prep_eth(tx_buf, rx_buf->port_id, (eth_addr_t*) &rx_buf->eth->s_addr, ETHER_TYPE_IPV4);
+    rv = ss_frame_prepare_eth(tx_buf, rx_buf->data.port_id, (eth_addr_t*) &rx_buf->eth->s_addr, ETHER_TYPE_IPV4);
     if (rv) {
         RTE_LOG(ERR, SS, "could not prepare ethernet mbuf\n");
         goto error_out;
@@ -81,7 +94,7 @@ int ss_frame_handle_echo4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     tx_buf->ip4->id                  = rte_bswap16(0x0000);
     tx_buf->ip4->frag_off            = 0;
     tx_buf->ip4->ttl                 = 0xff; // XXX: use constant
-    tx_buf->ip4->protocol            = IPPROTO_ICMP;
+    tx_buf->ip4->protocol            = IPPROTO_ICMPV4;
     tx_buf->ip4->check               = rte_bswap16(0x0000);
     tx_buf->ip4->saddr               = ss_conf->ip4_address.ip4_addr.addr; // bswap ?????
     tx_buf->ip4->daddr               = rx_buf->ip4->saddr;
@@ -128,7 +141,7 @@ int ss_frame_handle_echo6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     uint16_t rx_dlen;
     uint16_t tx_plen;
 
-    rv = ss_frame_prep_eth(tx_buf, rx_buf->port_id, (eth_addr_t*) &rx_buf->eth->s_addr, ETHER_TYPE_IPV6);
+    rv = ss_frame_prepare_eth(tx_buf, rx_buf->data.port_id, (eth_addr_t*) &rx_buf->eth->s_addr, ETHER_TYPE_IPV6);
     if (rv) {
         RTE_LOG(ERR, SS, "could not prepare ethernet mbuf\n");
         goto error_out;
@@ -189,16 +202,17 @@ int ss_frame_handle_echo6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
 int ss_frame_handle_icmp4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
 
-    rx_buf->icmp4 = (icmp4_hdr_t*) ((uint8_t*) rx_buf->ip4 + sizeof(ip4_hdr_t));
+    //rx_buf->icmp4 = (icmp4_hdr_t*) ((uint8_t*) rx_buf->ip4 + sizeof(ip4_hdr_t));
 
     uint8_t icmp_type = rx_buf->icmp4->type;
+    RTE_LOG(INFO, SS, "icmp4 type %hhu\n", icmp_type);
     switch (icmp_type) {
         case ICMP_ECHO: {
             rv = ss_frame_handle_echo4(rx_buf, tx_buf);
             break;
         }
         default: {
-            RTE_LOG(INFO, SS, "port %u received unsupported icmpv4 0x%04hhx frame:\n", rx_buf->port_id, icmp_type);
+            RTE_LOG(INFO, SS, "port %u received unsupported icmpv4 0x%04hhx frame:\n", rx_buf->data.port_id, icmp_type);
             rte_pktmbuf_dump(stdout, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
             rv = -1;
             break;
@@ -211,10 +225,11 @@ int ss_frame_handle_icmp4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
 int ss_frame_handle_icmp6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
 
-    rx_buf->icmp6 = (icmp6_hdr_t*) ((uint8_t*) rx_buf->ip6 + sizeof(ip6_hdr_t));
+    //rx_buf->icmp6 = (icmp6_hdr_t*) ((uint8_t*) rx_buf->ip6 + sizeof(ip6_hdr_t));
 
     // XXX: add the PMTUD request
     uint8_t icmp_type = rx_buf->icmp6->icmp6_type;
+    RTE_LOG(INFO, SS, "icmp6 type %hhu\n", icmp_type);
     switch (icmp_type) {
         case ICMP6_ECHO_REQUEST: {
             rv = ss_frame_handle_echo6(rx_buf, tx_buf);
@@ -225,7 +240,7 @@ int ss_frame_handle_icmp6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
             break;
         }
         default: {
-            RTE_LOG(INFO, SS, "port %u received unsupported icmpv6 0x%04hhx frame:\n", rx_buf->port_id, icmp_type);
+            RTE_LOG(INFO, SS, "port %u received unsupported icmpv6 0x%04hhx frame:\n", rx_buf->data.port_id, icmp_type);
             rte_pktmbuf_dump(stdout, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
             rv = -1;
             break;
@@ -234,4 +249,3 @@ int ss_frame_handle_icmp6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
 
     return rv;
 }
-
