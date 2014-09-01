@@ -205,6 +205,9 @@ int ss_frame_handle_icmp4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     //rx_buf->icmp4 = (icmp4_hdr_t*) ((uint8_t*) rx_buf->ip4 + sizeof(ip4_hdr_t));
 
     uint8_t icmp_type = rx_buf->icmp4->type;
+    uint8_t icmp_code = rx_buf->icmp4->code;
+    rx_buf->data.icmp_type = icmp_type;
+    rx_buf->data.icmp_code = icmp_code;
     RTE_LOG(INFO, SS, "icmp4 type %hhu\n", icmp_type);
     switch (icmp_type) {
         case ICMP_ECHO: {
@@ -229,6 +232,9 @@ int ss_frame_handle_icmp6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
 
     // XXX: add the PMTUD request
     uint8_t icmp_type = rx_buf->icmp6->icmp6_type;
+    uint8_t icmp_code = rx_buf->icmp6->icmp6_code;
+    rx_buf->data.icmp_type = icmp_type;
+    rx_buf->data.icmp_code = icmp_code;
     RTE_LOG(INFO, SS, "icmp6 type %hhu\n", icmp_type);
     switch (icmp_type) {
         case ICMP6_ECHO_REQUEST: {
