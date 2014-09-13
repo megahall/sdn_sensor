@@ -6,42 +6,23 @@
 #include <sys/time.h>
 
 #include <bsd/string.h>
+#include <bsd/sys/queue.h>
+
+#include <json-c/json.h>
 
 #include <pcap/pcap.h>
 
+#include <rte_lpm.h>
+#include <rte_lpm6.h>
 #include <rte_log.h>
 
+#include <uthash.h>
+
 #include "common.h"
+#include "json.h"
 #include "sdn_sensor.h"
 
 /* COMMON */
-
-char* ss_json_string_get(json_object* items, const char* key) {
-    json_object* item;
-    const char* value;
-    char* rv;
-    
-    item = json_object_object_get(items, key);
-    if (item == NULL) {
-        fprintf(stderr, "key %s not present\n", key);
-        return NULL;
-    }
-    if (!json_object_is_type(item, json_type_string)) {
-        fprintf(stderr, "value for %s is not object\n", key);
-        return NULL;
-    }
-    value = json_object_get_string(item);
-    if (value == NULL) {
-        fprintf(stderr, "value for %s is null\n", key);
-        return NULL;
-    }
-    rv = strdup(value);
-    if (rv == NULL) {
-        fprintf(stderr, "could not allocate return value for %s\n", key);
-        return NULL;
-    }
-    return rv;
-}
 
 int ss_metadata_prepare(ss_frame_t* fbuf) {
     ss_metadata_t* m = &fbuf->data;
@@ -64,13 +45,15 @@ int ss_metadata_prepare(ss_frame_t* fbuf) {
     m->tcp_flags   = 0;
     m->sport       = 0;
     m->dport       = 0;
+    memset(m->dns_name, 0, sizeof(m->dns_name));
+    memset(m->dns_values, 0, sizeof(m->dns_values));
     
     return 0;
 }
 
 /* RE CHAIN */
 
-int ss_re_chain_destroy(ss_re_chain_t* re_chain) {
+int ss_re_chain_destroy() {
     return 0;
 }
 
@@ -82,25 +65,25 @@ int ss_re_entry_destroy(ss_re_entry_t* re_entry) {
     return 0;
 }
  
-int ss_re_chain_add(ss_re_chain_t* re_chain, ss_re_entry_t* re_entry) {
+int ss_re_chain_add(ss_re_entry_t* re_entry) {
     return 0;
 }
  
-int ss_re_chain_remove_index(ss_re_chain_t* re_chain, int index) {
+int ss_re_chain_remove_index(int index) {
     return 0;
 }
 
-int ss_re_chain_remove_re(ss_re_chain_t* re_chain, char* re) {
+int ss_re_chain_remove_re(char* re) {
     return 0;
 }
 
-int ss_re_chain_match(ss_re_chain_t* re_chain, char* input) {
+int ss_re_chain_match(char* input) {
     return 0;
 }
 
 /* PCAP CHAIN */
 
-int ss_pcap_chain_destroy(ss_pcap_chain_t* pcap_chain) {
+int ss_pcap_chain_destroy() {
     return 0;
 }
 
@@ -111,7 +94,7 @@ ss_pcap_entry_t* ss_pcap_entry_create(json_object* pcap_json) {
     
     pcap_entry = malloc(sizeof(ss_pcap_entry_t));
     if (pcap_entry == NULL) {
-        fprintf(stderr, "could not create pcap entry\n");
+        fprintf(stderr, "could not allocate pcap entry\n");
         goto error_out;
     }
     memset(pcap_entry, 0, sizeof(ss_pcap_entry_t));
@@ -125,8 +108,6 @@ ss_pcap_entry_t* ss_pcap_entry_create(json_object* pcap_json) {
         goto error_out;
     }
     
-    // name, filter, nm_queue_format, nm_queue_type, nm_queue_url
-    // char* ss_json_string_get(json_object* items, char* key) {
     pcap_entry->name = ss_json_string_get(pcap_json, "name");
     if (pcap_entry->name == NULL) {
         fprintf(stderr, "pcap_entry name is null\n");
@@ -140,7 +121,7 @@ ss_pcap_entry_t* ss_pcap_entry_create(json_object* pcap_json) {
     
     rv = ss_nn_queue_create(pcap_json, &pcap_entry->nn_queue);
     if (rv) {
-        fprintf(stderr, "could not create pcap nm_queue\n");
+        fprintf(stderr, "could not allocate pcap nm_queue\n");
         goto error_out;
     }
     
@@ -160,20 +141,21 @@ ss_pcap_entry_t* ss_pcap_entry_create(json_object* pcap_json) {
 }
 
 int ss_pcap_entry_destroy(ss_pcap_entry_t* pcap_entry) {
-    pcap_entry->match_count = 0;
-    if (pcap_entry)             pcap_freecode(&pcap_entry->bpf_filter);
-    if (pcap_entry->name)       free(pcap_entry->name);       pcap_entry->name = NULL;
-    if (pcap_entry->filter)     free(pcap_entry->filter);     pcap_entry->filter = NULL;
-    if (pcap_entry)             free(pcap_entry);             pcap_entry = NULL;
+    pcap_entry->matches = 0;
+    if (pcap_entry)             { pcap_freecode(&pcap_entry->bpf_filter);                  }
+    ss_nn_queue_destroy(&pcap_entry->nn_queue);
+    if (pcap_entry->name)       { free(pcap_entry->name);       pcap_entry->name = NULL;   }
+    if (pcap_entry->filter)     { free(pcap_entry->filter);     pcap_entry->filter = NULL; }
+    if (pcap_entry)             { free(pcap_entry);             pcap_entry = NULL;         }
     return 0;
 }
 
-int ss_pcap_chain_add(ss_pcap_chain_t* pcap_match, ss_pcap_entry_t* pcap_entry) {
-    TAILQ_INSERT_TAIL(&pcap_match->pcap_list, pcap_entry, entry);
+int ss_pcap_chain_add(ss_pcap_entry_t* pcap_entry) {
+    TAILQ_INSERT_TAIL(&ss_conf->pcap_chain.pcap_list, pcap_entry, entry);
     return 0;
 }
 
-int ss_pcap_chain_remove_index(ss_pcap_chain_t* pcap_match, int index) {
+int ss_pcap_chain_remove_index(int index) {
     int counter = 0;
     ss_pcap_entry_t* pptr;
     ss_pcap_entry_t* ptmp;
@@ -187,11 +169,11 @@ int ss_pcap_chain_remove_index(ss_pcap_chain_t* pcap_match, int index) {
     return -1;
 }
 
-int ss_pcap_chain_remove_filter(ss_pcap_chain_t* pcap_match, char* filter) {
+int ss_pcap_chain_remove_name(char* name) {
     ss_pcap_entry_t* pptr;
     ss_pcap_entry_t* ptmp;
     TAILQ_FOREACH_SAFE(pptr, &ss_conf->pcap_chain.pcap_list, entry, ptmp) {
-        if (!strcasecmp(filter, pptr->filter)) {
+        if (!strcasecmp(name, pptr->name)) {
             TAILQ_REMOVE(&ss_conf->pcap_chain.pcap_list, pptr, entry);
             return 0;
         }
@@ -211,28 +193,178 @@ int ss_pcap_match_prepare(ss_pcap_match_t* pcap_match, uint8_t* packet, uint16_t
 
 /*
  * Checks for a pcap filter match between a given pcap filter and a given 
- * packet. Returns >0 for match, 0, for non-match, <0 for error.
+ * packet. Returns >0 for match, 0 for non-match, <0 for error.
  */
 int ss_pcap_match(ss_pcap_entry_t* pcap_entry, ss_pcap_match_t* pcap_match) {
-    
+    int rv = pcap_offline_filter(&pcap_entry->bpf_filter, &pcap_match->header, pcap_match->packet);
+    if (rv > 0) __sync_add_and_fetch (&pcap_entry->matches, 1);
+    //fprintf(stderr, "pcap_offline_filter rv %d\n", rv);
+    return rv;
+}
+
+/* DNS CHAIN */
+
+int ss_dns_chain_destroy() {
     return 0;
+}
+
+ss_dns_entry_t* ss_dns_entry_create(json_object* dns_json) {
+    // mhall
+    ss_dns_entry_t* dns_entry = NULL;
+    int rv                      = -1;
+    
+    dns_entry = malloc(sizeof(ss_dns_entry_t));
+    if (dns_entry == NULL) {
+        fprintf(stderr, "could not allocate dns entry\n");
+        goto error_out;
+    }
+    memset(dns_entry, 0, sizeof(ss_dns_entry_t));
+    
+    if (!dns_json) {
+        fprintf(stderr, "empty dns configuration entry\n");
+        goto error_out;
+    }
+    if (!json_object_is_type(dns_json, json_type_object)) {
+        fprintf(stderr, "dns_json is not object\n");
+        goto error_out;
+    }
+    
+    // name, filter, nm_queue_format, nm_queue_type, nm_queue_url
+    // char* ss_json_string_get(json_object* items, char* key) {
+    dns_entry->name = ss_json_string_get(dns_json, "name");
+    if (dns_entry->name == NULL) {
+        fprintf(stderr, "dns_entry name is null\n");
+        goto error_out;
+    }
+    
+    rv = ss_nn_queue_create(dns_json, &dns_entry->nn_queue);
+    if (rv) {
+        fprintf(stderr, "could not allocate dns nm_queue\n");
+        goto error_out;
+    }
+    
+    fprintf(stderr, "created dns entry [%s]\n", dns_entry->name);
+    return dns_entry;
+    
+    error_out:
+    ss_dns_entry_destroy(dns_entry);
+    return NULL;
+}
+
+int ss_dns_entry_destroy(ss_dns_entry_t* dns_entry) {
+    dns_entry->matches = 0;
+    if (dns_entry->name)       { free(dns_entry->name);       dns_entry->name = NULL; }
+    ss_nn_queue_destroy(&dns_entry->nn_queue);
+    if (dns_entry)             { free(dns_entry);             dns_entry = NULL;       }
+    return 0;
+}
+
+int ss_dns_chain_add(ss_dns_entry_t* dns_entry) {
+    TAILQ_INSERT_TAIL(&ss_conf->dns_chain.dns_list, dns_entry, entry);
+    return 0;
+}
+
+int ss_dns_chain_remove_index(int index) {
+    int counter = 0;
+    ss_dns_entry_t* dptr;
+    ss_dns_entry_t* dtmp;
+    TAILQ_FOREACH_SAFE(dptr, &ss_conf->dns_chain.dns_list, entry, dtmp) {
+        if (counter == index) {
+            TAILQ_REMOVE(&ss_conf->dns_chain.dns_list, dptr, entry);
+            return 0;
+        }
+        ++counter;
+    }
+    return -1;
+}
+
+int ss_dns_chain_remove_name(char* name) {
+    ss_dns_entry_t* dptr;
+    ss_dns_entry_t* dtmp;
+    TAILQ_FOREACH_SAFE(dptr, &ss_conf->dns_chain.dns_list, entry, dtmp) {
+        if (!strcasecmp(name, dptr->name)) {
+            TAILQ_REMOVE(&ss_conf->dns_chain.dns_list, dptr, entry);
+            return 0;
+        }
+    }
+    return -1;
 }
 
 /* CIDR TABLE */
 
-ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_table_json) {
+ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_json) {
+    ss_cidr_table_t* cidr_table = NULL;
+    
+    struct rte_lpm6_config lpm6_info = {
+        .max_rules    = SS_LPM_RULE_MAX,
+        .number_tbl8s = SS_LPM_TBL8S_MAX,
+        .flags        = 0,
+    };
+    
+    cidr_table = malloc(sizeof(ss_cidr_table_t));
+    if (cidr_table == NULL) {
+        fprintf(stderr, "could not allocate cidr table\n");
+        goto error_out;
+    }
+    memset(cidr_table, 0, sizeof(ss_cidr_table_t));
+    
+    cidr_table->cidr4 = rte_lpm_create("cidr4", 0, SS_LPM_RULE_MAX, 0);
+    cidr_table->cidr6 = rte_lpm6_create("cidr6", 0, &lpm6_info);
+    
+    return cidr_table;
+    
+    error_out:
+    ss_cidr_table_destroy(cidr_table);
     return NULL;
 }
 
 int ss_cidr_table_destroy(ss_cidr_table_t* cidr_table) {
+    ss_cidr_entry_t* cptr;
+    ss_cidr_entry_t* ctmp;
+    
+    if (cidr_table->hash4) {
+        HASH_ITER(hh, cidr_table->hash4, cptr, ctmp) {
+            HASH_DEL(cidr_table->hash4, cptr);
+            if (cptr) ss_cidr_entry_destroy(cptr);
+        }
+    }
+    if (cidr_table->hash6) {
+        HASH_ITER(hh, cidr_table->hash6, cptr, ctmp) {
+            HASH_DEL(cidr_table->hash6, cptr);
+            if (cptr) ss_cidr_entry_destroy(cptr);
+        }
+    }
+    rte_lpm_delete_all(cidr_table->cidr4);
+    rte_lpm6_delete_all(cidr_table->cidr6);
+    
     return 0;
 }
 
 ss_cidr_entry_t* ss_cidr_entry_create(json_object* cidr_json) {
+    ss_cidr_entry_t* cidr_entry = NULL;
+    
+    cidr_entry = malloc(sizeof(ss_cidr_entry_t));
+    if (cidr_entry == NULL) {
+        fprintf(stderr, "could not allocate cidr entry\n");
+        goto error_out;
+    }
+    memset(cidr_entry, 0, sizeof(ss_cidr_entry_t));
+    
+    cidr_entry->name = ss_json_string_get(cidr_json, "name");
+    if (cidr_entry->name == NULL) {
+        fprintf(stderr, "pcap_entry name is null\n");
+        goto error_out;
+    }
+    
+    error_out:
+    ss_cidr_entry_destroy(cidr_entry);
     return NULL;
 }
 
 int ss_cidr_entry_destroy(ss_cidr_entry_t* cidr_entry) {
+    cidr_entry->matches = -1;
+    ss_nn_queue_destroy(&cidr_entry->nn_queue);
+    if (cidr_entry->name) {      free(cidr_entry->name);       cidr_entry->name = NULL; }
     return 0;
 }
 
