@@ -43,20 +43,24 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         
     // XXX: check for sFlow, NetFlow, or Syslog
     switch (rx_buf->data.dport) {
+        case L4_PORT_DNS: {
+            RTE_LOG(DEBUG, SS, "rx tcp dns packet\n");
+            break;
+        }
         case L4_PORT_SYSLOG: {
-            RTE_LOG(INFO, SS, "rx tcp syslog packet\n");
+            RTE_LOG(DEBUG, SS, "rx tcp syslog packet\n");
             break;
         }
         case L4_PORT_SYSLOG_TLS: {
-            RTE_LOG(INFO, SS, "rx tcp syslog-tls packet\n");
+            RTE_LOG(DEBUG, SS, "rx tcp syslog-tls packet\n");
             break;
         }
         case L4_PORT_SFLOW: {
-            RTE_LOG(INFO, SS, "rx tcp sFlow packet\n");
+            RTE_LOG(DEBUG, SS, "rx tcp sFlow packet\n");
             break;
         }
         case L4_PORT_NETFLOW: {
-            RTE_LOG(INFO, SS, "rx tcp NetFlow packet\n");
+            RTE_LOG(DEBUG, SS, "rx tcp NetFlow packet\n");
             break;
         }
     }
