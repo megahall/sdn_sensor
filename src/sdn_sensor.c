@@ -244,6 +244,8 @@ int main(int argc, char* argv[]) {
     if (rv < 0) {
         rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
     }
+    
+    rte_set_log_level(ss_conf->log_level);
 
     /* create the mbuf pool */
     ss_pool =
@@ -302,7 +304,7 @@ int main(int argc, char* argv[]) {
         
         /* init port */
         printf("Initializing port %u... ", (unsigned) port_id);
-        fflush(stdout);
+        fflush(stderr);
         rv = rte_eth_dev_configure(port_id, 1, 1, &port_conf);
         if (rv < 0) {
             rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n", rv, (unsigned) port_id);
@@ -311,7 +313,7 @@ int main(int argc, char* argv[]) {
         rte_eth_macaddr_get(port_id, &port_eth_addrs[port_id]);
 
         /* init one RX queue */
-        fflush(stdout);
+        fflush(stderr);
         rv = rte_eth_rx_queue_setup(port_id, 0, rxd_count,
                          rte_eth_dev_socket_id(port_id), &rx_conf,
                          ss_pool);
@@ -320,7 +322,7 @@ int main(int argc, char* argv[]) {
         }
 
         /* init one TX queue on each port */
-        fflush(stdout);
+        fflush(stderr);
         rv = rte_eth_tx_queue_setup(port_id, 0, txd_count, rte_eth_dev_socket_id(port_id), &tx_conf);
         if (rv < 0) {
             rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup:err=%d, port=%u\n", rv, (unsigned) port_id);
