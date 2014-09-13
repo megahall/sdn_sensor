@@ -11,6 +11,7 @@
     "dpdk": {
         // XXX: DPDK options are always strings right now
         "eal_options":      "sdn_sensor -c 0x2 -n 2 --huge-dir /hugetlbfs --proc-type primary -w 01:00.1",
+        "log_level":        "info",
         "port_mask":        4294967295, // 0xffffffff
         "queue_count":      2,
         "timer_msec":       200,
@@ -22,7 +23,7 @@
         {
             "name": "",
             "re": "",
-            "nm_queue_format": "json_object",
+            "nm_queue_format": "metadata",
             "nm_queue_type": "PUSH",
             "nm_queue_url": "tcp://127.0.0.1:10001",
         },
@@ -36,20 +37,43 @@
             "filter": "(port 80 or port 443) and (tcp[((tcp[12:1] & 0xf0) >> 2):4] = 0x47455420 or tcp[((tcp[12:1] & 0xf0) >> 2)+8:4] = 0x20323030)",
             "nm_queue_format": "metadata",
             "nm_queue_type": "PUSH",
-            "nm_queue_url": "tcp://127.0.0.1:10002",
+            "nm_queue_url": "tcp://192.168.1.6:10002",
         },
+        {
+            "name": "udp_packet",
+            "filter": "udp",
+            "nm_queue_format": "metadata",
+            "nm_queue_type": "PUSH",
+            "nm_queue_url": "tcp://192.168.1.6:10002",
+        }
     ],
     
     // matches raw traffic IP addresses against this list of CIDRs,
     // dispatches metadata to nanomsg queues
-    "cidr_table": {
-        "10.0.0.0/8" : {
-            "name": "rfc_1918_10.0.0.0/8",
+    "cidr_table": [
+        {
+            "name": "cidr_rule",
             "nm_queue_format": "metadata",
             "nm_queue_type": "PUSH",
             "nm_queue_url": "tcp://127.0.0.1:10003",
         }
-    },
+    ],
+    
+    // intercepts DNS packet content,
+    // dispatches metadata to nanomsg queues
+    // XXX: figure out how to filter this
+    "dns_chain": [
+        {
+            "name": "dns_rule",
+            "nm_queue_format": "metadata",
+            "nm_queue_type": "PUSH",
+            "nm_queue_url": "tcp://127.168.1.6:10002",
+        }
+    ],
+    
+    "ioc_files": [
+        "/home/mhall/output.csv"
+    ],
     
     // list of source CIDRs sending Syslog
     "syslog_udp_sources": {
