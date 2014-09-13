@@ -7,6 +7,7 @@ endif
 CC     ?= clang
 
 RTE_SDK ?= $(HOME)/src/dpdk
+SDN_SENSOR_BASE ?= $(HOME)/src/sdn_sensor
 
 # XXX: -Wunused-but-set-variable doesn't work
 # See: http://llvm.org/bugs/show_bug.cgi?id=9824
@@ -25,7 +26,7 @@ SS_VERSION := $(shell echo `date "+%Y%m%d-%H%M%S"`-`git rev-parse --short HEAD`)
 
 FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -pthread -march=native -std=gnu11
 INCLUDE_FILES  = -include $(RTE_SDK)/build/include/rte_config.h
-INCLUDE_PATHS  = -I$(RTE_SDK)/build/include
+INCLUDE_PATHS  = -I$(RTE_SDK)/build/include -I$(SDN_SENSOR_BASE)/external/spcdns/src
 CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) -DSS_VERSION="\"$(SS_VERSION)\""
 
 # XXX: work around bugs in iwyu utility
@@ -36,8 +37,9 @@ ifneq ($(strip $(LESS)),)
 endif
 
 DPDK_LINK = -Wl,--whole-archive -Wl,--start-group -lintel_dpdk -Wl,--end-group -Wl,--no-whole-archive
+SPCDNS_LINK = -Wl,-Bstatic -lspcdns -Wl,-Bdynamic
 
-LDFLAGS = -L$(RTE_SDK)/build/lib
+LDFLAGS = -L$(RTE_SDK)/build/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built
 
 SOURCES = $(wildcard *.c)
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c))
@@ -47,7 +49,7 @@ HEADERS = $(wildcard *.h)
 
 sdn_sensor: $(OBJECTS)
 	@echo 'Linking sdn_sensor...'
-	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) -lbsd -ldl -ljson-c -lm -lnanomsg -lpcap -lpcre -lpthread -lrt
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) -lbsd -ldl -ljson-c -lm -lnanomsg -lpcap -lpcre -lpthread -lrt $(SPCDNS_LINK)
 
 $(OBJECTS): $(HEADERS) $(SOURCES)
 
