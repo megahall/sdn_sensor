@@ -57,7 +57,7 @@ void ss_port_link_status_check_all(uint8_t port_limit) {
     struct rte_eth_link link;
 
     printf("\nChecking link status");
-    fflush(stdout);
+    fflush(stderr);
     for (count = 0; count <= MAX_CHECK_TIME; count++) {
         all_ports_up = 1;
         for (port_id = 0; port_id < port_limit; port_id++) {
@@ -88,7 +88,7 @@ void ss_port_link_status_check_all(uint8_t port_limit) {
 
         if (all_ports_up == 0) {
             printf(".");
-            fflush(stdout);
+            fflush(stderr);
             rte_delay_ms(CHECK_INTERVAL);
         }
 
