@@ -29,7 +29,7 @@
 #include "ip_utils.h"
 
 int ss_dump_cidr(FILE* fd, const char* label, ip_addr_t* ip_addr) {
-    char tmp[SS_ADDR_STR_SIZE];
+    char tmp[SS_ADDR_STR_MAX];
     memset(tmp, 0, sizeof(tmp));
     
     if (fd == NULL) fd = stderr;
@@ -39,7 +39,7 @@ int ss_dump_cidr(FILE* fd, const char* label, ip_addr_t* ip_addr) {
         return -1;
     }
     
-    ss_inet_ntop(ip_addr->family, ip_addr, tmp, sizeof(tmp));
+    ss_inet_ntop(ip_addr, tmp, sizeof(tmp));
     
     fprintf(fd, "cidr %s: %s\n", label, tmp);
     return 0;
@@ -302,8 +302,8 @@ int ss_inet_pton6(const char* src, uint8_t* dst) {
  * author:
  *      Paul Vixie, 1996.
  */
-const char* ss_inet_ntop(int af, const ip_addr_t* src, char* dst, unsigned int size) {
-    switch (af) {
+const char* ss_inet_ntop(const ip_addr_t* src, char* dst, unsigned int size) {
+    switch (src->family) {
         case SS_AF_INET4: {
             return (ss_inet_ntop4((uint8_t*) &src->ip4_addr, dst, size));
         }
