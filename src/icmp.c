@@ -53,7 +53,7 @@ int ss_frame_prepare_icmp6(ss_frame_t* tx_buf, uint8_t* pl_ptr, uint32_t pl_len)
     printf("icmp6 tx size %u\n", pl_len);
     rte_memcpy(pptr, pl_ptr, pl_len);
     printf("pseudo-header:\n");
-    rte_pktmbuf_dump(stdout, pmbuf, rte_pktmbuf_pkt_len(pmbuf));
+    rte_pktmbuf_dump(stderr, pmbuf, rte_pktmbuf_pkt_len(pmbuf));
     checksum = ss_in_cksum(rte_pktmbuf_mtod(pmbuf, uint16_t*), rte_pktmbuf_pkt_len(pmbuf));
     rte_pktmbuf_free(pmbuf);
     tx_buf->icmp6->icmp6_cksum = checksum;
@@ -185,7 +185,7 @@ int ss_frame_handle_echo6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     }
     // mhall
     printf("debug echo6\n");
-    rte_pktmbuf_dump(stdout, tx_buf->mbuf, rte_pktmbuf_pkt_len(tx_buf->mbuf));
+    rte_pktmbuf_dump(stderr, tx_buf->mbuf, rte_pktmbuf_pkt_len(tx_buf->mbuf));
 
     return 0;
 
@@ -206,6 +206,7 @@ int ss_frame_handle_icmp4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
 
     uint8_t icmp_type = rx_buf->icmp4->type;
     uint8_t icmp_code = rx_buf->icmp4->code;
+    rx_buf->data.l4_length = rte_pktmbuf_pkt_len(rx_buf->mbuf) - (((uint8_t*) rx_buf->ip4 + sizeof(ip4_hdr_t)) - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*)); 
     rx_buf->data.icmp_type = icmp_type;
     rx_buf->data.icmp_code = icmp_code;
     RTE_LOG(INFO, SS, "icmp4 type %hhu\n", icmp_type);
@@ -216,7 +217,7 @@ int ss_frame_handle_icmp4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         }
         default: {
             RTE_LOG(INFO, SS, "port %u received unsupported icmpv4 0x%04hhx frame:\n", rx_buf->data.port_id, icmp_type);
-            rte_pktmbuf_dump(stdout, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+            rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
             rv = -1;
             break;
         }
@@ -233,6 +234,7 @@ int ss_frame_handle_icmp6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     // XXX: add the PMTUD request
     uint8_t icmp_type = rx_buf->icmp6->icmp6_type;
     uint8_t icmp_code = rx_buf->icmp6->icmp6_code;
+    rx_buf->data.l4_length = rte_pktmbuf_pkt_len(rx_buf->mbuf) - (((uint8_t*) rx_buf->ip6 + sizeof(ip6_hdr_t)) - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*)); 
     rx_buf->data.icmp_type = icmp_type;
     rx_buf->data.icmp_code = icmp_code;
     RTE_LOG(INFO, SS, "icmp6 type %hhu\n", icmp_type);
@@ -247,7 +249,7 @@ int ss_frame_handle_icmp6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         }
         default: {
             RTE_LOG(INFO, SS, "port %u received unsupported icmpv6 0x%04hhx frame:\n", rx_buf->data.port_id, icmp_type);
-            rte_pktmbuf_dump(stdout, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+            rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
             rv = -1;
             break;
         }
