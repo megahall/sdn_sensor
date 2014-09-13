@@ -4,7 +4,6 @@
 #include <stdint.h>
 
 #include <bsd/sys/queue.h>
-#include <json-c/json.h>
 #include <pcap/pcap.h>
 #include <pcre.h>
 
@@ -19,38 +18,47 @@
 #include <rte_ether.h>
 #include <rte_log.h>
 #include <rte_lpm.h>
+#include <rte_lpm6.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 
+#include <uthash.h>
+
+#include "ip_utils.h"
 #include "nn_queue.h"
 
 /* MACROS */
 
 #define SS_ROUND_UP(N, S) ((((N) + (S) - 1) / (S)) * (S))
 
+#define SS_CHECK_SELF(fbuf, rv) \
+    do { \
+        if (!fbuf->data.self) { \
+            return rv; \
+        } \
+    } while(0)
+
 /* CONSTANTS */
 
 #define RTE_LOGTYPE_SS RTE_LOGTYPE_USER1
 
 #define SS_INT16_SIZE         2
-#define SS_ADDR_STR_SIZE     64
 
-#define SS_V4_PREFIX_MAX     32
-#define SS_V6_PREFIX_MAX    128
+#define ETH_ALEN              6
 
-#define ETH_ALEN   6
-#define IPV4_ALEN  4
-#define IPV6_ALEN 16
+#define SS_DNS_NAME_MAX      96
+#define SS_DNS_RESULT_MAX     8
 
-/* enough to hold [max_ipv6]/128 plus a bit extra */
-#define CIDR_LENGTH_MAX 64
+#define SS_LPM_RULE_MAX    1024
+#define SS_LPM_TBL8S_MAX   (1 << 16)
 
 #define ETHER_TYPE_IPV4 ETHER_TYPE_IPv4
 #define ETHER_TYPE_IPV6 ETHER_TYPE_IPv6
 
 #define IPPROTO_ICMPV4 IPPROTO_ICMP
 
+#define L4_PORT_DNS          53
 #define L4_PORT_SYSLOG      514
 #define L4_PORT_SYSLOG_TLS  601
 #define L4_PORT_SFLOW      6343
@@ -61,7 +69,6 @@
 typedef struct rte_mbuf    rte_mbuf_t;
 typedef struct rte_mempool rte_mempool_t;
 
-typedef struct rte_hash    rte_hash_t;
 typedef struct rte_lpm     rte_lpm4_t;
 typedef struct rte_lpm6    rte_lpm6_t;
 
@@ -76,31 +83,6 @@ typedef struct tcphdr      tcp_hdr_t;
 typedef struct udphdr      udp_hdr_t;
 
 /* DATA TYPES */
-
-struct ip4_addr_s {
-    uint32_t addr;
-};
-
-typedef struct ip4_addr_s ip4_addr_t;
-
-struct ip6_addr_s {
-    uint8_t addr[16];
-};
-
-typedef struct ip6_addr_s ip6_addr_t;
-
-struct ip_addr_s {
-    uint8_t family;
-    uint8_t prefix;
-    union {
-        ip4_addr_t ip4;
-        ip6_addr_t ip6;
-    } addr;
-};
-#define ip4_addr addr.ip4
-#define ip6_addr addr.ip6
-
-typedef struct ip_addr_s ip_addr_t;
 
 struct eth_vhdr_s {
     uint16_t ether_type;
@@ -176,6 +158,8 @@ struct ss_metadata_s {
     uint8_t  tcp_flags;
     uint16_t sport;
     uint16_t dport;
+    uint8_t  dns_name[SS_DNS_NAME_MAX];
+    uint8_t  dns_values[SS_DNS_RESULT_MAX][SS_DNS_NAME_MAX];
 } __rte_cache_aligned;
 
 typedef struct ss_metadata_s ss_metadata_t;
@@ -207,7 +191,7 @@ typedef struct ss_frame_s ss_frame_t;
 /* RE CHAIN */
 
 struct ss_re_entry_s {
-    uint64_t match_count;
+    uint64_t matches;
     int invert;
     nn_queue_t nn_queue;
     pcre* re;
@@ -226,7 +210,7 @@ struct ss_re_chain_s {
 typedef struct ss_re_chain_s ss_re_chain_t;
 
 struct ss_re_match_s {
-    uint64_t match_count;
+    uint64_t matches;
     char** match_list;
     json_object* match_result;
 } __rte_cache_aligned;
@@ -245,44 +229,67 @@ typedef struct ss_pcap_match_s ss_pcap_match_t;
 
 struct ss_pcap_entry_s {
     struct bpf_program bpf_filter;
-    uint64_t match_count;
+    uint64_t matches;
     nn_queue_t nn_queue;
     char* name;
     char* filter;
     TAILQ_ENTRY(ss_pcap_entry_s) entry;
 } __rte_cache_aligned;
+
 typedef struct ss_pcap_entry_s ss_pcap_entry_t;
 
 TAILQ_HEAD(ss_pcap_list_s, ss_pcap_entry_s);
 typedef struct ss_pcap_list_s ss_pcap_list_t;
 
 struct ss_pcap_chain_s {
-    uint64_t match_count;
+    uint64_t matches;
     ss_pcap_list_t pcap_list;
 } __rte_cache_aligned;
 
 typedef struct ss_pcap_chain_s ss_pcap_chain_t;
 
+/* DNS CHAIN */
+
+struct ss_dns_entry_s {
+    uint64_t matches;
+    nn_queue_t nn_queue;
+    char* name;
+    TAILQ_ENTRY(ss_dns_entry_s) entry;
+} __rte_cache_aligned;
+
+typedef struct ss_dns_entry_s ss_dns_entry_t;
+
+TAILQ_HEAD(ss_dns_list_s, ss_dns_entry_s);
+typedef struct ss_dns_list_s ss_dns_list_t;
+
+struct ss_dns_chain_s {
+    uint64_t matches;
+    ss_dns_list_t dns_list;
+} __rte_cache_aligned;
+
+typedef struct ss_dns_chain_s ss_dns_chain_t;
+
 /* CIDR TABLE */
 
 struct ss_cidr_entry_s {
-    uint64_t match_count;
+    UT_hash_handle hh;
+    uint64_t matches;
     nn_queue_t nn_queue;
-    char cidr[CIDR_LENGTH_MAX];
+    char* name;
 } __rte_cache_aligned;
 
 typedef struct ss_cidr_entry_s ss_cidr_entry_t;
 
 struct ss_cidr_table_s {
-    uint64_t hash_match4_count;
-    uint64_t hash_match6_count;
-    uint64_t cidr_match4_count;
-    uint64_t cidr_match6_count;
+    uint64_t hash4_matches;
+    uint64_t hash6_matches;
+    uint64_t cidr4_matches;
+    uint64_t cidr6_matches;
     
-    rte_hash_t* hash4_table;
-    rte_hash_t* hash6_table;
-    rte_lpm4_t* cidr4_table;
-    rte_lpm6_t* cidr6_table;
+    ss_cidr_entry_t* hash4;
+    ss_cidr_entry_t* hash6;
+    rte_lpm4_t* cidr4;
+    rte_lpm6_t* cidr6;
 } __rte_cache_aligned;
 
 typedef struct ss_cidr_table_s ss_cidr_table_t;
@@ -296,24 +303,29 @@ typedef struct ss_string_trie_s ss_string_trie_t;
 
 /* BEGIN PROTOTYPES */
 
-char* ss_json_string_get(json_object* items, const char* key);
 int ss_metadata_prepare(ss_frame_t* fbuf);
-int ss_re_chain_destroy(ss_re_chain_t* re_chain);
+int ss_re_chain_destroy(void);
 ss_re_entry_t* ss_re_entry_create(json_object* re_json);
 int ss_re_entry_destroy(ss_re_entry_t* re_entry);
-int ss_re_chain_add(ss_re_chain_t* re_chain, ss_re_entry_t* re_entry);
-int ss_re_chain_remove_index(ss_re_chain_t* re_chain, int index);
-int ss_re_chain_remove_re(ss_re_chain_t* re_chain, char* re);
-int ss_re_chain_match(ss_re_chain_t* re_chain, char* input);
-int ss_pcap_chain_destroy(ss_pcap_chain_t* pcap_chain);
+int ss_re_chain_add(ss_re_entry_t* re_entry);
+int ss_re_chain_remove_index(int index);
+int ss_re_chain_remove_re(char* re);
+int ss_re_chain_match(char* input);
+int ss_pcap_chain_destroy(void);
 ss_pcap_entry_t* ss_pcap_entry_create(json_object* pcap_json);
 int ss_pcap_entry_destroy(ss_pcap_entry_t* pcap_entry);
-int ss_pcap_chain_add(ss_pcap_chain_t* pcap_match, ss_pcap_entry_t* pcap_entry);
-int ss_pcap_chain_remove_index(ss_pcap_chain_t* pcap_match, int index);
-int ss_pcap_chain_remove_filter(ss_pcap_chain_t* pcap_match, char* filter);
+int ss_pcap_chain_add(ss_pcap_entry_t* pcap_entry);
+int ss_pcap_chain_remove_index(int index);
+int ss_pcap_chain_remove_name(char* name);
 int ss_pcap_match_prepare(ss_pcap_match_t* pcap_match, uint8_t* packet, uint16_t length);
 int ss_pcap_match(ss_pcap_entry_t* pcap_entry, ss_pcap_match_t* pcap_match);
-ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_table_json);
+int ss_dns_chain_destroy(void);
+ss_dns_entry_t* ss_dns_entry_create(json_object* dns_json);
+int ss_dns_entry_destroy(ss_dns_entry_t* dns_entry);
+int ss_dns_chain_add(ss_dns_entry_t* dns_entry);
+int ss_dns_chain_remove_index(int index);
+int ss_dns_chain_remove_name(char* name);
+ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_json);
 int ss_cidr_table_destroy(ss_cidr_table_t* cidr_table);
 ss_cidr_entry_t* ss_cidr_entry_create(json_object* cidr_json);
 int ss_cidr_entry_destroy(ss_cidr_entry_t* cidr_entry);
