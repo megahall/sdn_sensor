@@ -1,3 +1,6 @@
 [submodule "external/nanomsg"]
 	path = external/nanomsg
 	url = git@github.com:nanomsg/nanomsg.git
+[submodule "external/spcdns"]
+	path = external/spcdns
+	url = git@github.com:megahall/SPCDNS.git
