@@ -1,3 +1,5 @@
+#define _GNU_SOURCE /* strcasestr */
+
 #include <libgen.h>
 #include <limits.h>
 #include <stddef.h>
@@ -10,6 +12,8 @@
 #include <bsd/string.h>
 #include <bsd/sys/queue.h>
 #include <json-c/json.h>
+
+#include <rte_log.h>
 
 #include "common.h"
 #include "ip_utils.h"
@@ -115,6 +119,7 @@ char* ss_conf_file_read() {
 int ss_conf_network_parse(json_object* items) {
     int rv;
     json_object* item = NULL;
+    
     item = json_object_object_get(items, "promiscuous_mode");
     if (item) {
         if (!json_object_is_type(item, json_type_boolean)) {
@@ -190,6 +195,116 @@ int ss_conf_network_parse(json_object* items) {
     return 0;
 }
 
+int ss_conf_dpdk_parse(json_object* items) {
+    int rv;
+    json_object* item = NULL;
+    
+    item = json_object_object_get(items, "eal_options");
+    if (item) {
+        if (!json_object_is_type(item, json_type_string)) {
+            fprintf(stderr, "eal_options is not string\n");
+            return -1;
+        }
+        fprintf(stderr, "parse eal options %s\n", json_object_get_string(item));
+        memset(&ss_conf->eal_vector, 0, sizeof(ss_conf->eal_vector));
+        rv = wordexp(json_object_get_string(item), &ss_conf->eal_vector, WRDE_NOCMD);
+        if (rv) {
+            fprintf(stderr, "could not parse eal options: %d\n", rv);
+            return -1;
+        }
+    }
+    
+    // XXX: eventually support hex numbers
+    item = json_object_object_get(items, "port_mask");
+    if (item) {
+        if (!json_object_is_type(item, json_type_int)) {
+            fprintf(stderr, "port_mask is not integer\n");
+            return -1;
+        }
+        ss_conf->port_mask = json_object_get_int(item);
+    }
+    else {
+        ss_conf->port_mask = 0xFFFFFFFF;
+    }
+
+    item = json_object_object_get(items, "queue_count");
+    if (item) {
+        if (!json_object_is_type(item, json_type_int)) {
+            fprintf(stderr, "queue_count is not integer\n");
+            return -1;
+        }
+        ss_conf->queue_count = json_object_get_int(item);
+        if (ss_conf->queue_count > MAX_RX_QUEUE_PER_LCORE) {
+            fprintf(stderr, "queue_count larger than %d\n", MAX_RX_QUEUE_PER_LCORE);
+            return -1;
+        }
+    }
+    else {
+        ss_conf->queue_count = 1;
+    }
+    
+    item = json_object_object_get(items, "timer_msec");
+    if (item) {
+        if (!json_object_is_type(item, json_type_int)) {
+            fprintf(stderr, "queue_count is not integer\n");
+            return -1;
+        }
+        ss_conf->timer_msec = json_object_get_int(item);
+        if (ss_conf->timer_msec > MAX_TIMER_PERIOD) {
+            fprintf(stderr, "timer_msec larger than %d\n", MAX_TIMER_PERIOD);
+            return -1;
+        }
+    }
+    else {
+        /* A TSC-based timer responsible for triggering statistics printout */
+        /* default period is 10 seconds */
+        ss_conf->timer_msec = 10 * TIMER_MILLISECOND * 1000;
+    }
+    
+    item = json_object_object_get(items, "log_level");
+    if (item) {
+        if (!json_object_is_type(item, json_type_string)) {
+            fprintf(stderr, "log_level is not string\n");
+            return -1;
+        }
+        const char* log_level = json_object_get_string(item);
+        fprintf(stderr, "parse log level: %s\n", log_level);
+        if      (strcasestr(log_level, "EMERG")) {
+            ss_conf->log_level = RTE_LOG_EMERG;
+        }
+        else if (strcasestr(log_level, "ALERT")) {
+            ss_conf->log_level = RTE_LOG_ALERT;
+        }
+        else if (strcasestr(log_level, "CRIT")) {
+            ss_conf->log_level = RTE_LOG_CRIT;
+        }
+        else if (strcasestr(log_level, "ERR")) {
+            ss_conf->log_level = RTE_LOG_ERR;
+        }
+        else if (strcasestr(log_level, "WARN")) {
+            ss_conf->log_level = RTE_LOG_WARNING;
+        }
+        else if (strcasestr(log_level, "NOTICE")) {
+            ss_conf->log_level = RTE_LOG_NOTICE;
+        }
+        else if (strcasestr(log_level, "INFO")) {
+            ss_conf->log_level = RTE_LOG_INFO;
+        }
+        else if (strcasestr(log_level, "DEBUG")) {
+            ss_conf->log_level = RTE_LOG_DEBUG;
+        }
+        else {
+            fprintf(stderr, "could not parse log level: %s\n", log_level);
+            ss_conf->log_level = RTE_LOG_WARNING;
+        }
+    }
+    else {
+        ss_conf->log_level = RTE_LOG_WARNING;
+    }
+    
+    return 0;
+}
+
 ss_conf_t* ss_conf_file_parse() {
     int is_ok = 1;
     int rv;
@@ -231,6 +346,8 @@ ss_conf_t* ss_conf_file_parse() {
     }
     TAILQ_INIT(&ss_conf->re_chain.re_list);
     TAILQ_INIT(&ss_conf->pcap_chain.pcap_list);
+    TAILQ_INIT(&ss_conf->dns_chain.dns_list);
+    TAILQ_INIT(&ss_conf->ioc_chain.ioc_list);
     // XXX: init more objects here
     
     items = json_object_object_get(json_conf, "network");
@@ -259,67 +376,10 @@ ss_conf_t* ss_conf_file_parse() {
         is_ok = 0; goto error_out;
     }
     
-    item = json_object_object_get(items, "eal_options");
-    if (item) {
-        if (!json_object_is_type(item, json_type_string)) {
-            fprintf(stderr, "eal_options is not string\n");
-            is_ok = 0; goto error_out;
-        }
-        fprintf(stderr, "parse eal options %s\n", json_object_get_string(item));
-        int wordexp(const char *s, wordexp_t *p, int flags);
-        memset(&ss_conf->eal_vector, 0, sizeof(ss_conf->eal_vector));
-        rv = wordexp(json_object_get_string(item), &ss_conf->eal_vector, WRDE_NOCMD);
-        if (rv) {
-            fprintf(stderr, "could not parse eal options: %d\n", rv);
-            is_ok = 0; goto error_out;
-        }
-    }
-    
-    // XXX: eventually support hex numbers
-    item = json_object_object_get(items, "port_mask");
-    if (item) {
-        if (!json_object_is_type(item, json_type_int)) {
-            fprintf(stderr, "port_mask is not integer\n");
-            is_ok = 0; goto error_out;
-        }
-        ss_conf->port_mask = json_object_get_int(item);
-    }
-    else {
-        ss_conf->port_mask = 0xFFFFFFFF;
-    }
-
-    item = json_object_object_get(items, "queue_count");
-    if (item) {
-        if (!json_object_is_type(item, json_type_int)) {
-            fprintf(stderr, "queue_count is not integer\n");
-            is_ok = 0; goto error_out;
-        }
-        ss_conf->queue_count = json_object_get_int(item);
-        if (ss_conf->queue_count > MAX_RX_QUEUE_PER_LCORE) {
-            fprintf(stderr, "queue_count larger than %d\n", MAX_RX_QUEUE_PER_LCORE);
-            is_ok = 0; goto error_out;
-        }
-    }
-    else {
-        ss_conf->queue_count = 1;
-    }
-    
-    item = json_object_object_get(items, "timer_msec");
-    if (item) {
-        if (!json_object_is_type(item, json_type_int)) {
-            fprintf(stderr, "queue_count is not integer\n");
-            is_ok = 0; goto error_out;
-        }
-        ss_conf->timer_msec = json_object_get_int(item);
-        if (ss_conf->timer_msec > MAX_TIMER_PERIOD) {
-            fprintf(stderr, "timer_msec larger than %d\n", MAX_TIMER_PERIOD);
-            is_ok = 0; goto error_out;
-        }
-    }
-    else {
-        /* A TSC-based timer responsible for triggering statistics printout */
-        /* default period is 10 seconds */
-        ss_conf->timer_msec = 10 * TIMER_MILLISECOND * 1000;
+    rv = ss_conf_dpdk_parse(items);
+    if (rv) {
+        fprintf(stderr, "could not parse network configuration\n");
+        is_ok = 0; goto error_out;
     }
     
     items = json_object_object_get(json_conf, "re_chain");
@@ -334,7 +394,7 @@ ss_conf_t* ss_conf_file_parse() {
             item = json_object_array_get_idx(items, i);
             ss_re_entry_t* entry = calloc(1, sizeof(ss_re_entry_t));
             entry = ss_re_entry_create(item);
-            ss_re_chain_add(&ss_conf->re_chain, entry);
+            ss_re_chain_add(entry);
         }
     }
 
@@ -350,27 +410,70 @@ ss_conf_t* ss_conf_file_parse() {
             item = json_object_array_get_idx(items, i);
             ss_pcap_entry_t* entry = calloc(1, sizeof(ss_pcap_entry_t));
             entry = ss_pcap_entry_create(item);
-            ss_pcap_chain_add(&ss_conf->pcap_chain, entry);
+            ss_pcap_chain_add(entry);
+        }
+    }
+    
+    items = json_object_object_get(json_conf, "dns_chain");
+    if (items) {
+        is_ok = json_object_is_type(items, json_type_array);
+        if (!is_ok) {
+            fprintf(stderr, "dns_chain is not an array\n");
+            goto error_out;
+        }
+        int length = json_object_array_length(items);
+        for (int i = 0; i < length; ++i) {
+            item = json_object_array_get_idx(items, i);
+            ss_dns_entry_t* entry = calloc(1, sizeof(ss_dns_entry_t));
+            entry = ss_dns_entry_create(item);
+            ss_dns_chain_add(entry);
         }
     }
 
     items = json_object_object_get(json_conf, "cidr_table");
     if (items) {
-        is_ok = json_object_is_type(items, json_type_object);
+        is_ok = json_object_is_type(items, json_type_array);
         if (!is_ok) {
-            fprintf(stderr, "cidr_table is not an object\n");
+            fprintf(stderr, "cidr_table is not an array\n");
             goto error_out;
         }
-        json_object_object_foreach(items, cidr, cidr_conf) {
-            is_ok = json_object_is_type(cidr_conf, json_type_object);
-            if (!is_ok) {
-                fprintf(stderr, "cidr_table entry is not an object\n");
-                goto error_out;
-            }
+        int length = json_object_array_length(items);
+        for (int i = 0; i < length; ++i) {
+            item = json_object_array_get_idx(items, i);
             ss_cidr_entry_t* entry = calloc(1, sizeof(ss_cidr_entry_t));
-            entry = ss_cidr_entry_create(cidr_conf);
+            entry = ss_cidr_entry_create(item);
             ss_cidr_table_add(&ss_conf->cidr_table, entry);
         }
+    }
+    
+    items = json_object_object_get(json_conf, "ioc_files");
+    if (items) {
+        is_ok = json_object_is_type(items, json_type_array);
+        if (!is_ok) {
+            fprintf(stderr, "ioc_files is not an array\n");
+            goto error_out;
+        }
+        int length = json_object_array_length(items);
+        for (int i = 0; i < length; ++i) {
+            item = json_object_array_get_idx(items, i);
+            is_ok = json_object_is_type(item, json_type_string);
+            if (!is_ok) {
+                fprintf(stderr, "ioc_files entry %d is not string\n", i + 1);
+                goto error_out;
+            }
+            const char* ioc_path = json_object_get_string(item);
+            if (ioc_path == NULL) {
+                fprintf(stderr, "ioc_files entry %d is null\n", i + 1);
+            }
+            fprintf(stderr, "parse ioc file %s\n", ioc_path);
+            rv = ss_ioc_chain_load(ioc_path);
+            if (rv) {
+                fprintf(stderr, "ioc_file %s could not be loaded\n", ioc_path);
+                is_ok = 0; goto error_out;
+            }
+        }
+        
+        ss_ioc_chain_dump(20);
     }
     
     // XXX: do more stuff
