@@ -20,11 +20,17 @@
 
 #include <pcap/pcap.h>
 
+/* XXX: mhall: causes include loop w/ common.h */
+/* #include "nn_queue.h" */
+
 #include "common.h"
+#include "json.h"
 #include "sdn_sensor.h"
 
 int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
     char* value;
+    
+    memset(nn_queue, 0, sizeof(nn_queue_t));
     
     value = ss_json_string_get(items, "nm_queue_url");
     if (value == NULL) {
@@ -32,6 +38,7 @@ int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
         goto error_out;
     }
     strlcpy(nn_queue->url, value, sizeof(nn_queue->url));
+    free(value);
     
     value = ss_json_string_get(items, "nm_queue_type");
     if (value == NULL) {
@@ -50,16 +57,31 @@ int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
     else if (!strcasecmp(value, "RESPONDENT")) nn_queue->type = NN_RESPONDENT;
     else {
         fprintf(stderr, "unknown nm_queue_type %s\n", value);
+        goto error_out;
     }
+    free(value);
+    
+    value = ss_json_string_get(items, "nm_queue_format");
+    if      (!strcasecmp(value, "metadata")) nn_queue->format = NN_FORMAT_METADATA;
+    else if (!strcasecmp(value, "packet"))   nn_queue->format = NN_FORMAT_PACKET;
+    else {
+        fprintf(stderr, "unknown nm_queue_type %s\n", value);
+        goto error_out;
+    }
+    free(value);
     
     nn_queue->conn = nn_socket(AF_SP, nn_queue->type);
     if (nn_queue->conn < 0) {
         fprintf(stderr, "could not allocate nm queue socket: %s\n", nn_strerror(nn_errno()));
         goto error_out;
     }
+    nn_queue->remote_id = nn_connect(nn_queue->conn, nn_queue->url);
+    if (nn_queue->remote_id < 0) {
+        fprintf(stderr, "could not connect nm queue socket: %s\n", nn_strerror(nn_errno()));
+        goto error_out;
+    }
     
-    fprintf(stderr, "created nm_queue type %s url %s\n", value, nn_queue->url);
-    
+    fprintf(stderr, "created nm_queue type %s url %s\n", ss_nn_queue_type_dump(nn_queue->type), nn_queue->url);
     return 0;
     
     error_out:
@@ -69,12 +91,58 @@ int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
 
 int ss_nn_queue_destroy(nn_queue_t* nn_queue) {
     if (nn_queue->conn >= 0) { nn_close(nn_queue->conn); nn_queue->conn = -1; }
-    nn_queue->type = -1;
+    nn_queue->remote_id = -1;
+    nn_queue->format    = -1;
+    nn_queue->content   = -1;
+    nn_queue->type      = -1;
     memset(nn_queue->url, 0, sizeof(nn_queue->url));
     return 0;
 }
 
-uint8_t* ss_nn_queue_prepare_pcap(nn_queue_t* nn_queue, ss_frame_t* fbuf) {
+const char* ss_nn_queue_type_dump(int nn_queue_type) {
+    switch (nn_queue_type) {
+        case NN_BUS:        return "NN_BUS";
+        case NN_PAIR:       return "NN_PAIR";
+        case NN_PUSH:       return "NN_PUSH";
+        case NN_PULL:       return "NN_PULL";
+        case NN_PUB:        return "NN_PUB";
+        case NN_SUB:        return "NN_SUB";
+        case NN_REQ:        return "NN_REQ";
+        case NN_REP:        return "NN_REP";
+        case NN_SURVEYOR:   return "NN_SURVEYOR";
+        case NN_RESPONDENT: return "NN_RESPONDENT";
+        default:            return "UNKNOWN";
+    }
+}
+
+const char* ss_nn_queue_format_dump(nn_queue_format_t nn_format) {
+    switch (nn_format) {
+        case NN_FORMAT_METADATA: return "NN_FORMAT_METADATA";
+        case NN_FORMAT_PACKET:   return "NN_FORMAT_PACKET";
+        default:                 return "UNKNOWN";
+    }
+}
+
+const char* ss_nn_queue_content_dump(nn_content_type_t nn_type) {
+    switch (nn_type) {
+        case NN_OBJECT_PCAP:    return "NN_OBJECT_PCAP";
+        case NN_OBJECT_SYSLOG:  return "NN_OBJECT_SYSLOG";
+        case NN_OBJECT_SFLOW:   return "NN_OBJECT_SFLOW";
+        case NN_OBJECT_NETFLOW: return "NN_OBJECT_NETFLOW";
+        default:                return "UNKNOWN";
+    }
+}
+
+int ss_nn_queue_dump(nn_queue_t* nn_queue) {
+    fprintf(stderr, "nn_queue: id [%d] remote [%d] format [%s] content [%s] type [%s]\n"
+        "TX: Messages [%'20lu] Bytes [%'20lu] Discards [%'20lu]\n",
+        nn_queue->conn, nn_queue->remote_id,
+        ss_nn_queue_format_dump(nn_queue->format), ss_nn_queue_content_dump(nn_queue->content), ss_nn_queue_type_dump(nn_queue->type),
+        nn_queue->tx_messages, nn_queue->tx_bytes, nn_queue->tx_discards);
+    return 0;
+}
+
+uint8_t* ss_nn_queue_prepare_metadata(const char* source, nn_queue_t* nn_queue, ss_frame_t* fbuf) {
     char tmp[1024];
     uint8_t* rv;
     
@@ -85,9 +153,11 @@ uint8_t* ss_nn_queue_prepare_pcap(nn_queue_t* nn_queue, ss_frame_t* fbuf) {
     
     fbuf->data.json = json_object_new_object();
     if (fbuf->data.json == NULL) {
-        fprintf(stderr, "could not create json object\n");
+        fprintf(stderr, "could not allocate json object\n");
         goto error_out;
     }
+    
+    json_object* jsource     = json_object_new_string(source);
     
     json_object* port_id     = json_object_new_int(fbuf->data.port_id);
     if (port_id == NULL) goto error_out;
@@ -156,6 +226,12 @@ uint8_t* ss_nn_queue_prepare_pcap(nn_queue_t* nn_queue, ss_frame_t* fbuf) {
     json_object* dport       = json_object_new_int(fbuf->data.dport);
     if (dport == NULL) goto error_out;
     
+    json_object* dns_name    = json_object_new_string((char*)fbuf->data.dns_name);
+    if (dns_name == NULL) goto error_out;
+    
+    // XXX: add support for dns_values field
+    
+    json_object_object_add(fbuf->data.json, "source",      jsource);
     json_object_object_add(fbuf->data.json, "port_id",     port_id);
     json_object_object_add(fbuf->data.json, "direction",   direction);
     json_object_object_add(fbuf->data.json, "self",        self);
@@ -172,6 +248,7 @@ uint8_t* ss_nn_queue_prepare_pcap(nn_queue_t* nn_queue, ss_frame_t* fbuf) {
     json_object_object_add(fbuf->data.json, "icmp_code",   icmp_code);
     json_object_object_add(fbuf->data.json, "sport",       sport);
     json_object_object_add(fbuf->data.json, "dport",       dport);
+    json_object_object_add(fbuf->data.json, "dns_name",    dns_name);
     
     rv = (uint8_t*) json_object_to_json_string_ext(fbuf->data.json, JSON_C_TO_STRING_SPACED);
     return rv;
@@ -184,7 +261,15 @@ uint8_t* ss_nn_queue_prepare_pcap(nn_queue_t* nn_queue, ss_frame_t* fbuf) {
 int ss_nn_queue_send(nn_queue_t* nn_queue, uint8_t* message, uint16_t length) {
     int rv = 0;
     
-    rv = nn_send(nn_queue->conn, message, length, 0);
+    rv = nn_send(nn_queue->conn, message, length, NN_DONTWAIT);
+    
+    if (rv >= 0) {
+        nn_queue->tx_messages += 1;
+        nn_queue->tx_bytes    += rv;
+    }
+    else {
+        nn_queue->tx_discards += 1;
+    }
     
     return rv;
 }
