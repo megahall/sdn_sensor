@@ -25,7 +25,6 @@ while getopts ":ds" optopt; do
     esac
 done
 
-
 script_directory="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
 source "${script_directory}/../sdn_sensor_rc"
 script_directory="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
@@ -57,6 +56,9 @@ if [[ $setup -gt 0 ]]; then
 fi
 
 cd "${script_directory}/.."
+
+export NN_PRINT_ERRORS=1
+#export NN_PRINT_STATISTICS=1
 
 if [[ $debug -gt 0 ]]; then
     gdb "${script_directory}/../src/sdn_sensor"
