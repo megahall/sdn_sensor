@@ -51,9 +51,13 @@ typedef enum nn_queue_format_e nn_queue_format_t;
 
 struct nn_queue_s {
     int               conn;
+    int               remote_id;
     nn_queue_format_t format;
     nn_content_type_t content;
     int               type;
+    uint64_t          tx_messages;
+    uint64_t          tx_bytes;
+    uint64_t          tx_discards;
     char              url[NN_URL_MAX];
 };
 
@@ -63,7 +67,11 @@ typedef struct nn_queue_s nn_queue_t;
 
 int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue);
 int ss_nn_queue_destroy(nn_queue_t* nn_queue);
-uint8_t* ss_nn_queue_prepare_pcap(nn_queue_t* nn_queue, ss_frame_t* fbuf);
+const char* ss_nn_queue_type_dump(int nn_queue_type);
+const char* ss_nn_queue_format_dump(nn_queue_format_t nn_format);
+const char* ss_nn_queue_content_dump(nn_content_type_t nn_type);
+int ss_nn_queue_dump(nn_queue_t* nn_queue);
+uint8_t* ss_nn_queue_prepare_metadata(const char* source, nn_queue_t* nn_queue, ss_frame_t* fbuf);
 int ss_nn_queue_send(nn_queue_t* nn_queue, uint8_t* message, uint16_t length);
 
 /* END PROTOTYPES */
