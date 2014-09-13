@@ -11,9 +11,12 @@
 #include <rte_log.h>
 #include <rte_mbuf.h>
 
+#include <dns.h>
+
 #include "udp.h"
 
 #include "common.h"
+#include "extractor.h"
 
 int ss_frame_handle_udp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
@@ -24,26 +27,30 @@ int ss_frame_handle_udp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     RTE_LOG(INFO, SS, "rx udp packet: sport: %hu dport: %hu length: %hu\n",
         rx_buf->data.sport, rx_buf->data.dport, rx_buf->data.l4_length);
     
-    if (!rx_buf->data.self) {
-        return rv;
-    }
-    
-    // XXX: check for sFlow, NetFlow, or Syslog
     switch (rx_buf->data.dport) {
+        case L4_PORT_DNS: {
+            RTE_LOG(DEBUG, SS, "rx udp dns packet\n");
+            ss_extract_dns(rx_buf);
+            break;
+        }
         case L4_PORT_SYSLOG: {
-            RTE_LOG(INFO, SS, "rx udp syslog packet\n");
+            RTE_LOG(DEBUG, SS, "rx udp syslog packet\n");
+            SS_CHECK_SELF(rx_buf, 0);
             break;
         }
         case L4_PORT_SYSLOG_TLS: {
-            RTE_LOG(INFO, SS, "rx udp syslog-tls packet\n");
+            RTE_LOG(DEBUG, SS, "rx udp syslog-tls packet\n");
+            SS_CHECK_SELF(rx_buf, 0);
             break;
         }
         case L4_PORT_SFLOW: {
-            RTE_LOG(INFO, SS, "rx udp sFlow packet\n");
+            RTE_LOG(DEBUG, SS, "rx udp sFlow packet\n");
+            SS_CHECK_SELF(rx_buf, 0);
             break;
         }
         case L4_PORT_NETFLOW: {
-            RTE_LOG(INFO, SS, "rx udp NetFlow packet\n");
+            RTE_LOG(DEBUG, SS, "rx udp NetFlow packet\n");
+            SS_CHECK_SELF(rx_buf, 0);
             break;
         }
     }
