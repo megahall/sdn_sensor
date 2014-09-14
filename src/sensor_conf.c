@@ -143,12 +143,12 @@ int ss_conf_network_parse(json_object* items) {
             return -1;
         }
         fprintf(stderr, "parse ipv4 address %s\n", json_object_get_string(item));
-        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ip4_address);
+        rv = ss_cidr_parse(json_object_get_string(item), &ss_conf->ip4_address);
         if (rv != 1) {
             fprintf(stderr, "invalid ipv4 address %s\n", json_object_get_string(item));
             return -1;
         }
-        ss_dump_cidr(NULL, "ipv4_address", &ss_conf->ip4_address);
+        ss_cidr_dump(NULL, "ipv4_address", &ss_conf->ip4_address);
     }
     item = json_object_object_get(items, "ipv4_gateway");
     if (item) {
@@ -157,12 +157,12 @@ int ss_conf_network_parse(json_object* items) {
             return -1;
         }
         fprintf(stderr, "parse ipv4 gateway %s\n", json_object_get_string(item));
-        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ip4_gateway);
+        rv = ss_cidr_parse(json_object_get_string(item), &ss_conf->ip4_gateway);
         if (rv != 1) {
             fprintf(stderr, "invalid ipv4 gateway %s\n", json_object_get_string(item));
             return -1;
         }
-        ss_dump_cidr(NULL, "ipv4_gateway", &ss_conf->ip4_gateway);
+        ss_cidr_dump(NULL, "ipv4_gateway", &ss_conf->ip4_gateway);
     }
     item = json_object_object_get(items, "ipv6_address");
     if (item) {
@@ -171,12 +171,12 @@ int ss_conf_network_parse(json_object* items) {
             return -1;
         }
         fprintf(stderr, "parse ipv6 address %s\n", json_object_get_string(item));
-        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ip6_address);
+        rv = ss_cidr_parse(json_object_get_string(item), &ss_conf->ip6_address);
         if (rv != 1) {
             fprintf(stderr, "invalid ipv6 address %s\n", json_object_get_string(item));
             return -1;
         }
-        ss_dump_cidr(NULL, "ipv6_address", &ss_conf->ip6_address);
+        ss_cidr_dump(NULL, "ipv6_address", &ss_conf->ip6_address);
     }
     item = json_object_object_get(items, "ipv6_gateway");
     if (item) {
@@ -185,12 +185,12 @@ int ss_conf_network_parse(json_object* items) {
             return -1;
         }
         fprintf(stderr, "parse ipv6 gateway %s\n", json_object_get_string(item));
-        rv = ss_parse_cidr(json_object_get_string(item), &ss_conf->ip6_gateway);
+        rv = ss_cidr_parse(json_object_get_string(item), &ss_conf->ip6_gateway);
         if (rv != 1) {
             fprintf(stderr, "invalid ipv6 gateway %s\n", json_object_get_string(item));
             return -1;
         }
-        ss_dump_cidr(NULL, "ipv6_gateway", &ss_conf->ip6_gateway);
+        ss_cidr_dump(NULL, "ipv6_gateway", &ss_conf->ip6_gateway);
     }
     return 0;
 }
@@ -394,6 +394,13 @@ ss_conf_t* ss_conf_file_parse() {
             item = json_object_array_get_idx(items, i);
             ss_re_entry_t* entry = calloc(1, sizeof(ss_re_entry_t));
             entry = ss_re_entry_create(item);
+            /*
+            if (entry == NULL) {
+                fprintf(stderr, "could not create re_chain entry\n");
+                if (entry) free(entry);
+                is_ok = 0; goto error_out;
+            }
+            */
             ss_re_chain_add(entry);
         }
     }
@@ -410,6 +417,11 @@ ss_conf_t* ss_conf_file_parse() {
             item = json_object_array_get_idx(items, i);
             ss_pcap_entry_t* entry = calloc(1, sizeof(ss_pcap_entry_t));
             entry = ss_pcap_entry_create(item);
+            if (entry == NULL) {
+                fprintf(stderr, "could not create pcap_chain entry\n");
+                if (entry) free(entry);
+                is_ok = 0; goto error_out;
+            }
             ss_pcap_chain_add(entry);
         }
     }
@@ -426,6 +438,11 @@ ss_conf_t* ss_conf_file_parse() {
             item = json_object_array_get_idx(items, i);
             ss_dns_entry_t* entry = calloc(1, sizeof(ss_dns_entry_t));
             entry = ss_dns_entry_create(item);
+            if (entry == NULL) {
+                fprintf(stderr, "could not create dns_chain entry\n");
+                if (entry) free(entry);
+                is_ok = 0; goto error_out;
+            }
             ss_dns_chain_add(entry);
         }
     }
@@ -442,6 +459,13 @@ ss_conf_t* ss_conf_file_parse() {
             item = json_object_array_get_idx(items, i);
             ss_cidr_entry_t* entry = calloc(1, sizeof(ss_cidr_entry_t));
             entry = ss_cidr_entry_create(item);
+            /*
+            if (entry == NULL) {
+                fprintf(stderr, "could not create cidr_table entry\n");
+                if (entry) free(entry);
+                is_ok = 0; goto error_out;
+            }
+            */
             ss_cidr_table_add(&ss_conf->cidr_table, entry);
         }
     }
@@ -454,26 +478,22 @@ ss_conf_t* ss_conf_file_parse() {
             goto error_out;
         }
         int length = json_object_array_length(items);
+        if (length > SS_IOC_FILE_MAX) {
+            fprintf(stderr, "ioc_file_count %d greater than %d, only parsing files below limit\n", length, SS_IOC_FILE_MAX);
+            length = SS_IOC_FILE_MAX;
+        }
         for (int i = 0; i < length; ++i) {
             item = json_object_array_get_idx(items, i);
-            is_ok = json_object_is_type(item, json_type_string);
-            if (!is_ok) {
-                fprintf(stderr, "ioc_files entry %d is not string\n", i + 1);
-                goto error_out;
-            }
-            const char* ioc_path = json_object_get_string(item);
-            if (ioc_path == NULL) {
-                fprintf(stderr, "ioc_files entry %d is null\n", i + 1);
-            }
-            fprintf(stderr, "parse ioc file %s\n", ioc_path);
-            rv = ss_ioc_chain_load(ioc_path);
+            rv = ss_ioc_file_load(item);
             if (rv) {
-                fprintf(stderr, "ioc_file %s could not be loaded\n", ioc_path);
+                fprintf(stderr, "ioc_file index %d could not be loaded\n", i);
                 is_ok = 0; goto error_out;
             }
         }
         
         ss_ioc_chain_dump(20);
+        ss_ioc_chain_optimize();
+        ss_ioc_tables_dump(5);
     }
     
     // XXX: do more stuff
