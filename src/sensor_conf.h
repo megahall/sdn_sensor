@@ -13,7 +13,6 @@
 
 typedef enum json_type json_type_t;
 typedef enum json_tokener_error json_error_t;
-typedef struct array_list array_list_t;
 
 struct ss_conf_s {
     // options
@@ -34,13 +33,21 @@ struct ss_conf_s {
     
     wordexp_t eal_vector;
     
-    ss_re_chain_t re_chain;
     ss_pcap_chain_t pcap_chain;
-    ss_dns_chain_t dns_chain;
     ss_cidr_table_t cidr_table;
+    ss_dns_chain_t dns_chain;
+    ss_re_chain_t re_chain;
     ss_string_trie_t string_trie;
     
+    uint64_t ioc_file_id;
+    ss_ioc_file_t ioc_files[SS_IOC_FILE_MAX];
     ss_ioc_chain_t ioc_chain;
+    
+    ss_ioc_entry_t* ip4_table;
+    ss_ioc_entry_t* ip6_table;
+    ss_ioc_entry_t* domain_table;
+    ss_ioc_entry_t* url_table;
+    ss_ioc_entry_t* email_table;
 } __rte_cache_aligned;
 
 typedef struct ss_conf_s ss_conf_t;
