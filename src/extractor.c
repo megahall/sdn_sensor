@@ -3,11 +3,18 @@
 #include <bsd/string.h>
 #include <bsd/sys/queue.h>
 
+#include <rte_memory.h>
+
+#include "extractor.h"
+
 #include "common.h"
+#include "ioc.h"
+#include "metadata.h"
 #include "sdn_sensor.h"
 
+// NOTE: this stuff comes from spcdns
 #include "dns.h"
-#include "mappings.h" // NOTE: comes from spcdns
+#include "mappings.h"
 
 /*
  * Ethernet frame extractor function
@@ -17,6 +24,7 @@
 int ss_extract_eth(ss_frame_t* fbuf) {
     ss_pcap_entry_t* pptr;
     ss_pcap_entry_t* ptmp;
+    ss_ioc_entry_t* iptr;
     int rv;
     uint8_t* metadata;
     int mlength;
@@ -35,7 +43,7 @@ int ss_extract_eth(ss_frame_t* fbuf) {
         if (rv > 0) {
             // match
             RTE_LOG(INFO, SS, "successful match against pcap rule %s\n", pptr->name);
-            metadata = ss_nn_queue_prepare_metadata("ethernet", &pptr->nn_queue, fbuf);
+            metadata = ss_nn_queue_prepare_metadata("pcap", &pptr->nn_queue, fbuf, NULL);
             // XXX: for now assume the output is C char*
             mlength = strlen((char*) metadata);
             //printf("metadata: %s\n", metadata);
@@ -49,6 +57,18 @@ int ss_extract_eth(ss_frame_t* fbuf) {
             // error
             RTE_LOG(ERR, SS, "pcap match returned error %d\n", rv);
         }
+    }
+    
+    iptr = ss_ioc_metadata_match(&fbuf->data);
+    if (iptr) {
+        // match
+        RTE_LOG(INFO, SS, "successful match against IOC id %lu\n", iptr->id);
+        nn_queue_t* nn_queue = &ss_conf->ioc_files[iptr->file_id].nn_queue;
+        metadata = ss_nn_queue_prepare_metadata("ioc_tables", nn_queue, fbuf, iptr);
+        // XXX: for now assume the output is C char*
+        mlength = strlen((char*) metadata);
+        //printf("metadata: %s\n", metadata);
+        rv = ss_nn_queue_send(nn_queue, metadata, mlength);
     }
     
     return 0;
@@ -68,6 +88,8 @@ int ss_extract_dns(ss_frame_t* fbuf) {
     dns_decoded_t   dns_info[DNS_DECODEBUF_4K];
     dns_query_t*    dns_query;
     dns_question_t* dns_question;
+    dns_answer_t*   dns_answer;
+    ss_answer_t*    ss_answer;
     enum dns_rcode  dns_rv;
     size_t          dns_info_size = sizeof(dns_info);
     
@@ -84,19 +106,106 @@ int ss_extract_dns(ss_frame_t* fbuf) {
         RTE_LOG(ERR, SS, "dns question missing in query\n");
         return -1;
     }
+    
     RTE_LOG(INFO, SS, "rx dns query for name [%s] type [%s] class [%s]\n",
         dns_question->name, dns_type_text(dns_question->type), dns_class_text(dns_question->class));
-    
     strlcpy((char*) &fbuf->data.dns_name, dns_question->name, SS_DNS_NAME_MAX);
+    size_t ancount = dns_query->ancount;
+    if (ancount > SS_DNS_RESULT_MAX) ancount = SS_DNS_RESULT_MAX;
+    for (size_t i = 0; i < ancount; ++i) {
+        dns_answer = &dns_query->answers[i];
+        rv = ss_extract_dns_atype(&fbuf->data.dns_answers[i], dns_answer);
+        if (rv) {
+            RTE_LOG(ERR, SS, "rx dns query decode failure for name [%s] answer index [%zd]\n",
+                dns_question->name, i);
+        }
+    }
     
     TAILQ_FOREACH_SAFE(pptr, &ss_conf->dns_chain.dns_list, entry, ptmp) {
+        int is_match = 0;
+        if (pptr->dns[0] && !strcasecmp(dns_question->name, pptr->dns)) {
+            is_match = 1; goto done;
+        }
+        for (int i = 0; i < SS_DNS_RESULT_MAX; ++i) {
+            ss_answer = &fbuf->data.dns_answers[i];
+            switch (ss_answer->type) {
+                case SS_TYPE_NAME: {
+                    if (pptr->dns[0] && !strcasecmp((char*) ss_answer->payload, pptr->dns)) {
+                        is_match = 1; goto done;
+                    }
+                }
+                case SS_TYPE_IP: {
+                    if (pptr->ip.family && !memcmp(ss_answer->payload, &pptr->ip, sizeof(ip_addr_t))) {
+                        is_match = 1; goto done;
+                    }
+                }
+                default: {
+                    // fprintf(stderr, "unknown ss_answer type %d\n", dns_answer->type);
+                    goto done;
+                }
+            }
+        }
+        done:
+        if (!is_match) continue;
         RTE_LOG(INFO, SS, "successful match against dns rule %s\n", pptr->name);
-        metadata = ss_nn_queue_prepare_metadata("dns", &pptr->nn_queue, fbuf);
-        // XXX: for now assume the output is C char*
+        metadata = ss_nn_queue_prepare_metadata("dns", &pptr->nn_queue, fbuf, NULL);
+        // XXX: for now assume the output is C string
         mlength = strlen((char*) metadata);
         //printf("metadata: %s\n", metadata);
         rv = ss_nn_queue_send(&pptr->nn_queue, metadata, mlength);
     }
     
     return 0;
+}
+
+int ss_extract_dns_atype(ss_answer_t* result, dns_answer_t* aptr) {
+    char*        name  = (char*) result->payload;
+    ip_addr_t*   ip    = (ip_addr_t*) result->payload;
+    
+    result->type = SS_TYPE_EMPTY;
+    
+    switch(aptr->generic.type) {
+        case RR_NS: {
+            result->type = SS_TYPE_NAME;
+            strlcpy(name, aptr->ns.nsdname, sizeof(result->payload));
+            break;
+        }
+        case RR_A: {
+            result->type = SS_TYPE_IP;
+            ip->family   = SS_AF_INET4;
+            ip->prefix   = 32;
+            ip->ip4_addr.addr = aptr->a.address;
+            break;
+        }
+        case RR_AAAA: {
+            result->type = SS_TYPE_IP;
+            ip->family   = SS_AF_INET6;
+            ip->prefix   = 128;
+            rte_memcpy(ip->ip6_addr.addr, &aptr->aaaa.address, sizeof(ip->ip6_addr.addr));
+            break;
+        }
+        case RR_CNAME: {
+            result->type = SS_TYPE_NAME;
+            strlcpy(name, aptr->cname.cname, sizeof(result->payload));
+            break;
+        }
+        case RR_MX: {
+            result->type = SS_TYPE_NAME;
+            strlcpy(name, aptr->mx.exchange, sizeof(result->payload));
+            break;
+        }
+        case RR_PTR: {
+            result->type = SS_TYPE_NAME;
+            strlcpy(name, aptr->ptr.ptr, sizeof(result->payload));
+            break;
+        }
+        default: {
+            fprintf(stderr, "unknown dns answer type %d\n", aptr->generic.type);
+            memset(result, 0, sizeof(ss_answer_t));
+            break;
+        }
+    }
+    
+    error_out:
+    return -1;
 }
