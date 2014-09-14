@@ -42,15 +42,19 @@ void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int port_id) {
         goto out;
     }
     rx_buf.eth = rte_pktmbuf_mtod(mbuf, eth_hdr_t*);
-    rte_memdump(stderr, "eth src", &rx_buf.eth->s_addr, sizeof(rx_buf.eth->s_addr));
-    rte_memdump(stderr, "eth dst", &rx_buf.eth->d_addr, sizeof(rx_buf.eth->d_addr));
+    RTE_LOG(INFO, SS, "eth src %02x:%02x:%02x:%02x:%02x:%02x\n",
+        rx_buf.eth->s_addr.addr_bytes[0], rx_buf.eth->s_addr.addr_bytes[1], rx_buf.eth->s_addr.addr_bytes[2],
+        rx_buf.eth->s_addr.addr_bytes[3], rx_buf.eth->s_addr.addr_bytes[4], rx_buf.eth->s_addr.addr_bytes[5]);
+    RTE_LOG(INFO, SS, "eth dst %02x:%02x:%02x:%02x:%02x:%02x\n",
+        rx_buf.eth->d_addr.addr_bytes[0], rx_buf.eth->d_addr.addr_bytes[1], rx_buf.eth->d_addr.addr_bytes[2],
+        rx_buf.eth->d_addr.addr_bytes[3], rx_buf.eth->d_addr.addr_bytes[4], rx_buf.eth->d_addr.addr_bytes[5]);
     rte_memcpy(&rx_buf.data.smac, &rx_buf.eth->s_addr, sizeof(rx_buf.data.smac));
     rte_memcpy(&rx_buf.data.dmac, &rx_buf.eth->d_addr, sizeof(rx_buf.data.dmac));
 
     uint16_t ether_type = rte_bswap16(rx_buf.eth->ether_type);
     rx_buf.data.eth_type = ether_type;
     if (ether_type == ETHER_TYPE_VLAN) {
-        RTE_LOG(INFO, SS, "port %u attempting decode of VLAN frame\n", port_id);
+        RTE_LOG(NOTICE, SS, "port %u attempting decode of VLAN frame\n", port_id);
         rte_pktmbuf_dump(stderr, mbuf, rte_pktmbuf_pkt_len(mbuf));
         rx_buf.ethv = rte_pktmbuf_mtod(mbuf, eth_vhdr_t*);
         rx_buf.eth = (eth_hdr_t*) ((uint8_t*) rx_buf.eth + sizeof(eth_vhdr_t));
@@ -89,8 +93,10 @@ void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int port_id) {
             break;
         }
         default: {
-            RTE_LOG(INFO, SS, "port %u received unsupported 0x%04hx frame:\n", port_id, ether_type);
-            rte_pktmbuf_dump(stderr, mbuf, rte_pktmbuf_pkt_len(mbuf));
+            if (rte_get_log_level() >= RTE_LOG_INFO) {
+                RTE_LOG(INFO, SS, "port %u received unsupported 0x%04hx frame:\n", port_id, ether_type);
+                rte_pktmbuf_dump(stderr, mbuf, rte_pktmbuf_pkt_len(mbuf));
+            }
             break;
         }
     }
@@ -146,8 +152,12 @@ int ss_frame_prepare_eth(ss_frame_t* tx_buf, int port_id, eth_addr_t* d_addr, ui
     ether_addr_copy(d_addr, &tx_buf->eth->d_addr);
     ether_addr_copy(&port_eth_addrs[port_id], &tx_buf->eth->s_addr);
     tx_buf->eth->ether_type = rte_bswap16(type);
-    rte_memdump(stderr, "prepare eth src", &tx_buf->eth->s_addr, sizeof(tx_buf->eth->s_addr));
-    rte_memdump(stderr, "prepare eth dst", &tx_buf->eth->d_addr, sizeof(tx_buf->eth->d_addr));
+    RTE_LOG(INFO, SS, "eth src %02x:%02x:%02x:%02x:%02x:%02x\n",
+        tx_buf->eth->s_addr.addr_bytes[0], tx_buf->eth->s_addr.addr_bytes[1], tx_buf->eth->s_addr.addr_bytes[2],
+        tx_buf->eth->s_addr.addr_bytes[3], tx_buf->eth->s_addr.addr_bytes[4], tx_buf->eth->s_addr.addr_bytes[5]);
+    RTE_LOG(INFO, SS, "eth dst %02x:%02x:%02x:%02x:%02x:%02x\n",
+        tx_buf->eth->d_addr.addr_bytes[0], tx_buf->eth->d_addr.addr_bytes[1], tx_buf->eth->d_addr.addr_bytes[2],
+        tx_buf->eth->d_addr.addr_bytes[3], tx_buf->eth->d_addr.addr_bytes[4], tx_buf->eth->d_addr.addr_bytes[5]);
     tx_buf->active = 1;
 
     return 0;
@@ -170,14 +180,16 @@ int ss_frame_handle_arp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
 
     rx_buf->arp = (arp_hdr_t*) ((uint8_t*) rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*) + sizeof(eth_hdr_t));
-    printf("eth size %ld\n", (uint8_t*) rx_buf->arp - (uint8_t*) rx_buf->eth);
-
-    rte_memdump(stderr, "arp src", &rx_buf->arp->arp_sha, sizeof(rx_buf->arp->arp_sha));
-    rte_memdump(stderr, "arp dst", &rx_buf->arp->arp_tha, sizeof(rx_buf->arp->arp_tha));
-    rte_memdump(stderr, "ip src",  &rx_buf->arp->arp_spa, sizeof(rx_buf->arp->arp_spa));
-    rte_memdump(stderr, "ip dst",  &rx_buf->arp->arp_tpa, sizeof(rx_buf->arp->arp_tpa));
-    rte_memdump(stderr, "in dst",  &ss_conf->ip4_address.ip4_addr, IPV4_ALEN);
-    rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+    RTE_LOG(DEBUG, SS, "eth size %ld\n", (uint8_t*) rx_buf->arp - (uint8_t*) rx_buf->eth);
+    
+    if (rte_get_log_level() >= RTE_LOG_INFO) {
+        rte_memdump(stderr, "arp src", &rx_buf->arp->arp_sha, sizeof(rx_buf->arp->arp_sha));
+        rte_memdump(stderr, "arp dst", &rx_buf->arp->arp_tha, sizeof(rx_buf->arp->arp_tha));
+        rte_memdump(stderr, "ip src",  &rx_buf->arp->arp_spa, sizeof(rx_buf->arp->arp_spa));
+        rte_memdump(stderr, "ip dst",  &rx_buf->arp->arp_tpa, sizeof(rx_buf->arp->arp_tpa));
+        rte_memdump(stderr, "in dst",  &ss_conf->ip4_address.ip4_addr, IPV4_ALEN);
+        rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+    }
 
     int is_ip_daddr_ok = memcmp(&rx_buf->arp->arp_tpa, &ss_conf->ip4_address.ip4_addr, IPV4_ALEN) == 0;
     if (!is_ip_daddr_ok) {
@@ -224,10 +236,12 @@ int ss_frame_handle_ndp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
 
     rx_buf->ndp_rx = (ndp_request_t*) ((uint8_t*) rx_buf->ip6 + sizeof(ip6_hdr_t));
-
-    rte_memdump(stderr, "ndp  dst", &rx_buf->ndp_rx->hdr.nd_ns_target, sizeof(rx_buf->ndp_rx->hdr.nd_ns_target));
-    rte_memdump(stderr, "self    ", &ss_conf->ip6_address.ip6_addr, sizeof(ss_conf->ip6_address.ip6_addr));
-    rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+    
+    if (rte_get_log_level() >= RTE_LOG_INFO) {
+        rte_memdump(stderr, "ndp  dst", &rx_buf->ndp_rx->hdr.nd_ns_target, sizeof(rx_buf->ndp_rx->hdr.nd_ns_target));
+        rte_memdump(stderr, "self    ", &ss_conf->ip6_address.ip6_addr, sizeof(ss_conf->ip6_address.ip6_addr));
+        rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+    }
 
     int is_ndp_saddr_ok = memcmp(&rx_buf->ndp_rx->hdr.nd_ns_target, &ss_conf->ip6_address.ip6_addr, sizeof(rx_buf->ndp_rx->hdr.nd_ns_target)) == 0;
     if (!is_ndp_saddr_ok) {
