@@ -32,7 +32,7 @@ struct ip4_addr_s {
 typedef struct ip4_addr_s ip4_addr_t;
 
 struct ip6_addr_s {
-    uint8_t addr[16];
+    uint8_t addr[IPV6_ALEN];
 };
 
 typedef struct ip6_addr_s ip6_addr_t;
@@ -52,8 +52,8 @@ typedef struct ip_addr_s ip_addr_t;
 
 /* BEGIN PROTOTYPES */
 
-int ss_dump_cidr(FILE* fd, const char* label, ip_addr_t* ip_addr);
-int ss_parse_cidr(const char* input, ip_addr_t* ip_addr);
+int ss_cidr_dump(FILE* fd, const char* label, ip_addr_t* ip_addr);
+int ss_cidr_parse(const char* input, ip_addr_t* ip_addr);
 int ss_inet_pton(int af, const char* src, ip_addr_t* dst);
 int ss_inet_pton4(const char* src, uint8_t* dst);
 int ss_inet_pton6(const char* src, uint8_t* dst);

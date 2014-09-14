@@ -28,7 +28,7 @@
 #include "common.h"
 #include "ip_utils.h"
 
-int ss_dump_cidr(FILE* fd, const char* label, ip_addr_t* ip_addr) {
+int ss_cidr_dump(FILE* fd, const char* label, ip_addr_t* ip_addr) {
     char tmp[SS_ADDR_STR_MAX];
     memset(tmp, 0, sizeof(tmp));
     
@@ -45,7 +45,7 @@ int ss_dump_cidr(FILE* fd, const char* label, ip_addr_t* ip_addr) {
     return 0;
 }
 
-int ss_parse_cidr(const char* input, ip_addr_t* ip_addr) {
+int ss_cidr_parse(const char* input, ip_addr_t* ip_addr) {
     unsigned int input_len = 0;
     int rv = -1;
     char ip_str[SS_INET6_ADDRSTRLEN+4+1]; /* '+4' is for prefix (if any) */
