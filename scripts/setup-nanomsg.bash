@@ -18,6 +18,7 @@ cd "${build_directory}/external/nanomsg"
 --enable-shared \
 --enable-static
 
+make clean
 make
 
 sudo make install
