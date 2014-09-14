@@ -138,31 +138,55 @@ enum direction_e {
 
 typedef enum direction_e direction_t;
 
+enum ss_answer_type_e {
+    SS_TYPE_EMPTY = 0,
+    SS_TYPE_NAME  = 1,
+    SS_TYPE_IP    = 2,
+    SS_TYPE_MAX,
+};
+
+typedef enum ss_answer_type_e ss_answer_type_t;
+
+struct ss_answer_s {
+    ss_answer_type_t type;
+    uint8_t payload[SS_DNS_NAME_MAX];
+};
+
+typedef struct ss_answer_s ss_answer_t;
+
 struct ss_metadata_s {
     json_object* json;
     
-    uint32_t port_id;
-    uint8_t  direction;
-    uint8_t  self;
-    uint16_t length;
-    uint8_t  smac[ETHER_ADDR_LEN];
-    uint8_t  dmac[ETHER_ADDR_LEN];
-    uint16_t eth_type;
-    uint8_t  sip[IPV6_ALEN];
-    uint8_t  dip[IPV6_ALEN];
-    uint8_t  ip_protocol;
-    uint8_t  ttl;
-    uint16_t l4_length;
-    uint8_t  icmp_type;
-    uint8_t  icmp_code;
-    uint8_t  tcp_flags;
-    uint16_t sport;
-    uint16_t dport;
-    uint8_t  dns_name[SS_DNS_NAME_MAX];
-    uint8_t  dns_values[SS_DNS_RESULT_MAX][SS_DNS_NAME_MAX];
+    uint32_t    port_id;
+    uint8_t     direction;
+    uint8_t     self;
+    uint16_t    length;
+    uint8_t     smac[ETHER_ADDR_LEN];
+    uint8_t     dmac[ETHER_ADDR_LEN];
+    uint16_t    eth_type;
+    uint8_t     sip[IPV6_ALEN];
+    uint8_t     dip[IPV6_ALEN];
+    uint8_t     ip_protocol;
+    uint8_t     ttl;
+    uint16_t    l4_length;
+    uint8_t     icmp_type;
+    uint8_t     icmp_code;
+    uint8_t     tcp_flags;
+    uint16_t    sport;
+    uint16_t    dport;
+    uint8_t     dns_name[SS_DNS_NAME_MAX];
+    ss_answer_t dns_answers[SS_DNS_RESULT_MAX];
 } __rte_cache_aligned;
 
 typedef struct ss_metadata_s ss_metadata_t;
+
+struct ss_ioc_file_s {
+    uint64_t   file_id;
+    char*      path;
+    nn_queue_t nn_queue;
+};
+
+typedef struct ss_ioc_file_s ss_ioc_file_t;
 
 struct ss_frame_s {
     unsigned int   active;
@@ -252,6 +276,8 @@ typedef struct ss_pcap_chain_s ss_pcap_chain_t;
 
 struct ss_dns_entry_s {
     uint64_t matches;
+    char dns[SS_DNS_NAME_MAX];
+    ip_addr_t ip;
     nn_queue_t nn_queue;
     char* name;
     TAILQ_ENTRY(ss_dns_entry_s) entry;
