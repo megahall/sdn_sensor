@@ -23,11 +23,6 @@
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
 
-#include "common.h"
-
-struct ss_frame_s;
-typedef struct ss_frame_s ss_frame_t;
-
 /* should be enough for the nanomsg queue URL */
 #define NN_URL_MAX 256
 
@@ -71,7 +66,6 @@ const char* ss_nn_queue_type_dump(int nn_queue_type);
 const char* ss_nn_queue_format_dump(nn_queue_format_t nn_format);
 const char* ss_nn_queue_content_dump(nn_content_type_t nn_type);
 int ss_nn_queue_dump(nn_queue_t* nn_queue);
-uint8_t* ss_nn_queue_prepare_metadata(const char* source, nn_queue_t* nn_queue, ss_frame_t* fbuf);
 int ss_nn_queue_send(nn_queue_t* nn_queue, uint8_t* message, uint16_t length);
 
 /* END PROTOTYPES */
