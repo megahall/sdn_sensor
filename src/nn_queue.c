@@ -32,17 +32,17 @@ int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
     
     memset(nn_queue, 0, sizeof(nn_queue_t));
     
-    value = ss_json_string_get(items, "nm_queue_url");
+    value = ss_json_string_get(items, "nm_url");
     if (value == NULL) {
-        fprintf(stderr, "nm_queue_url is null\n");
+        fprintf(stderr, "nm_url is null\n");
         goto error_out;
     }
     strlcpy(nn_queue->url, value, sizeof(nn_queue->url));
     free(value);
     
-    value = ss_json_string_get(items, "nm_queue_type");
+    value = ss_json_string_get(items, "nm_type");
     if (value == NULL) {
-        fprintf(stderr, "nm_queue_type is null\n");
+        fprintf(stderr, "nm_type is null\n");
         goto error_out;
     }
     if      (!strcasecmp(value, "BUS"))        nn_queue->type = NN_BUS;
@@ -56,16 +56,16 @@ int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
     else if (!strcasecmp(value, "SURVEYOR"))   nn_queue->type = NN_SURVEYOR;
     else if (!strcasecmp(value, "RESPONDENT")) nn_queue->type = NN_RESPONDENT;
     else {
-        fprintf(stderr, "unknown nm_queue_type %s\n", value);
+        fprintf(stderr, "unknown nm_type %s\n", value);
         goto error_out;
     }
     free(value);
     
-    value = ss_json_string_get(items, "nm_queue_format");
+    value = ss_json_string_get(items, "nm_format");
     if      (!strcasecmp(value, "metadata")) nn_queue->format = NN_FORMAT_METADATA;
     else if (!strcasecmp(value, "packet"))   nn_queue->format = NN_FORMAT_PACKET;
     else {
-        fprintf(stderr, "unknown nm_queue_type %s\n", value);
+        fprintf(stderr, "unknown nm_format %s\n", value);
         goto error_out;
     }
     free(value);
