@@ -217,7 +217,7 @@ int ss_frame_handle_icmp4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         }
         default: {
             RTE_LOG(INFO, SS, "port %u received unsupported icmpv4 0x%04hhx frame:\n", rx_buf->data.port_id, icmp_type);
-            rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+            //rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
             rv = -1;
             break;
         }
@@ -249,7 +249,7 @@ int ss_frame_handle_icmp6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         }
         default: {
             RTE_LOG(INFO, SS, "port %u received unsupported icmpv6 0x%04hhx frame:\n", rx_buf->data.port_id, icmp_type);
-            rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+            //rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
             rv = -1;
             break;
         }
