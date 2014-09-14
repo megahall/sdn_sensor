@@ -46,7 +46,7 @@ int ss_metadata_prepare(ss_frame_t* fbuf) {
     m->sport       = 0;
     m->dport       = 0;
     memset(m->dns_name, 0, sizeof(m->dns_name));
-    memset(m->dns_values, 0, sizeof(m->dns_values));
+    memset(m->dns_answers, 0, sizeof(m->dns_answers));
     
     return 0;
 }
@@ -92,12 +92,11 @@ ss_pcap_entry_t* ss_pcap_entry_create(json_object* pcap_json) {
     ss_pcap_entry_t* pcap_entry = NULL;
     int rv                      = -1;
     
-    pcap_entry = malloc(sizeof(ss_pcap_entry_t));
+    pcap_entry = calloc(1, sizeof(ss_pcap_entry_t));
     if (pcap_entry == NULL) {
         fprintf(stderr, "could not allocate pcap entry\n");
         goto error_out;
     }
-    memset(pcap_entry, 0, sizeof(ss_pcap_entry_t));
     
     if (!pcap_json) {
         fprintf(stderr, "empty pcap configuration entry\n");
@@ -213,12 +212,11 @@ ss_dns_entry_t* ss_dns_entry_create(json_object* dns_json) {
     ss_dns_entry_t* dns_entry = NULL;
     int rv                      = -1;
     
-    dns_entry = malloc(sizeof(ss_dns_entry_t));
+    dns_entry = calloc(1, sizeof(ss_dns_entry_t));
     if (dns_entry == NULL) {
         fprintf(stderr, "could not allocate dns entry\n");
         goto error_out;
     }
-    memset(dns_entry, 0, sizeof(ss_dns_entry_t));
     
     if (!dns_json) {
         fprintf(stderr, "empty dns configuration entry\n");
@@ -229,12 +227,24 @@ ss_dns_entry_t* ss_dns_entry_create(json_object* dns_json) {
         goto error_out;
     }
     
-    // name, filter, nm_queue_format, nm_queue_type, nm_queue_url
-    // char* ss_json_string_get(json_object* items, char* key) {
     dns_entry->name = ss_json_string_get(dns_json, "name");
     if (dns_entry->name == NULL) {
         fprintf(stderr, "dns_entry name is null\n");
         goto error_out;
+    }
+    
+    char* dns = ss_json_string_get(dns_json, "dns");
+    if (dns == NULL) {
+        memset(&dns_entry->dns, 0, sizeof(dns_entry->dns));
+    }
+    else {
+        strlcpy(dns_entry->dns, dns, sizeof(dns_entry->dns));
+    }
+    
+    const char* ip_str = ss_json_string_get(dns_json, "ip");
+    rv = ss_cidr_parse(ip_str, &dns_entry->ip);
+    if (rv != 1) {
+        memset(&dns_entry->ip, 0, sizeof(dns_entry->ip));
     }
     
     rv = ss_nn_queue_create(dns_json, &dns_entry->nn_queue);
@@ -301,12 +311,11 @@ ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_json) {
         .flags        = 0,
     };
     
-    cidr_table = malloc(sizeof(ss_cidr_table_t));
+    cidr_table = calloc(1, sizeof(ss_cidr_table_t));
     if (cidr_table == NULL) {
         fprintf(stderr, "could not allocate cidr table\n");
         goto error_out;
     }
-    memset(cidr_table, 0, sizeof(ss_cidr_table_t));
     
     cidr_table->cidr4 = rte_lpm_create("cidr4", 0, SS_LPM_RULE_MAX, 0);
     cidr_table->cidr6 = rte_lpm6_create("cidr6", 0, &lpm6_info);
@@ -343,12 +352,11 @@ int ss_cidr_table_destroy(ss_cidr_table_t* cidr_table) {
 ss_cidr_entry_t* ss_cidr_entry_create(json_object* cidr_json) {
     ss_cidr_entry_t* cidr_entry = NULL;
     
-    cidr_entry = malloc(sizeof(ss_cidr_entry_t));
+    cidr_entry = calloc(1, sizeof(ss_cidr_entry_t));
     if (cidr_entry == NULL) {
         fprintf(stderr, "could not allocate cidr entry\n");
         goto error_out;
     }
-    memset(cidr_entry, 0, sizeof(ss_cidr_entry_t));
     
     cidr_entry->name = ss_json_string_get(cidr_json, "name");
     if (cidr_entry->name == NULL) {
