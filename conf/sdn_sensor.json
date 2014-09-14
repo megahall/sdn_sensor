@@ -11,68 +11,78 @@
     "dpdk": {
         // XXX: DPDK options are always strings right now
         "eal_options":      "sdn_sensor -c 0x2 -n 2 --huge-dir /hugetlbfs --proc-type primary -w 01:00.1",
-        "log_level":        "info",
+        "log_level":        "notice",
         "port_mask":        4294967295, // 0xffffffff
         "queue_count":      2,
         "timer_msec":       200,
     },
     
+    // matches raw traffic against this list of libpcap filters,
+    // dispatches metadata to nanomsg queues
+    "pcap_chain": [
+        {
+            "name":      "http_get_request",
+            "filter":    "(port 80 or port 443) and (tcp[((tcp[12:1] & 0xf0) >> 2):4] = 0x47455420 or tcp[((tcp[12:1] & 0xf0) >> 2)+8:4] = 0x20323030)",
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10001",
+        },
+        {
+            "name":      "udp_packet",
+            "filter":    "udp",
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10001",
+        }
+    ],
+    
+    // matches IPs, DNS, URL, Email, against these IOC data files,
+    // dispatches metadata to nanomsg queues
+    "ioc_files": [
+        {
+            "path":      "/home/mhall/output.csv",
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10002",
+        }
+    ],
+    
     // matches Syslog messages against this list of PCRE's,
     // dispatches matches to nanomsg queues
     "re_chain": [
         {
-            "name": "",
-            "re": "",
-            "nm_queue_format": "metadata",
-            "nm_queue_type": "PUSH",
-            "nm_queue_url": "tcp://127.0.0.1:10001",
+            "name":      "",
+            "re":        "",
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10003",
         },
-    ],
-    
-    // matches raw traffic against this list of libpcap filters,
-    // dispatches data to nanomsg queues
-    "pcap_chain": [
-        {
-            "name": "http_get_request",
-            "filter": "(port 80 or port 443) and (tcp[((tcp[12:1] & 0xf0) >> 2):4] = 0x47455420 or tcp[((tcp[12:1] & 0xf0) >> 2)+8:4] = 0x20323030)",
-            "nm_queue_format": "metadata",
-            "nm_queue_type": "PUSH",
-            "nm_queue_url": "tcp://192.168.1.6:10002",
-        },
-        {
-            "name": "udp_packet",
-            "filter": "udp",
-            "nm_queue_format": "metadata",
-            "nm_queue_type": "PUSH",
-            "nm_queue_url": "tcp://192.168.1.6:10002",
-        }
     ],
     
     // matches raw traffic IP addresses against this list of CIDRs,
     // dispatches metadata to nanomsg queues
-    "cidr_table": [
+    "cidr_chain": [
         {
-            "name": "cidr_rule",
-            "nm_queue_format": "metadata",
-            "nm_queue_type": "PUSH",
-            "nm_queue_url": "tcp://127.0.0.1:10003",
+            "name":      "cidr_rule",
+            "cidr":      "",
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10004",
         }
     ],
     
-    // intercepts DNS packet content,
+    // matches DNS packet content against this list of DNS names and/or IPs,
     // dispatches metadata to nanomsg queues
-    // XXX: figure out how to filter this
+    // NOTE: names must be in canonical form (trailing '.')
     "dns_chain": [
         {
-            "name": "dns_rule",
-            "nm_queue_format": "metadata",
-            "nm_queue_type": "PUSH",
-            "nm_queue_url": "tcp://127.168.1.6:10002",
+            "name":      "dns_rule",
+            "dns":       "daisy.ubuntu.com.",
+            // "ip":        "",
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10005",
         }
-    ],
-    
-    "ioc_files": [
-        "/home/mhall/output.csv"
     ],
     
     // list of source CIDRs sending Syslog
