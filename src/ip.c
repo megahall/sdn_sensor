@@ -68,8 +68,10 @@ int ss_frame_handle_ip6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
 
     rx_buf->ip6 = (ip6_hdr_t*) ((uint8_t*) rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*) + sizeof(eth_hdr_t));
     //rte_memdump(stderr, "ip6 hdr", rx_buf->ip6, sizeof(ip6_hdr_t));
-    rte_memdump(stderr, "ip6 src", &rx_buf->ip6->ip6_src, sizeof(rx_buf->ip6->ip6_src));
-    rte_memdump(stderr, "ip6 dst", &rx_buf->ip6->ip6_dst, sizeof(rx_buf->ip6->ip6_dst));
+    if (rte_get_log_level() >= RTE_LOG_INFO)
+        rte_memdump(stderr, "ip6 src", &rx_buf->ip6->ip6_src, sizeof(rx_buf->ip6->ip6_src));
+    if (rte_get_log_level() >= RTE_LOG_INFO)
+        rte_memdump(stderr, "ip6 dst", &rx_buf->ip6->ip6_dst, sizeof(rx_buf->ip6->ip6_dst));
     rte_memcpy(&rx_buf->data.sip, &rx_buf->ip6->ip6_src, sizeof(rx_buf->data.sip));
     rte_memcpy(&rx_buf->data.dip, &rx_buf->ip6->ip6_dst, sizeof(rx_buf->data.dip));
 
