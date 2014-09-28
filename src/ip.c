@@ -23,19 +23,19 @@ int ss_frame_handle_ip4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
 
     rx_buf->ip4 = (ip4_hdr_t*) ((uint8_t*) rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*) + sizeof(eth_hdr_t));
-    RTE_LOG(DEBUG, SS, "ip4 src %08x\n", rx_buf->ip4->saddr);
-    RTE_LOG(DEBUG, SS, "ip4 dst %08x\n", rx_buf->ip4->daddr);
+    RTE_LOG(DEBUG, STACK, "ip4 src %08x\n", rx_buf->ip4->saddr);
+    RTE_LOG(DEBUG, STACK, "ip4 dst %08x\n", rx_buf->ip4->daddr);
     rte_memcpy(&rx_buf->data.sip, &rx_buf->ip4->saddr, sizeof(rx_buf->data.sip));
     rte_memcpy(&rx_buf->data.dip, &rx_buf->ip4->daddr, sizeof(rx_buf->data.dip));
     
     rx_buf->data.self = (memcmp(&rx_buf->ip4->daddr, &ss_conf->ip4_address.ip4_addr, IPV4_ALEN)) == 0;
 
     // XXX: walk through extension headers eventually
-    RTE_LOG(DEBUG, SS, "ip4 protocol %hhu\n", rx_buf->ip4->protocol);
+    RTE_LOG(DEBUG, STACK, "ip4 protocol %hhu\n", rx_buf->ip4->protocol);
     rx_buf->data.ip_protocol = rx_buf->ip4->protocol;
     rv = ss_frame_find_l4_header(rx_buf, rx_buf->ip4->protocol);
     if (rv) {
-        RTE_LOG(ERR, SS, "port %u received damaged ip4 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip4->protocol);
+        RTE_LOG(ERR, STACK, "port %u received damaged ip4 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip4->protocol);
         rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
     }
     
@@ -53,7 +53,7 @@ int ss_frame_handle_ip4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
             break;
         }
         default: {
-            RTE_LOG(INFO, SS, "port %u received unsupported ip4 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip4->protocol);
+            RTE_LOG(INFO, STACK, "port %u received unsupported ip4 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip4->protocol);
             rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
             rv = -1;
             break;
@@ -78,11 +78,11 @@ int ss_frame_handle_ip6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     rx_buf->data.self = (memcmp(&rx_buf->ip6->ip6_dst, &ss_conf->ip6_address.ip6_addr, IPV6_ALEN)) == 0;
     
     // XXX: walk through extension headers eventually
-    RTE_LOG(DEBUG, SS, "ip6 protocol %hhu\n", rx_buf->ip6->ip6_nxt);
+    RTE_LOG(DEBUG, STACK, "ip6 protocol %hhu\n", rx_buf->ip6->ip6_nxt);
     rx_buf->data.ip_protocol = rx_buf->ip6->ip6_nxt;
     rv = ss_frame_find_l4_header(rx_buf, rx_buf->ip6->ip6_nxt);
     if (rv) {
-        RTE_LOG(ERR, SS, "port %u received damaged ip6 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip6->ip6_nxt);
+        RTE_LOG(ERR, STACK, "port %u received damaged ip6 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip6->ip6_nxt);
         rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
     }
     
@@ -100,7 +100,7 @@ int ss_frame_handle_ip6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
             break;
         }
         default: {
-            RTE_LOG(INFO, SS, "port %u received unsupported ip6 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip6->ip6_nxt);
+            RTE_LOG(INFO, STACK, "port %u received unsupported ip6 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip6->ip6_nxt);
             rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
             rv = -1;
             break;
@@ -128,7 +128,7 @@ int ss_frame_find_l4_header(ss_frame_t* rx_buf, uint8_t ip_protocol) {
             break;
         }
         default: {
-            RTE_LOG(ERR, SS, "could not locate l4 header for ether type 0x%04hx\n", ether_type);
+            RTE_LOG(ERR, STACK, "could not locate l4 header for ether type 0x%04hx\n", ether_type);
             return -1;
         }
     }
@@ -151,7 +151,7 @@ int ss_frame_find_l4_header(ss_frame_t* rx_buf, uint8_t ip_protocol) {
             return 0;
         }
         default: {
-            RTE_LOG(ERR, SS, "could not locate l4 header for ip protocol %hhd\n", ip_protocol);
+            RTE_LOG(ERR, STACK, "could not locate l4 header for ip protocol %hhd\n", ip_protocol);
             return -1;
         }
     }
