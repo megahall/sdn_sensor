@@ -5,7 +5,6 @@
 
 #include <bsd/sys/queue.h>
 #include <pcap/pcap.h>
-#include <pcre.h>
 
 #include <net/if_arp.h>
 #include <netinet/ip.h>
@@ -43,6 +42,15 @@
 
 #define RTE_LOGTYPE_SS RTE_LOGTYPE_USER1
 
+#define RTE_LOGTYPE_CONF      RTE_LOGTYPE_USER1
+#define RTE_LOGTYPE_UTILS     RTE_LOGTYPE_USER2
+#define RTE_LOGTYPE_STACK     RTE_LOGTYPE_USER3
+#define RTE_LOGTYPE_EXTRACTOR RTE_LOGTYPE_USER4
+#define RTE_LOGTYPE_IOC       RTE_LOGTYPE_USER5
+#define RTE_LOGTYPE_NM        RTE_LOGTYPE_USER6
+#define RTE_LOGTYPE_MD        RTE_LOGTYPE_USER7
+#define RTE_LOGTYPE_JSON      RTE_LOGTYPE_USER8
+
 #define SS_INT16_SIZE         2
 
 #define ETH_ALEN              6
@@ -52,6 +60,8 @@
 
 #define SS_LPM_RULE_MAX    1024
 #define SS_LPM_TBL8S_MAX   (1 << 16)
+
+#define SS_PCRE_MATCH_MAX  (16 * 3)
 
 #define ETHER_TYPE_IPV4 ETHER_TYPE_IPv4
 #define ETHER_TYPE_IPV6 ETHER_TYPE_IPv6
@@ -155,8 +165,6 @@ struct ss_answer_s {
 typedef struct ss_answer_s ss_answer_t;
 
 struct ss_metadata_s {
-    json_object* json;
-    
     uint32_t    port_id;
     uint8_t     direction;
     uint8_t     self;
@@ -206,47 +214,18 @@ struct ss_frame_s {
     icmp6_hdr_t*   icmp6;
     tcp_hdr_t*     tcp;
     udp_hdr_t*     udp;
+    uint8_t*       l4_offset;
     
     ss_metadata_t  data;
 } __rte_cache_aligned;
 
 typedef struct ss_frame_s ss_frame_t;
 
-/* RE CHAIN */
-
-struct ss_re_entry_s {
-    uint64_t matches;
-    int invert;
-    nn_queue_t nn_queue;
-    pcre* re;
-    TAILQ_ENTRY(ss_re_entry_s) entry;
-} __rte_cache_aligned;
-
-typedef struct ss_re_entry_s ss_re_entry_t;
-
-TAILQ_HEAD(ss_re_list_s, ss_re_entry_s);
-typedef struct ss_re_list_s ss_re_list_t;
-
-struct ss_re_chain_s {
-    ss_re_list_t re_list;
-} __rte_cache_aligned;
-
-typedef struct ss_re_chain_s ss_re_chain_t;
-
-struct ss_re_match_s {
-    uint64_t matches;
-    char** match_list;
-    json_object* match_result;
-} __rte_cache_aligned;
-
-typedef struct ss_re_match_s ss_re_match_t;
-
 /* PCAP CHAIN */
 
 struct ss_pcap_match_s {
     struct pcap_pkthdr header;
     uint8_t* packet;
-    json_object* match_result;
 } __rte_cache_aligned;
 
 typedef struct ss_pcap_match_s ss_pcap_match_t;
@@ -330,13 +309,6 @@ typedef struct ss_string_trie_s ss_string_trie_t;
 /* BEGIN PROTOTYPES */
 
 int ss_metadata_prepare(ss_frame_t* fbuf);
-int ss_re_chain_destroy(void);
-ss_re_entry_t* ss_re_entry_create(json_object* re_json);
-int ss_re_entry_destroy(ss_re_entry_t* re_entry);
-int ss_re_chain_add(ss_re_entry_t* re_entry);
-int ss_re_chain_remove_index(int index);
-int ss_re_chain_remove_re(char* re);
-int ss_re_chain_match(char* input);
 int ss_pcap_chain_destroy(void);
 ss_pcap_entry_t* ss_pcap_entry_create(json_object* pcap_json);
 int ss_pcap_entry_destroy(ss_pcap_entry_t* pcap_entry);
