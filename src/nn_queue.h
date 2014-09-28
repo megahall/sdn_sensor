@@ -4,7 +4,10 @@
 #include <stdint.h>
 
 #include <bsd/sys/queue.h>
+
 #include <json-c/json.h>
+#include <json-c/json_object_private.h>
+
 #include <pcap/pcap.h>
 #include <pcre.h>
 
