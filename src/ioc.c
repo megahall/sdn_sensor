@@ -1,5 +1,6 @@
 #define _GNU_SOURCE /* strcasestr */
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,12 +11,18 @@
 #include <bsd/string.h>
 #include <bsd/sys/queue.h>
 
+#include <jemalloc/jemalloc.h>
+
 #include <json-c/json.h>
+#include <json-c/json_object_private.h>
+
+#include <rte_log.h>
 
 #include "ioc.h"
 
 #include "common.h"
 #include "ip_utils.h"
+#include "je_utils.h"
 #include "json.h"
 #include "sdn_sensor.h"
 
@@ -105,7 +112,7 @@ int ss_ioc_file_load(json_object* ioc_json) {
     rv = 0;
     
     error_out:
-    if (ioc_file->path) free(ioc_file->path);
+    if (ioc_file->path) je_free(ioc_file->path);
     if (ioc_fd)         fclose(ioc_fd);
     fprintf(stderr, "ioc_file %s could not be loaded\n", ioc_file->path);
     
@@ -113,7 +120,7 @@ int ss_ioc_file_load(json_object* ioc_json) {
 }
 
 int ss_ioc_chain_dump(uint64_t limit) {
-    uint64_t counter = 0;
+    uint64_t counter = 1;
     ss_ioc_entry_t* iptr;
     ss_ioc_entry_t* itmp;
     
@@ -129,10 +136,11 @@ int ss_ioc_chain_dump(uint64_t limit) {
 }
 
 int ss_ioc_tables_dump(uint64_t limit) {
-    uint64_t counter = 0;
+    uint64_t counter;
     ss_ioc_entry_t* iptr;
     ss_ioc_entry_t* itmp;
     
+    counter = 1;
     fprintf(stderr, "dumping %lu entries from ip4_table...\n", limit);
     HASH_ITER(hh, ss_conf->ip4_table, iptr, itmp) {
         fprintf(stderr, "ip4_table entry number %lu\n", counter);
@@ -141,6 +149,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
         if (limit && counter >= limit) break;
     }
     
+    counter = 1;
     fprintf(stderr, "dumping %lu entries from ip6_table...\n", limit);
     HASH_ITER(hh, ss_conf->ip6_table, iptr, itmp) {
         fprintf(stderr, "ip6_table entry number %lu\n", counter);
@@ -149,6 +158,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
         if (limit && counter >= limit) break;
     }
     
+    counter = 1;
     fprintf(stderr, "dumping %lu entries from domain_table...\n", limit);
     HASH_ITER(hh, ss_conf->domain_table, iptr, itmp) {
         fprintf(stderr, "domain_table entry number %lu\n", counter);
@@ -157,6 +167,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
         if (limit && counter >= limit) break;
     }
     
+    counter = 1;
     fprintf(stderr, "dumping %lu entries from url_table...\n", limit);
     HASH_ITER(hh_full, ss_conf->url_table, iptr, itmp) {
         fprintf(stderr, "url_table entry number %lu\n", counter);
@@ -165,6 +176,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
         if (limit && counter >= limit) break;
     }
     
+    counter = 1;
     fprintf(stderr, "dumping %lu entries from email_table...\n", limit);
     HASH_ITER(hh_full, ss_conf->email_table, iptr, itmp) {
         fprintf(stderr, "email_table entry number %lu\n", counter);
@@ -178,14 +190,14 @@ int ss_ioc_tables_dump(uint64_t limit) {
 
 ss_ioc_entry_t* ss_ioc_entry_create(ss_ioc_file_t* ioc_file, char* ioc_str) {
     ss_ioc_entry_t* ioc = NULL;
-    char* sepptr  = strdup(ioc_str);
+    char* sepptr  = je_strdup(ioc_str);
     char* freeptr = sepptr;
     char* field   = NULL;
     int rv = 0;
     
     //fprintf(stderr, "attempt to parse ioc: %s\n", ioc_str);
     
-    ioc = calloc(1, sizeof(ss_ioc_entry_t));
+    ioc = je_calloc(1, sizeof(ss_ioc_entry_t));
     if (ioc == NULL) {
         fprintf(stderr, "could not allocate ioc entry\n");
         goto error_out;
@@ -226,12 +238,12 @@ ss_ioc_entry_t* ss_ioc_entry_create(ss_ioc_file_t* ioc_file, char* ioc_str) {
     field = strsep(&sepptr, SS_IOC_FIELD_DELIMITERS);
     strlcpy(ioc->value, field, sizeof(ioc->value));
     
-    free(freeptr);
+    je_free(freeptr); freeptr = NULL;
     return ioc;
     
     error_out:
     if (ioc) ss_ioc_entry_destroy(ioc);
-    if (freeptr) free(freeptr);
+    if (freeptr) je_free(freeptr); freeptr = NULL;
     return NULL;
 }
 
@@ -243,14 +255,26 @@ int ss_ioc_entry_destroy(ss_ioc_entry_t* ioc_entry) {
     memset(&ioc_entry->ip, 0, sizeof(ioc_entry->ip));
     memset(&ioc_entry->dns, 0, sizeof(ioc_entry->dns));
     memset(&ioc_entry->value, 0, sizeof(ioc_entry->value));
-    free(ioc_entry);
+    je_free(ioc_entry);
     return 0;
 }
 
+// used when the rte_log code is uninitialized
+// typically during configuration file parsing
 int ss_ioc_entry_dump(ss_ioc_entry_t* ioc) {
     char ip_str[SS_ADDR_STR_MAX];
     ss_inet_ntop(&ioc->ip, ip_str, sizeof(ip_str));
     fprintf(stderr, "ioc entry: id: %lu type: %s threat_type: %s ip: %s dns: %s value: %s\n",
+        ioc->id, ss_ioc_type_dump(ioc->type), ioc->threat_type, ip_str, ioc->dns, ioc->value);
+    return 0;
+}
+
+// used when the rte_log code is initialized
+// typically during runtime when ioc matches are found
+int ss_ioc_entry_dump_dpdk(ss_ioc_entry_t* ioc) {
+    char ip_str[SS_ADDR_STR_MAX];
+    ss_inet_ntop(&ioc->ip, ip_str, sizeof(ip_str));
+    RTE_LOG(NOTICE, IOC, "ioc entry: id: %lu type: %s threat_type: %s ip: %s dns: %s value: %s\n",
         ioc->id, ss_ioc_type_dump(ioc->type), ioc->threat_type, ip_str, ioc->dns, ioc->value);
     return 0;
 }
@@ -262,7 +286,7 @@ ss_ioc_type_t ss_ioc_type_load(const char* ioc_type) {
     if (!strcasecmp(ioc_type, "email"))  return SS_IOC_TYPE_EMAIL;
     if (!strcasecmp(ioc_type, "md5"))    return SS_IOC_TYPE_MD5;
     if (!strcasecmp(ioc_type, "sha256")) return SS_IOC_TYPE_SHA256;
-    else                                 return -1;
+    return -1;
 }
 
 const char* ss_ioc_type_dump(ss_ioc_type_t ioc_type) {
@@ -470,26 +494,33 @@ int ss_ioc_chain_optimize() {
 }
 
 ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md) {
-    ss_ioc_entry_t* iptr;
+    ss_ioc_entry_t* iptr = NULL;
     uint32_t ip;
     
     if (md->eth_type == ETHER_TYPE_IPV4) {
         ip = *(uint32_t*) &md->sip;
         HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
-        if (iptr) return iptr;
+        if (iptr) goto out;
         
         ip = *(uint32_t*) &md->dip;
         HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
-        if (iptr) return iptr;
+        if (iptr) goto out;
     }
     else if (md->eth_type == ETHER_TYPE_IPV6) {
         HASH_FIND(hh, ss_conf->ip6_table, &md->sip, sizeof(md->sip), iptr);
-        if (iptr) return iptr;
+        if (iptr) goto out;
         
         HASH_FIND(hh, ss_conf->ip6_table, &md->dip, sizeof(md->dip), iptr);
-        if (iptr) return iptr;
+        if (iptr) goto out;
     }
     
+    out:
+    return iptr;
+}
+
+ss_ioc_entry_t* ss_ioc_dns_match(ss_metadata_t* md) {
+    ss_ioc_entry_t* iptr = NULL;
+    uint32_t ip;
     HASH_FIND_STR(ss_conf->domain_table, (char*) md->dns_name, iptr);
     if (iptr) return iptr;
     
@@ -498,19 +529,72 @@ ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md) {
         switch (dns_answer->type) {
             case SS_TYPE_NAME: {
                 HASH_FIND_STR(ss_conf->domain_table, (char*) dns_answer->payload, iptr);
-                if (iptr) return iptr;
+                if (iptr) goto out;
+                break;
             }
             case SS_TYPE_IP: {
                 HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
-                if (iptr) return iptr;
+                if (iptr) goto out;
+                break;
             }
             default: {
                 // fprintf(stderr, "unknown ss_answer type %d\n", dns_answer->type);
                 break;
             }
         }
-        if (iptr) return iptr;
     }
     
-    return NULL;
+    out:
+    return iptr;
+}
+
+ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type) {
+    int rv;
+    ss_ioc_entry_t* iptr = NULL;
+    uint32_t ip;
+    ip_addr_t ip_addr;
+    
+    switch (ioc_type) {
+        case SS_IOC_TYPE_IP: {
+            rv = ss_cidr_parse(ioc, &ip_addr);
+            if (rv != 1) {
+                fprintf(stderr, "could not extract ip from ioc %s\n", ioc);
+            }
+            else if (ip_addr.family == SS_AF_INET4) {
+                ip = *(uint32_t*) &ip_addr.ip4_addr.addr;
+                HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
+            }
+            else if (ip_addr.family == SS_AF_INET6) {
+                HASH_FIND(hh, ss_conf->ip6_table, &ip_addr.ip6_addr.addr, sizeof(ip_addr.ip6_addr.addr), iptr);
+            }
+            break;
+        }
+        case SS_IOC_TYPE_DOMAIN: {
+            HASH_FIND_STR(ss_conf->domain_table, ioc, iptr);
+            break;
+        }
+        case SS_IOC_TYPE_URL: {
+            HASH_FIND(hh_full, ss_conf->url_table, ioc, strlen(ioc), iptr);
+            break;
+        }
+        case SS_IOC_TYPE_EMAIL: {
+            HASH_FIND(hh_full, ss_conf->email_table, ioc, strlen(ioc), iptr);
+            break;
+        }
+        case SS_IOC_TYPE_MD5: {
+            fprintf(stderr, "ioc %s is unsupported md5 type\n", ioc);
+            break;
+        }
+        case SS_IOC_TYPE_SHA256: {
+            fprintf(stderr, "ioc %s is unsupported sha256 type\n", ioc);
+            break;
+        }
+        default: {
+            fprintf(stderr, "ioc %s is unknown type %d\n", ioc, ioc_type);
+            break;
+        }
+    }
+    
+    out:
+    return iptr;
 }
