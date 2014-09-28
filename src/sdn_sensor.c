@@ -23,9 +23,10 @@
 #include <pcap/pcap.h>
 
 #include "common.h"
-#include "ethernet.h"
-#include "sdn_sensor.h"
 #include "dpdk.h"
+#include "ethernet.h"
+#include "pcre_utils.h"
+#include "sdn_sensor.h"
 #include "sensor_conf.h"
 
 /* GLOBAL VARIABLES */
@@ -218,7 +219,20 @@ int ss_launch_one_lcore(__attribute__((unused)) void *dummy) {
 }
 
 int main(int argc, char* argv[]) {
+    struct lcore_queue_conf* queue_conf;
+    struct rte_eth_dev_info dev_info;
+    int rv;
+    uint8_t port_id, last_port;
+    unsigned int lcore_id;
+    unsigned int rx_lcore_id;
+    
     fprintf(stderr, "launching sdn_sensor version %s\n", SS_VERSION);
+    
+    rv = ss_pcre_init();
+    if (rv) {
+        fprintf(stderr, "could not initialize libpcre\n");
+        exit(1);
+    }
     
     ss_pcap = pcap_open_dead(DLT_EN10MB, 65536);
     if (ss_pcap == NULL) {
@@ -231,13 +245,6 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "could not parse sdn_sensor configuration\n");
         exit(1);
     }
-    
-    struct lcore_queue_conf* queue_conf;
-    struct rte_eth_dev_info dev_info;
-    int rv;
-    uint8_t port_id, last_port;
-    unsigned int lcore_id;
-    unsigned int rx_lcore_id;
 
     /* init EAL */
     rv = rte_eal_init(ss_conf->eal_vector.we_wordc, ss_conf->eal_vector.we_wordv);
@@ -264,7 +271,7 @@ int main(int argc, char* argv[]) {
     }
     
     ss_conf->port_count = rte_eth_dev_count();
-    printf("port_count %d\n", ss_conf->port_count);
+    RTE_LOG(INFO, SS, "port_count %d\n", ss_conf->port_count);
     if (ss_conf->port_count == 0) {
         rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
     }
@@ -300,10 +307,10 @@ int main(int argc, char* argv[]) {
 
         queue_conf->rx_port_list[queue_conf->rx_port_count] = port_id;
         queue_conf->rx_port_count++;
-        printf("Lcore %u: RX port %u\n", rx_lcore_id, (unsigned) port_id);
+        RTE_LOG(INFO, SS, "Lcore %u: RX port %u\n", rx_lcore_id, (unsigned) port_id);
         
         /* init port */
-        printf("Initializing port %u... ", (unsigned) port_id);
+        RTE_LOG(INFO, SS, "Initializing port %u... ", (unsigned) port_id);
         fflush(stderr);
         rv = rte_eth_dev_configure(port_id, 1, 1, &port_conf);
         if (rv < 0) {
@@ -334,18 +341,18 @@ int main(int argc, char* argv[]) {
             rte_exit(EXIT_FAILURE, "rte_eth_dev_start:err=%d, port=%u\n", rv, (unsigned) port_id);
         }
 
-        printf("done: \n");
+        RTE_LOG(INFO, SS, "done: \n");
 
         rte_eth_promiscuous_enable(port_id);
 
-        printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
-                (unsigned) port_id,
-                port_eth_addrs[port_id].addr_bytes[0],
-                port_eth_addrs[port_id].addr_bytes[1],
-                port_eth_addrs[port_id].addr_bytes[2],
-                port_eth_addrs[port_id].addr_bytes[3],
-                port_eth_addrs[port_id].addr_bytes[4],
-                port_eth_addrs[port_id].addr_bytes[5]);
+        RTE_LOG(INFO, SS, "Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
+            (unsigned) port_id,
+            port_eth_addrs[port_id].addr_bytes[0],
+            port_eth_addrs[port_id].addr_bytes[1],
+            port_eth_addrs[port_id].addr_bytes[2],
+            port_eth_addrs[port_id].addr_bytes[3],
+            port_eth_addrs[port_id].addr_bytes[4],
+            port_eth_addrs[port_id].addr_bytes[5]);
 
         /* initialize port stats */
         memset(&port_statistics, 0, sizeof(port_statistics));
