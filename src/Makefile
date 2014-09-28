@@ -24,9 +24,9 @@ WARNINGS = \
 
 SS_VERSION := $(shell echo `date "+%Y%m%d-%H%M%S"`-`git rev-parse --short HEAD`)
 
-FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -pthread -march=native -std=gnu11
+FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -pthread -march=native -std=gnu11 -ferror-limit=5
 INCLUDE_FILES  = -include $(RTE_SDK)/build/include/rte_config.h
-INCLUDE_PATHS  = -I$(RTE_SDK)/build/include -I$(SDN_SENSOR_BASE)/external/spcdns/src
+INCLUDE_PATHS  = -I$(RTE_SDK)/build/include -I$(SDN_SENSOR_BASE)/external/spcdns/src -I/usr/local/jemalloc/include
 CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) -DSS_VERSION="\"$(SS_VERSION)\""
 
 # XXX: work around bugs in iwyu utility
@@ -37,21 +37,36 @@ ifneq ($(strip $(LESS)),)
 endif
 
 DPDK_LINK = -Wl,--whole-archive -Wl,--start-group -lintel_dpdk -Wl,--end-group -Wl,--no-whole-archive
-SPCDNS_LINK = -Wl,-Bstatic -lspcdns -Wl,-Bdynamic
+SPCDNS_LINK = -Wl,-Bstatic -lspcdns -lspcdnsmisc -Wl,-Bdynamic
 
-LDFLAGS = -L$(RTE_SDK)/build/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built
+LDFLAGS = -L$(RTE_SDK)/build/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built -L/usr/local/jemalloc/lib -Wl,-rpath,/usr/local/jemalloc/lib
 
+HEADERS = $(wildcard *.h)
 SOURCES = $(wildcard *.c)
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c))
-HEADERS = $(wildcard *.h)
+DEPENDS = $(patsubst %.c,%.d,$(wildcard *.c))
 
 .PHONY: clean cproto iwyu
 
 sdn_sensor: $(OBJECTS)
 	@echo 'Linking sdn_sensor...'
-	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) -lbsd -ldl -ljson-c -lm -lnanomsg -lpcap -lpcre -lpthread -lrt $(SPCDNS_LINK)
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) -lbsd -ldl -ljemalloc -lunwind -ljson-c -lm -lnanomsg -lpcap -lpcre -lpthread -lrt $(SPCDNS_LINK)
 
-$(OBJECTS): $(HEADERS) $(SOURCES)
+#$(OBJECTS): $(DEPENDS)
+
+%.o: %.d
+
+%.d: %.c
+	@set -e; rm -f $@; \
+	$(CC) -MM $(CFLAGS) $< > $@.$$$$; \
+	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
+	rm -f $@.$$$$
+
+-include $(DEPENDS)
+
+clean:
+	@echo 'Cleaning sdn_sensor...'
+	@rm -f sdn_sensor *.d *.o *.h.bak
 
 cproto:
 	$(PWD)/../scripts/update-header-file.pl $(INCLUDE_PATHS) -- $(HEADERS)
@@ -59,7 +74,3 @@ cproto:
 iwyu: $(HEADERS) $(SOURCES)
 	@echo 'Checking includes in sdn_sensor...'
 	for file in $^; do iwyu ${CFLAGS} ${IWYU_PATHS} $$file; done;
-
-clean:
-	@echo 'Cleaning sdn_sensor...'
-	@rm -f sdn_sensor *.o *.h.bak
