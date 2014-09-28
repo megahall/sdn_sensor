@@ -23,8 +23,6 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include <rte_log.h>
-
 #include "common.h"
 #include "ip_utils.h"
 
@@ -101,7 +99,7 @@ int ss_cidr_parse(const char* input, ip_addr_t* ip_addr) {
         rv = 1;
     }
     else {
-        RTE_LOG(ERR, SS, "could not parse CIDR / IP: %s", ip_str);
+        fprintf(stderr, "could not parse CIDR / IP: %s", ip_str);
         memset(&ip_addr, 0, sizeof(ip_addr));
     }
     
