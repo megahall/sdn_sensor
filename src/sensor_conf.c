@@ -2,6 +2,7 @@
 
 #include <libgen.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,7 +12,11 @@
 
 #include <bsd/string.h>
 #include <bsd/sys/queue.h>
+
+#include <jemalloc/jemalloc.h>
+
 #include <json-c/json.h>
+#include <json-c/json_object_private.h>
 
 #include <rte_log.h>
 
@@ -25,7 +30,7 @@
 
 int ss_conf_destroy() {
     // XXX: destroy everything else in ss_conf_t
-    free(ss_conf);
+    je_free(ss_conf);
     return 0;
 }
 
@@ -33,7 +38,7 @@ char* ss_conf_path_get() {
     size_t path_size = PATH_MAX;
     char* program_directory = NULL;
     
-    char* program_path = calloc(1, path_size);
+    char* program_path = je_calloc(1, path_size);
     if (program_path == NULL) {
         goto error_out;
     }
@@ -45,7 +50,7 @@ char* ss_conf_path_get() {
     
     char* directory = dirname(program_path);
     
-    program_directory = calloc(1, path_size);
+    program_directory = je_calloc(1, path_size);
     if (program_directory == NULL) {
         goto error_out;
     }
@@ -54,7 +59,7 @@ char* ss_conf_path_get() {
     strlcat(program_directory, CONF_PATH, path_size);
     
     error_out:
-    if (program_path) free(program_path);
+    if (program_path) je_free(program_path);
     
     return program_directory;
 }
@@ -91,7 +96,7 @@ char* ss_conf_file_read() {
     rewind(conf_file);
     
     /* make room for terminating NUL */
-    conf_content = calloc(1, size + 1);
+    conf_content = je_calloc(1, size + 1);
     if (conf_content == NULL) {
         is_ok = 0;
         fprintf(stderr, "error: could not allocate configuration file buffer\n");
@@ -109,9 +114,9 @@ char* ss_conf_file_read() {
     conf_content[size - 1] = '\0';
     
     error_out:
-    if (conf_path)              { free(conf_path);    conf_path    = NULL; }
-    if (conf_file)              { fclose(conf_file);  conf_file    = NULL; }
-    if (!is_ok && conf_content) { free(conf_content); conf_content = NULL; }
+    if (conf_path)              { je_free(conf_path);    conf_path    = NULL; }
+    if (conf_file)              { fclose(conf_file);     conf_file    = NULL; }
+    if (!is_ok && conf_content) { je_free(conf_content); conf_content = NULL; }
     
     return conf_content;
 }
@@ -339,7 +344,7 @@ ss_conf_t* ss_conf_file_parse() {
     //const char* content = json_object_to_json_string_ext(json_conf, JSON_C_TO_STRING_PRETTY);
     //fprintf(stderr, "json configuration:\n%s\n", content);
     
-    ss_conf = calloc(1, sizeof(ss_conf_t));
+    ss_conf = je_calloc(1, sizeof(ss_conf_t));
     if (ss_conf == NULL) {
         fprintf(stderr, "could not allocate sdn_sensor configuration\n");
         is_ok = 0; goto error_out;
@@ -392,12 +397,12 @@ ss_conf_t* ss_conf_file_parse() {
         int length = json_object_array_length(items);
         for (int i = 0; i < length; ++i) {
             item = json_object_array_get_idx(items, i);
-            ss_re_entry_t* entry = calloc(1, sizeof(ss_re_entry_t));
+            ss_re_entry_t* entry = je_calloc(1, sizeof(ss_re_entry_t));
             entry = ss_re_entry_create(item);
             /*
             if (entry == NULL) {
                 fprintf(stderr, "could not create re_chain entry\n");
-                if (entry) free(entry);
+                if (entry) je_free(entry);
                 is_ok = 0; goto error_out;
             }
             */
@@ -415,11 +420,11 @@ ss_conf_t* ss_conf_file_parse() {
         int length = json_object_array_length(items);
         for (int i = 0; i < length; ++i) {
             item = json_object_array_get_idx(items, i);
-            ss_pcap_entry_t* entry = calloc(1, sizeof(ss_pcap_entry_t));
+            ss_pcap_entry_t* entry = je_calloc(1, sizeof(ss_pcap_entry_t));
             entry = ss_pcap_entry_create(item);
             if (entry == NULL) {
                 fprintf(stderr, "could not create pcap_chain entry\n");
-                if (entry) free(entry);
+                if (entry) je_free(entry);
                 is_ok = 0; goto error_out;
             }
             ss_pcap_chain_add(entry);
@@ -436,11 +441,11 @@ ss_conf_t* ss_conf_file_parse() {
         int length = json_object_array_length(items);
         for (int i = 0; i < length; ++i) {
             item = json_object_array_get_idx(items, i);
-            ss_dns_entry_t* entry = calloc(1, sizeof(ss_dns_entry_t));
+            ss_dns_entry_t* entry = je_calloc(1, sizeof(ss_dns_entry_t));
             entry = ss_dns_entry_create(item);
             if (entry == NULL) {
                 fprintf(stderr, "could not create dns_chain entry\n");
-                if (entry) free(entry);
+                if (entry) je_free(entry);
                 is_ok = 0; goto error_out;
             }
             ss_dns_chain_add(entry);
@@ -457,12 +462,12 @@ ss_conf_t* ss_conf_file_parse() {
         int length = json_object_array_length(items);
         for (int i = 0; i < length; ++i) {
             item = json_object_array_get_idx(items, i);
-            ss_cidr_entry_t* entry = calloc(1, sizeof(ss_cidr_entry_t));
+            ss_cidr_entry_t* entry = je_calloc(1, sizeof(ss_cidr_entry_t));
             entry = ss_cidr_entry_create(item);
             /*
             if (entry == NULL) {
                 fprintf(stderr, "could not create cidr_table entry\n");
-                if (entry) free(entry);
+                if (entry) je_free(entry);
                 is_ok = 0; goto error_out;
             }
             */
@@ -498,7 +503,7 @@ ss_conf_t* ss_conf_file_parse() {
     
     // XXX: do more stuff
     error_out:
-    if (conf_buffer)       { free(conf_buffer);          conf_buffer = NULL; }
+    if (conf_buffer)       { je_free(conf_buffer);       conf_buffer = NULL; }
     if (json_conf)         { json_object_put(json_conf); json_conf   = NULL; }
     if (!is_ok && ss_conf) { ss_conf_destroy();          ss_conf     = NULL; }
     
