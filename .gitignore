@@ -20,6 +20,7 @@ Makefile.in
 *.new
 
 # Object files
+*.d
 *.o
 *.ko
 *.obj
