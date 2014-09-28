@@ -32,7 +32,7 @@
 int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
     // int rv;
     int so_value;
-    char* value;
+    char* value = NULL;
     
     memset(nn_queue, 0, sizeof(nn_queue_t));
     
@@ -42,7 +42,7 @@ int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
         goto error_out;
     }
     strlcpy(nn_queue->url, value, sizeof(nn_queue->url));
-    free(value);
+    je_free(value);
     
     value = ss_json_string_get(items, "nm_type");
     if (value == NULL) {
@@ -63,7 +63,7 @@ int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
         fprintf(stderr, "unknown nm_type %s\n", value);
         goto error_out;
     }
-    free(value);
+    je_free(value);
     
     value = ss_json_string_get(items, "nm_format");
     if      (!strcasecmp(value, "metadata")) nn_queue->format = NN_FORMAT_METADATA;
@@ -72,7 +72,7 @@ int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
         fprintf(stderr, "unknown nm_format %s\n", value);
         goto error_out;
     }
-    free(value);
+    je_free(value);
     
     nn_queue->conn = nn_socket(AF_SP, nn_queue->type);
     if (nn_queue->conn < 0) {
@@ -98,6 +98,7 @@ int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
     
     error_out:
     ss_nn_queue_destroy(nn_queue);
+    if (value) je_free(value);
     return -1;
 }
 
@@ -158,7 +159,7 @@ int ss_nn_queue_send(nn_queue_t* nn_queue, uint8_t* message, uint16_t length) {
     int rv = 0;
     
     // XXX: assume message is a C string for now
-    RTE_LOG(NOTICE, SS, "nn_queue %s: message id %014lu: %s\n",
+    RTE_LOG(NOTICE, NM, "nn_queue %s: message id %014lu: %s\n",
         nn_queue->url, nn_queue->tx_messages, message);
     
     rv = nn_send(nn_queue->conn, message, length, NN_DONTWAIT);
