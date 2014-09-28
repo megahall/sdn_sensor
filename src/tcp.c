@@ -19,7 +19,8 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
     
     // l4_length = packet_length - (tcp_data_start - packet_start)
-    uint16_t l4_length     = rte_pktmbuf_pkt_len(rx_buf->mbuf) - (((uint8_t*) rx_buf->tcp + sizeof(tcp_hdr_t)) - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*));    
+    uint8_t* l4_offset     = (uint8_t*) rx_buf->tcp + sizeof(tcp_hdr_t);
+    uint16_t l4_length     = rte_pktmbuf_pkt_len(rx_buf->mbuf) - (l4_offset - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*));
     
     uint16_t sport         = rte_bswap16(rx_buf->tcp->source);
     uint16_t dport         = rte_bswap16(rx_buf->tcp->dest);
@@ -29,12 +30,13 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     uint8_t  tcp_flags     = rx_buf->tcp->th_flags;
     uint16_t wsize         = rx_buf->tcp->window;
     
+    rx_buf->l4_offset      = l4_offset;
     rx_buf->data.l4_length = l4_length;
     rx_buf->data.tcp_flags = tcp_flags;
     rx_buf->data.sport     = sport;
     rx_buf->data.dport     = dport;
     
-    RTE_LOG(INFO, SS, "rx tcp packet: sport: %hu dport: %hu seq: %u ack: %u hlen: %hu flags: %hhx wsize: %hu\n",
+    RTE_LOG(INFO, STACK, "rx tcp packet: sport: %hu dport: %hu seq: %u ack: %u hlen: %hu flags: %hhx wsize: %hu\n",
         sport, dport, seq, ack_seq, hdr_length, tcp_flags, wsize);
     
     if (!rx_buf->data.self) {
@@ -44,23 +46,23 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     // XXX: check for sFlow, NetFlow, or Syslog
     switch (rx_buf->data.dport) {
         case L4_PORT_DNS: {
-            RTE_LOG(DEBUG, SS, "rx tcp dns packet\n");
+            RTE_LOG(DEBUG, STACK, "rx tcp dns packet\n");
             break;
         }
         case L4_PORT_SYSLOG: {
-            RTE_LOG(DEBUG, SS, "rx tcp syslog packet\n");
+            RTE_LOG(DEBUG, STACK, "rx tcp syslog packet\n");
             break;
         }
         case L4_PORT_SYSLOG_TLS: {
-            RTE_LOG(DEBUG, SS, "rx tcp syslog-tls packet\n");
+            RTE_LOG(DEBUG, STACK, "rx tcp syslog-tls packet\n");
             break;
         }
         case L4_PORT_SFLOW: {
-            RTE_LOG(DEBUG, SS, "rx tcp sFlow packet\n");
+            RTE_LOG(DEBUG, STACK, "rx tcp sFlow packet\n");
             break;
         }
         case L4_PORT_NETFLOW: {
-            RTE_LOG(DEBUG, SS, "rx tcp NetFlow packet\n");
+            RTE_LOG(DEBUG, STACK, "rx tcp NetFlow packet\n");
             break;
         }
     }
