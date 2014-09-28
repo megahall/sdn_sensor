@@ -4,3 +4,6 @@
 [submodule "external/spcdns"]
 	path = external/spcdns
 	url = git@github.com:megahall/SPCDNS.git
+[submodule "external/jemalloc"]
+	path = external/jemalloc
+	url = git@github.com:jemalloc/jemalloc.git
