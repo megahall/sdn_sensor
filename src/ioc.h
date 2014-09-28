@@ -62,6 +62,7 @@ int ss_ioc_tables_dump(uint64_t limit);
 ss_ioc_entry_t* ss_ioc_entry_create(ss_ioc_file_t* ioc_file, char* ioc_str);
 int ss_ioc_entry_destroy(ss_ioc_entry_t* ioc_entry);
 int ss_ioc_entry_dump(ss_ioc_entry_t* ioc);
+int ss_ioc_entry_dump_dpdk(ss_ioc_entry_t* ioc);
 ss_ioc_type_t ss_ioc_type_load(const char* ioc_type);
 const char* ss_ioc_type_dump(ss_ioc_type_t ioc_type);
 int ss_ioc_chain_destroy(void);
@@ -70,6 +71,8 @@ int ss_ioc_chain_remove_index(int index);
 int ss_ioc_chain_remove_id(uint64_t id);
 int ss_ioc_chain_optimize(void);
 ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md);
+ss_ioc_entry_t* ss_ioc_dns_match(ss_metadata_t* md);
+ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type);
 
 /* END PROTOTYPES */
 
