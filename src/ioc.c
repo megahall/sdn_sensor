@@ -556,10 +556,11 @@ ss_ioc_entry_t* ss_ioc_dns_match(ss_metadata_t* md) {
 }
 
 ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type) {
-    int rv;
+    int             rv;
     ss_ioc_entry_t* iptr = NULL;
-    uint32_t ip;
-    ip_addr_t ip_addr;
+    uint32_t        ip;
+    ip_addr_t       ip_addr;
+    char            tdns[SS_DNS_NAME_MAX];
     
     switch (ioc_type) {
         case SS_IOC_TYPE_IP: {
@@ -577,7 +578,13 @@ ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type) {
             break;
         }
         case SS_IOC_TYPE_DOMAIN: {
-            HASH_FIND_STR(ss_conf->domain_table, ioc, iptr);
+            // NOTE: convert names to canonical form (trailing '.')
+            rv = strlcpy(tdns, ioc, sizeof(tdns) - 2);
+            if (tdns[rv] != '.') {
+                tdns[rv]         = '.';
+                tdns[rv + 1]     = '\0';
+            }
+            HASH_FIND_STR(ss_conf->domain_table, tdns, iptr);
             break;
         }
         case SS_IOC_TYPE_URL: {
