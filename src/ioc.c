@@ -416,6 +416,7 @@ int ss_ioc_chain_optimize() {
                     fprintf(stderr, "ioc %lu has corrupt url: %s\n", iptr->id, iptr->value);
                     goto next_ioc;
                 }
+                // NOTE: convert names to canonical form (trailing '.')
                 strlcpy(tvalue, iptr->value + offset, sizeof(tvalue) - 2);
                 for (int i = 0; ; ++i) {
                     if (tvalue[i] == '/' || tvalue[i] == '\0') {
@@ -452,8 +453,14 @@ int ss_ioc_chain_optimize() {
                 }
                 // move forward to first byte after first '@'
                 domain += 1;
+                // NOTE: convert names to canonical form (trailing '.')
+                strlcpy(tvalue, domain, sizeof(tvalue) - 2);
+                if (tvalue[offset] != '.') {
+                    tvalue[offset] = '.';
+                    tvalue[offset + 1] = '\0';
+                }
                 strlcpy(iptr->dns, tvalue, sizeof(iptr->dns));
-                fprintf(stderr, "ioc %lu extracted email domain: %s\n", iptr->id, domain);
+                fprintf(stderr, "ioc %lu extracted email domain: %s\n", iptr->id, tvalue);
                 HASH_FIND_STR(ss_conf->domain_table, iptr->dns, hiptr);
                 if (hiptr == NULL) {
                     HASH_ADD_STR(ss_conf->domain_table, dns, iptr);
