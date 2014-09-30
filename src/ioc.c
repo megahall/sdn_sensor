@@ -129,7 +129,7 @@ int ss_ioc_chain_dump(uint64_t limit) {
         fprintf(stderr, "ioc chain entry number %lu\n", counter);
         ss_ioc_entry_dump(iptr);
         counter++;
-        if (limit && counter >= limit) break;
+        if (limit && counter > limit) break;
     }
     
     return 0;
@@ -146,7 +146,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
         fprintf(stderr, "ip4_table entry number %lu\n", counter);
         ss_ioc_entry_dump(iptr);
         counter++;
-        if (limit && counter >= limit) break;
+        if (limit && counter > limit) break;
     }
     
     counter = 1;
@@ -155,7 +155,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
         fprintf(stderr, "ip6_table entry number %lu\n", counter);
         ss_ioc_entry_dump(iptr);
         counter++;
-        if (limit && counter >= limit) break;
+        if (limit && counter > limit) break;
     }
     
     counter = 1;
@@ -164,7 +164,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
         fprintf(stderr, "domain_table entry number %lu\n", counter);
         ss_ioc_entry_dump(iptr);
         counter++;
-        if (limit && counter >= limit) break;
+        if (limit && counter > limit) break;
     }
     
     counter = 1;
@@ -173,7 +173,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
         fprintf(stderr, "url_table entry number %lu\n", counter);
         ss_ioc_entry_dump(iptr);
         counter++;
-        if (limit && counter >= limit) break;
+        if (limit && counter > limit) break;
     }
     
     counter = 1;
@@ -182,7 +182,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
         fprintf(stderr, "email_table entry number %lu\n", counter);
         ss_ioc_entry_dump(iptr);
         counter++;
-        if (limit && counter >= limit) break;
+        if (limit && counter > limit) break;
     }
     
     return 0;
