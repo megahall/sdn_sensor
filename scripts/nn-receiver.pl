@@ -78,6 +78,7 @@ my $length = 0;
 my $total_length = 0;
 my $buffer = "";
 my $message;
+my $source;
 
 while (1) {
     $rv = nn_recv($nn_socket, $buffer, 131072, 0);
@@ -88,7 +89,8 @@ while (1) {
     $total_length += $length;
     ++$message_id;
     $message = $parser->decode($buffer);
-    print "received callback id $message_id size $length: " . $buffer . "\n" unless $message->{'source'} eq 'pcap';
+    $source = $message->{'source'} || "";
+    print "received callback id $message_id size $length: " . $buffer . "\n" unless $source eq 'pcap';
 }
 
 my $stop      = time();
