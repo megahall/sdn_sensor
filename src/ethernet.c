@@ -287,7 +287,7 @@ int ss_frame_handle_ndp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     // XXX: find a nicer way to code this
     tx_buf->ndp_tx->lhdr.nd_opt_len          = 1;
 
-    memset(&tx_buf->ndp_tx->nd_addr, 0, NDP_ADDR_LEN);
+    memset(&tx_buf->ndp_tx->nd_addr, 0, ETHER_ADDR_LEN);
     // copy port eth_addr     into tx ndp_src_eth_addr
     ether_addr_copy(&port_eth_addrs[rx_buf->data.port_id], (eth_addr_t*) &tx_buf->ndp_tx->nd_addr);
     rte_memcpy(&tx_buf->ndp_tx->hdr.nd_na_target, &ss_conf->ip6_address.ip6_addr, IPV6_ALEN);

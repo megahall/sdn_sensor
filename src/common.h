@@ -127,15 +127,10 @@ struct ndp_request_s {
 
 typedef struct ndp_request_s ndp_request_t;
 
-#define NDP_ADDR_LEN (SS_ROUND_UP(ETHER_ADDR_LEN, 8))
-
 struct ndp_reply_s {
     struct  nd_neighbor_advert  hdr;
     struct  nd_opt_hdr          lhdr;
-    union {
-        uint8_t nd_addr[ETHER_ADDR_LEN];
-        //uint8_t nd_padding[NDP_ADDR_LEN];
-    };
+    uint8_t nd_addr[ETHER_ADDR_LEN];
 };
 
 typedef struct ndp_reply_s ndp_reply_t;
