@@ -21,6 +21,7 @@ Makefile.in
 
 # Object files
 *.d
+*.d.*
 *.o
 *.ko
 *.obj
