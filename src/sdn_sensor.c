@@ -25,7 +25,7 @@
 #include "common.h"
 #include "dpdk.h"
 #include "ethernet.h"
-#include "pcre_utils.h"
+#include "re_utils.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 

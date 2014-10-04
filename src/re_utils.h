@@ -1,5 +1,5 @@
-#ifndef __PCRE_UTILS_H__
-#define __PCRE_UTILS_H__
+#ifndef __RE_UTILS_H__
+#define __RE_UTILS_H__
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -18,7 +18,7 @@
 
 /* CONSTANTS */
 
-#define SS_PCRE_MATCH_MAX  (16 * 3)
+#define SS_RE_MATCH_MAX  (16 * 3)
 
 /* RE CHAIN */
 
@@ -77,4 +77,4 @@ int ss_re_chain_remove_name(char* name);
 
 /* END PROTOTYPES */
 
-#endif /* __PCRE_UTILS_H__ */
+#endif /* __RE_UTILS_H__ */

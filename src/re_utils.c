@@ -7,7 +7,7 @@
 #include <jemalloc/jemalloc.h>
 
 #include "json.h"
-#include "pcre_utils.h"
+#include "re_utils.h"
 #include "sdn_sensor.h"
 
 int ss_pcre_init() {

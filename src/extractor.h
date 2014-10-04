@@ -2,7 +2,7 @@
 #define __EXTRACTOR_H__
 
 #include "common.h"
-#include "pcre_utils.h"
+#include "re_utils.h"
 
 #include "dns.h"
 

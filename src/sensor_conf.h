@@ -11,7 +11,7 @@
 
 #include "common.h"
 #include "ioc.h"
-#include "pcre_utils.h"
+#include "re_utils.h"
 
 typedef enum json_type json_type_t;
 typedef enum json_tokener_error json_error_t;
