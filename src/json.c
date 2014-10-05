@@ -55,7 +55,7 @@ int ss_json_boolean_get(json_object* items, const char* key, int vdefault) {
     
     item = json_object_object_get(items, key);
     if (item == NULL) {
-        fprintf(stderr, "key %s not present\n", key);
+        fprintf(stderr, "note: key %s not present, use default %d\n", key, vdefault);
         goto out;
     }
     if (!json_object_is_type(item, json_type_boolean)) {
