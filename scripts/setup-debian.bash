@@ -10,7 +10,7 @@ sudo aptitude -y install linux-server linux-headers-server
 
 sudo aptitude -y install gawk strace ltrace telnet netcat-traditional tshark ssh rsync cproto cscope
 
-sudo aptitude -y install libjson-pp-perl libperl6-slurp-perl
+sudo aptitude -y install libjson-pp-perl libperl6-slurp-perl libdigest-sha-perl
 
 sudo aptitude -y install build-essential libc6-dbg clang llvm-gcc flex bison iwyu gdb-multiarch gdb-doc valgrind autoconf automake libtool git git-man git-email subversion manpages-dev manpages-posix-dev
 
