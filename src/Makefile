@@ -50,7 +50,7 @@ DEPENDS = $(patsubst %.c,%.d,$(wildcard *.c))
 
 sdn_sensor: $(OBJECTS)
 	@echo 'Linking sdn_sensor...'
-	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) -lbsd -ldl -ljemalloc -lunwind -ljson-c -lm -lnanomsg -lpcap -lpcre -lpthread -lrt $(SPCDNS_LINK)
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) -lbsd -ldl -ljemalloc -lunwind -ljson-c -lm -lnanomsg -lpcap -lpcre -lcre2 -lpthread -lrt $(SPCDNS_LINK)
 
 #$(OBJECTS): $(DEPENDS)
 
