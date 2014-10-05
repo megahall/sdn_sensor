@@ -397,8 +397,7 @@ ss_conf_t* ss_conf_file_parse() {
         int length = json_object_array_length(items);
         for (int i = 0; i < length; ++i) {
             item = json_object_array_get_idx(items, i);
-            ss_re_entry_t* entry = je_calloc(1, sizeof(ss_re_entry_t));
-            entry = ss_re_entry_create(item);
+            ss_re_entry_t* entry = ss_re_entry_create(item);
             /*
             if (entry == NULL) {
                 fprintf(stderr, "could not create re_chain entry\n");
@@ -406,6 +405,11 @@ ss_conf_t* ss_conf_file_parse() {
                 is_ok = 0; goto error_out;
             }
             */
+            if (entry == NULL) {
+                fprintf(stderr, "could not create re_chain entry %d\n", i);
+                ss_re_entry_destroy(entry);
+                is_ok = 0; goto error_out;
+            }
             ss_re_chain_add(entry);
         }
     }
@@ -420,11 +424,10 @@ ss_conf_t* ss_conf_file_parse() {
         int length = json_object_array_length(items);
         for (int i = 0; i < length; ++i) {
             item = json_object_array_get_idx(items, i);
-            ss_pcap_entry_t* entry = je_calloc(1, sizeof(ss_pcap_entry_t));
-            entry = ss_pcap_entry_create(item);
+            ss_pcap_entry_t* entry = ss_pcap_entry_create(item);
             if (entry == NULL) {
-                fprintf(stderr, "could not create pcap_chain entry\n");
-                if (entry) je_free(entry);
+                fprintf(stderr, "could not create pcap_chain entry %d\n", i);
+                ss_pcap_entry_destroy(entry);
                 is_ok = 0; goto error_out;
             }
             ss_pcap_chain_add(entry);
@@ -441,11 +444,10 @@ ss_conf_t* ss_conf_file_parse() {
         int length = json_object_array_length(items);
         for (int i = 0; i < length; ++i) {
             item = json_object_array_get_idx(items, i);
-            ss_dns_entry_t* entry = je_calloc(1, sizeof(ss_dns_entry_t));
-            entry = ss_dns_entry_create(item);
+            ss_dns_entry_t* entry = ss_dns_entry_create(item);
             if (entry == NULL) {
-                fprintf(stderr, "could not create dns_chain entry\n");
-                if (entry) je_free(entry);
+                fprintf(stderr, "could not create dns_chain entry %d\n", i);
+                ss_dns_entry_destroy(entry);
                 is_ok = 0; goto error_out;
             }
             ss_dns_chain_add(entry);
@@ -462,12 +464,11 @@ ss_conf_t* ss_conf_file_parse() {
         int length = json_object_array_length(items);
         for (int i = 0; i < length; ++i) {
             item = json_object_array_get_idx(items, i);
-            ss_cidr_entry_t* entry = je_calloc(1, sizeof(ss_cidr_entry_t));
-            entry = ss_cidr_entry_create(item);
+            ss_cidr_entry_t* entry = ss_cidr_entry_create(item);
             /*
             if (entry == NULL) {
-                fprintf(stderr, "could not create cidr_table entry\n");
-                if (entry) je_free(entry);
+                fprintf(stderr, "could not create cidr_table entry %d\n", i);
+                ss_cidr_entry_destroy(entry);
                 is_ok = 0; goto error_out;
             }
             */
