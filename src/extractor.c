@@ -232,16 +232,18 @@ int ss_extract_dns_atype(ss_answer_t* result, dns_answer_t* aptr) {
 
 int ss_extract_syslog(ss_frame_t* fbuf) {
     uint8_t* match_string;
-    ss_re_entry_t* rptr;
-    ss_re_entry_t* rtmp;
-    
+    uint8_t* metadata = NULL;
+    int mlength = 0;
     int rv = 0;
+    ss_re_match_t re_match;
+    
+    memset(&re_match, 0, sizeof(re_match));
     
     // exit if the syslog packet was not sent to us
     SS_CHECK_SELF(fbuf, rv);
     
     // place a zero byte at the end of the log message to form a C string
-    match_string  = (uint8_t*) rte_pktmbuf_append(fbuf->mbuf, 1);
+    match_string = (uint8_t*) rte_pktmbuf_append(fbuf->mbuf, 1);
     if (match_string == NULL) {
         RTE_LOG(ERR, EXTRACTOR, "could not append zero byte to syslog message\n");
         return -1;
@@ -251,122 +253,32 @@ int ss_extract_syslog(ss_frame_t* fbuf) {
     RTE_LOG(INFO, EXTRACTOR, "attempt syslog match port %u frame direction %d payload length %hu content %s\n",
         fbuf->data.port_id, fbuf->data.direction,
         fbuf->data.l4_length, (char*) fbuf->l4_offset);
-    
-    TAILQ_FOREACH_SAFE(rptr, &ss_conf->re_chain.re_list, entry, rtmp) {
-        RTE_LOG(DEBUG, EXTRACTOR, "attempt re match type %d against syslog rule %s\n",
-            rptr->type, rptr->name);
-        if (rptr->type == SS_RE_TYPE_COMPLETE) {
-            ss_extract_syslog_complete(fbuf, rptr);
-        }
-        else if (rptr->type == SS_RE_TYPE_SUBSTRING) {
-            ss_extract_syslog_substring(fbuf, rptr);
-        }
-        else {
-            RTE_LOG(ERR, EXTRACTOR, "unknown re_type %d\n", rptr->type);
-            return -1;
-        }
-    }
-    
-    return 0;
-}
-
-int ss_extract_syslog_complete(ss_frame_t* fbuf, ss_re_entry_t* rptr) {
-    int match_count;
-    int match_vector[(0 + 1) * 3];
-    uint8_t* metadata;
-    int mlength;
-    int rv;
         
-    match_count = pcre_exec(rptr->re, rptr->re_extra,
-                            (char*) fbuf->l4_offset, fbuf->data.l4_length,
-                            0, PCRE_NEWLINE_ANYCRLF,
-                            match_vector, (0 + 1) * 3);
-    
-    // flip around match logic if invert flag is set
-    if (rptr->inverted) {
-        if      (match_count > 0)                   match_count = PCRE_ERROR_NOMATCH;
-        else if (match_count == PCRE_ERROR_NOMATCH) match_count = 1;
+    rv = ss_re_chain_match(&re_match, fbuf->l4_offset, fbuf->data.l4_length);
+    if (rv <= 0 || re_match.re_entry == NULL) {
+        RTE_LOG(DEBUG, EXTRACTOR, "no match against syslog rule %s\n", re_match.re_entry->name);
+        return 0;
     }
     
-    if (match_count < 0 && match_count != PCRE_ERROR_NOMATCH) {
-        RTE_LOG(ERR, EXTRACTOR, "failed complete match error %s against syslog rule %s\n",
-            ss_pcre_strerror(match_count), rptr->name);
-    }
-    else if (match_count == PCRE_ERROR_NOMATCH) {
-        RTE_LOG(DEBUG, EXTRACTOR, "no match against syslog rule %s\n", rptr->name);
-    }
-    else {
-        RTE_LOG(NOTICE, EXTRACTOR, "successful complete match for syslog rule %s\n", rptr->name);
+    if (re_match.re_entry->type == SS_RE_TYPE_COMPLETE) {
         // include length of null byte
-        metadata = ss_metadata_prepare_syslog("udp_syslog", &rptr->nn_queue, fbuf, NULL, fbuf->l4_offset, fbuf->data.l4_length + 1);
+        metadata = ss_metadata_prepare_syslog("udp_syslog", &re_match.re_entry->nn_queue, fbuf, NULL);
+    }
+    else if (re_match.re_entry->type == SS_RE_TYPE_SUBSTRING) {
+        ss_ioc_entry_dump_dpdk(re_match.ioc_entry);
+        // include length of null byte
+        metadata = ss_metadata_prepare_syslog("udp_syslog", &re_match.re_entry->nn_queue, fbuf, re_match.ioc_entry);
+    }
+    
+    if (metadata) {
         // XXX: for now assume the output is C char*
         mlength = strlen((char*) metadata);
-        rv = ss_nn_queue_send(&rptr->nn_queue, metadata, mlength);
-    }
-    
-    return 0;
-}
-
-int ss_extract_syslog_substring(ss_frame_t* fbuf, ss_re_entry_t* rptr) {
-    int match_count;
-    int start_point;
-    int have_match;
-    int match_vector[(0 + 1) * 3];
-    uint8_t* match_string;
-    ss_ioc_entry_t* iptr;
-    uint8_t* metadata;
-    int mlength;
-    int rv;
-    
-    pcre_assign_jit_stack(rptr->re_extra, NULL, NULL);
-        
-    start_point = 0;
-    have_match  = 0;
-    do {
-        match_count = pcre_exec(rptr->re, rptr->re_extra,
-                                (char*) fbuf->l4_offset, fbuf->data.l4_length,
-                                start_point, PCRE_NEWLINE_ANYCRLF,
-                                match_vector, (0 + 1) * 3);
-        
-        if (match_count == 0 || match_count == PCRE_ERROR_NOMATCH) {
-            goto end_loop;
-        }
-        else if (match_count < 0) {
-            RTE_LOG(ERR, EXTRACTOR, "failed substring match error %s against syslog rule %s\n",
-                ss_pcre_strerror(match_count), rptr->name);
-        }
-        
-        if (pcre_get_substring((char*) fbuf->l4_offset,
-                               match_vector, match_count,
-                               0, (const char**) &match_string) >= 0) {
-            RTE_LOG(DEBUG, EXTRACTOR, "attempt ioc match against substring %s\n",
-                match_string);
-            iptr = ss_ioc_syslog_match((char*) match_string, rptr->ioc_type);
-            if (iptr) {
-                have_match = 1;
-                RTE_LOG(NOTICE, EXTRACTOR, "successful ioc match for syslog rule %s against substring %s\n",
-                    rptr->name, match_string);
-            }
-            pcre_free_substring((char*) match_string);
-        }
-        
-        start_point = match_vector[1];
-    } while (match_count > 0 && start_point < fbuf->data.l4_length && !have_match);
-    
-    end_loop:
-    if (have_match) {
-        RTE_LOG(NOTICE, EXTRACTOR, "successful substring ioc match for syslog rule %s\n", rptr->name);
-        ss_ioc_entry_dump_dpdk(iptr);
-        // include length of null byte
-        metadata = ss_metadata_prepare_syslog("udp_syslog", &rptr->nn_queue, fbuf, iptr, fbuf->l4_offset, fbuf->data.l4_length + 1);
-        // XXX: for now assume the output is C char*
-        mlength = strlen((char*) metadata);
-        rv = ss_nn_queue_send(&rptr->nn_queue, metadata, mlength);
+        rv = ss_nn_queue_send(&re_match.re_entry->nn_queue, metadata, mlength);
     }
     else {
-        // no match
-        RTE_LOG(DEBUG, EXTRACTOR, "failed match against syslog rule %s\n", rptr->name);
+        RTE_LOG(ERR, EXTRACTOR, "unexpected state matching against syslog rule %s\n", re_match.re_entry->name);
+        rv = -1;
     }
     
-    return 0;
+    return rv;
 }
