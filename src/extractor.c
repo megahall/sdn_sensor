@@ -5,8 +5,6 @@
 #include <bsd/string.h>
 #include <bsd/sys/queue.h>
 
-#include <pcre.h>
-
 #include <rte_memory.h>
 
 #include "extractor.h"
