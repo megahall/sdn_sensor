@@ -9,7 +9,6 @@
 #include <json-c/json_object_private.h>
 
 #include <pcap/pcap.h>
-#include <pcre.h>
 
 #include <net/if_arp.h>
 #include <netinet/ip.h>
