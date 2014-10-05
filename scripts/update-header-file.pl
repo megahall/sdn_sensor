@@ -4,8 +4,10 @@ use strict;
 use warnings FATAL => 'all';
 
 use Data::Dumper;
+use Digest::SHA qw(sha1_hex);
 use File::Basename;
 use File::Copy;
+use Perl6::Slurp;
 
 $Data::Dumper::Indent   = 1;
 $Data::Dumper::Sortkeys = 1;
@@ -95,8 +97,20 @@ foreach my $header_path (@file_list) {
     $h->{'cproto_options'} = $cproto_options;
     
     copy($h->{'header_path'}, $h->{'bak_path'}) or die "could not backup header file: $!";
+    
     update_prototypes($h);
-    move($h->{'tmp_path'}, $h->{'header_path'}) or die "could not update header file: $!";
+    
+    my $header_data = slurp($h->{'header_path'});
+    my $tmp_data    = slurp($h->{'tmp_path'});
+    my $header_sha1 = sha1_hex($header_data);
+    my $tmp_sha1    = sha1_hex($tmp_data);
+    if ($header_sha1 eq $tmp_sha1) {
+        print "skipping unchanged header $h->{'header_path'}\n";
+        my $rv = unlink($h->{'bak_path'}, $h->{'tmp_path'});
+    }
+    else {
+        move($h->{'tmp_path'}, $h->{'header_path'}) or die "could not update header file: $!";
+    }
 }
 
 exit(0);
