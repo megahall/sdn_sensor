@@ -252,7 +252,7 @@ uint8_t* ss_metadata_prepare_frame(const char* source, nn_queue_t* nn_queue, ss_
     return NULL;
 }
 
-uint8_t* ss_metadata_prepare_syslog(const char* source, nn_queue_t* nn_queue, ss_frame_t* fbuf, ss_ioc_entry_t* iptr, uint8_t* message, int length) {
+uint8_t* ss_metadata_prepare_syslog(const char* source, nn_queue_t* nn_queue, ss_frame_t* fbuf, ss_ioc_entry_t* iptr) {
     int          irv;
     uint8_t*     rv;
     json_object* jmessage = NULL;
@@ -278,7 +278,7 @@ uint8_t* ss_metadata_prepare_syslog(const char* source, nn_queue_t* nn_queue, ss
     }
     
     // XXX: for now assume the message is C char*
-    jmessage = json_object_new_string((char*) message);
+    jmessage = json_object_new_string((char*) fbuf->l4_offset);
     if (jmessage == NULL) goto error_out;
     json_object_object_add(jobject, "message", jmessage);
     
