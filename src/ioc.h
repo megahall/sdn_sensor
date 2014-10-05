@@ -18,6 +18,7 @@
 #define SS_IOC_DNS_SIZE          96
 
 enum ss_ioc_type_e {
+    SS_IOC_TYPE_EMPTY  = 0,
     SS_IOC_TYPE_IP     = 1,
     SS_IOC_TYPE_DOMAIN = 2,
     SS_IOC_TYPE_URL    = 3,
