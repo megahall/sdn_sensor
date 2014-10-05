@@ -228,7 +228,7 @@ int main(int argc, char* argv[]) {
     
     fprintf(stderr, "launching sdn_sensor version %s\n", SS_VERSION);
     
-    rv = ss_pcre_init();
+    rv = ss_re_init();
     if (rv) {
         fprintf(stderr, "could not initialize libpcre\n");
         exit(1);
