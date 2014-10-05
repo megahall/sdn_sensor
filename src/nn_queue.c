@@ -97,12 +97,13 @@ int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
     return 0;
     
     error_out:
-    ss_nn_queue_destroy(nn_queue);
+    if (nn_queue) ss_nn_queue_destroy(nn_queue);
     if (value) je_free(value);
     return -1;
 }
 
 int ss_nn_queue_destroy(nn_queue_t* nn_queue) {
+    if (!nn_queue) return 0;
     if (nn_queue->conn >= 0) { nn_close(nn_queue->conn); nn_queue->conn = -1; }
     nn_queue->remote_id = -1;
     nn_queue->format    = -1;
