@@ -120,7 +120,7 @@ ss_pcap_entry_t* ss_pcap_entry_create(json_object* pcap_json) {
 }
 
 int ss_pcap_entry_destroy(ss_pcap_entry_t* pcap_entry) {
-    ss_nn_queue_destroy(&pcap_entry->nn_queue);
+    if (pcap_entry) ss_nn_queue_destroy(&pcap_entry->nn_queue);
     pcap_entry->matches = 0;
     if (pcap_entry)             { pcap_freecode(&pcap_entry->bpf_filter);                     }
     if (pcap_entry->name)       { je_free(pcap_entry->name);       pcap_entry->name = NULL;   }
@@ -249,7 +249,7 @@ ss_dns_entry_t* ss_dns_entry_create(json_object* dns_json) {
 }
 
 int ss_dns_entry_destroy(ss_dns_entry_t* dns_entry) {
-    ss_nn_queue_destroy(&dns_entry->nn_queue);
+    if (dns_entry) ss_nn_queue_destroy(&dns_entry->nn_queue);
     dns_entry->matches = 0;
     if (dns_entry->name)       { je_free(dns_entry->name);       dns_entry->name = NULL; }
     if (dns_entry)             { je_free(dns_entry);             dns_entry = NULL;       }
@@ -358,7 +358,7 @@ ss_cidr_entry_t* ss_cidr_entry_create(json_object* cidr_json) {
 }
 
 int ss_cidr_entry_destroy(ss_cidr_entry_t* cidr_entry) {
-    ss_nn_queue_destroy(&cidr_entry->nn_queue);
+    if (cidr_entry) ss_nn_queue_destroy(&cidr_entry->nn_queue);
     cidr_entry->matches = -1;
     if (cidr_entry->name) { je_free(cidr_entry->name); cidr_entry->name = NULL; }
     je_free(cidr_entry);
