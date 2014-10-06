@@ -10,7 +10,7 @@
     
     "dpdk": {
         // XXX: DPDK options are always strings right now
-        "eal_options":      "sdn_sensor -c 0x2 -n 2 --huge-dir /hugetlbfs --proc-type primary -w 01:00.1",
+        "eal_options":      "sdn_sensor -c 0x3 -n 2 --huge-dir /hugetlbfs --proc-type primary -w 01:00.1",
         "log_level":        "notice",
         "port_mask":        4294967295, // 0xffffffff
         "queue_count":      2,
