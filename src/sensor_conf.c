@@ -232,22 +232,6 @@ int ss_conf_dpdk_parse(json_object* items) {
         ss_conf->port_mask = 0xFFFFFFFF;
     }
 
-    item = json_object_object_get(items, "queue_count");
-    if (item) {
-        if (!json_object_is_type(item, json_type_int)) {
-            fprintf(stderr, "queue_count is not integer\n");
-            return -1;
-        }
-        ss_conf->queue_count = json_object_get_int(item);
-        if (ss_conf->queue_count > MAX_RX_QUEUE_PER_LCORE) {
-            fprintf(stderr, "queue_count larger than %d\n", MAX_RX_QUEUE_PER_LCORE);
-            return -1;
-        }
-    }
-    else {
-        ss_conf->queue_count = 1;
-    }
-    
     item = json_object_object_get(items, "timer_msec");
     if (item) {
         if (!json_object_is_type(item, json_type_int)) {
