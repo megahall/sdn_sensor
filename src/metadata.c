@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,9 +6,15 @@
 #include <strings.h>
 #include <sys/time.h>
 
+#include <jemalloc/jemalloc.h>
+
+#include <json-c/json.h>
+#include <json-c/json_object_private.h>
+
 #include "metadata.h"
 #include "common.h"
 #include "ioc.h"
+#include "je_utils.h"
 #include "json.h"
 #include "nn_queue.h"
 
@@ -218,8 +225,9 @@ int ss_metadata_prepare_ioc(const char* source, nn_queue_t* nn_queue, ss_ioc_ent
 
 uint8_t* ss_metadata_prepare_frame(const char* source, nn_queue_t* nn_queue, ss_frame_t* fbuf, ss_ioc_entry_t* iptr) {
     int          irv;
-    uint8_t*     rv;
+    uint8_t*     rv      = NULL;
     json_object* jobject = NULL;
+    uint8_t*     jstring = NULL;
     
     if (nn_queue->format != NN_FORMAT_METADATA) {
         fprintf(stderr, "format %d not supported yet\n", nn_queue->format);
@@ -243,20 +251,29 @@ uint8_t* ss_metadata_prepare_frame(const char* source, nn_queue_t* nn_queue, ss_
         if (irv) goto error_out;
     }
     
-    rv = (uint8_t*) json_object_to_json_string_ext(jobject, JSON_C_TO_STRING_SPACED);
-    json_object_put(jobject);
+    // XXX: NOTE: String pointer is internal to JSON object.
+    jstring = (uint8_t*) json_object_to_json_string_ext(jobject, JSON_C_TO_STRING_SPACED);
+    rv = (uint8_t*) je_strdup((char*)jstring);
+    if (!rv) goto error_out;
+    
+    json_object_put(jobject); jobject = NULL;
+    
     return rv;
     
     error_out:
     fprintf(stderr, "could not serialize packet metadata\n");
+    if (rv) { je_free(rv); rv = NULL; }
+    if (jobject) { json_object_put(jobject); jobject = NULL; }
+    
     return NULL;
 }
 
 uint8_t* ss_metadata_prepare_syslog(const char* source, nn_queue_t* nn_queue, ss_frame_t* fbuf, ss_ioc_entry_t* iptr) {
     int          irv;
-    uint8_t*     rv;
+    uint8_t*     rv       = NULL;
     json_object* jmessage = NULL;
-    json_object* jobject = NULL;
+    json_object* jobject  = NULL;
+    uint8_t*     jstring  = NULL;
     
     if (nn_queue->format != NN_FORMAT_METADATA) {
         fprintf(stderr, "format %d not supported yet\n", nn_queue->format);
@@ -282,14 +299,20 @@ uint8_t* ss_metadata_prepare_syslog(const char* source, nn_queue_t* nn_queue, ss
     if (jmessage == NULL) goto error_out;
     json_object_object_add(jobject, "message", jmessage);
     
-    rv = (uint8_t*) json_object_to_json_string_ext(jobject, JSON_C_TO_STRING_SPACED);
-    json_object_put(jobject);
+    // XXX: NOTE: String pointer is internal to JSON object.
+    jstring = (uint8_t*) json_object_to_json_string_ext(jobject, JSON_C_TO_STRING_SPACED);
+    rv = (uint8_t*) je_strdup((char*)jstring);
+    if (!rv) goto error_out;
+    
+    json_object_put(jobject); jobject = NULL;
+    
     return rv;
     
     error_out:
     fprintf(stderr, "could not create syslog metadata\n");
-    if (jmessage) json_object_put(jmessage);
-    if (jobject)  json_object_put(jobject);
+    if (rv) { je_free(rv); rv = NULL; }
+    if (jmessage) { json_object_put(jmessage); jmessage = NULL; }
+    if (jobject)  { json_object_put(jobject);  jobject  = NULL; }
     
     return NULL;
 }
