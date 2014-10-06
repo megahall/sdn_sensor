@@ -340,18 +340,16 @@ int ss_re_chain_match_pcre_complete(ss_re_match_t* re_match, ss_re_entry_t* re_e
 }
 
 int ss_re_chain_match_pcre_substring(ss_re_match_t* re_match, ss_re_entry_t* re_entry, uint8_t* l4_offset, uint16_t l4_length) {
-    int match_count;
-    int start_point;
-    int have_match;
-    int match_vector[(0 + 1) * 3];
-    uint8_t* match_string;
+    int             match_count;
+    int             start_point = 0;
+    int             have_match  = 0;
+    int             match_vector[(0 + 1) * 3];
+    uint8_t*        match_string;
     ss_ioc_entry_t* iptr;
     
     // XXX: this is buggy because it will not be a true per-thread stack
     pcre_assign_jit_stack(re_entry->pcre_re_extra, NULL, NULL);
     
-    start_point = 0;
-    have_match  = 0;
     do {
         match_count = pcre_exec(re_entry->pcre_re, re_entry->pcre_re_extra,
                                 (char*) l4_offset, l4_length,
@@ -491,43 +489,54 @@ int ss_re_chain_match_re2_complete(ss_re_match_t* re_match, ss_re_entry_t* re_en
 }
 
 int ss_re_chain_match_re2_substring(ss_re_match_t* re_match, ss_re_entry_t* re_entry, uint8_t* l4_offset, uint16_t l4_length) {
-    int rv;
+    int             match_flag;
+    int             match_length;
+    int             start_point;
+    int             have_match  = 0;
     ss_ioc_entry_t* iptr;
-    cre2_string_t input;
-    int match_limit = 1;
-    int match_length = 0;
-    cre2_string_t match[1];
-    char c_match[SS_IOC_DNS_SIZE + 1];
+    cre2_string_t   match[1];
+    char            substring[SS_IOC_DNS_SIZE + 1];
     
-    input.length      = 0;
-    input.data        = NULL;
+    match[0].data   = (char*) l4_offset;
+    match[0].length = 0;
     
-    rv = cre2_match(re_entry->re2_re,
-        (char*) l4_offset, l4_length,
-        0, l4_length, CRE2_UNANCHORED,
-        match, match_limit);
-    
-    if (rv) {
+    do {
+        start_point = (char*) match[0].data + match[0].length - (char*) l4_offset;
+        match_flag = cre2_match(re_entry->re2_re,
+            (char*) l4_offset, l4_length,
+            start_point, l4_length,
+            CRE2_UNANCHORED, match, 1);
+        
+        if (match_flag == 0) {
+            goto end_loop;
+        }
+        
+        // extract substring 0 (full content of match)
         match_length = match[0].length;
-        if (match_length > SS_IOC_DNS_SIZE) match_length = SS_IOC_DNS_SIZE;
-        memcpy(c_match, match[0].data, match_length);
-        c_match[match_length + 1] = '\0';
+        memcpy(substring, match[0].data, match_length > SS_IOC_DNS_SIZE? SS_IOC_DNS_SIZE : match_length);
+        substring[match_length] = '\0';
         
         RTE_LOG(DEBUG, EXTRACTOR, "attempt ioc match against substring %s\n",
-            c_match);
+            substring);
         
-        iptr = ss_ioc_syslog_match(c_match, re_entry->ioc_type);
+        iptr = ss_ioc_syslog_match(substring, re_entry->ioc_type);
         if (iptr) {
             RTE_LOG(NOTICE, EXTRACTOR, "successful ioc match for syslog rule %s against substring %s\n",
-                re_entry->name, c_match);
+                re_entry->name, substring);
+            have_match = 1;
             re_match->ioc_entry = iptr;
             return 1;
         }
+    } while (match_flag > 0 && !have_match);
+    
+    end_loop:
+    if (have_match) {
+        RTE_LOG(NOTICE, EXTRACTOR, "successful substring ioc match against syslog rule %s\n", re_entry->name);
+        return 1;
     }
     else {
-        RTE_LOG(ERR, EXTRACTOR, "no substring match against syslog rule %s\n",
-            re_entry->name);
+        // no match
+        RTE_LOG(DEBUG, EXTRACTOR, "no substring match against syslog rule %s\n", re_entry->name);
+        return 0;
     }
-    
-    return 0;
 }
