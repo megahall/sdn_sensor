@@ -33,7 +33,7 @@ int ss_frame_prepare_icmp6(ss_frame_t* tx_buf, uint8_t* pl_ptr, uint32_t pl_len)
     uint32_t zeros_nxt;
     uint16_t checksum;
 
-    pmbuf = rte_pktmbuf_alloc(ss_pool);
+    pmbuf = rte_pktmbuf_alloc(ss_pool[rte_socket_id()]);
     if (pmbuf == NULL) {
         RTE_LOG(ERR, STACK, "could not allocate mbuf icmp6 pseudo header\n");
         goto error_out;

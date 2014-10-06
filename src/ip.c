@@ -156,3 +156,42 @@ int ss_frame_find_l4_header(ss_frame_t* rx_buf, uint8_t ip_protocol) {
         }
     }
 }
+
+/* From http://www.rfc-editor.org/rfc/rfc1812.txt section 5.2.2 */
+int ss_frame_check_ipv4(ip4_hdr_t* ip4, uint32_t l2_length)
+{
+    /*
+     * 1. The packet length reported by the Link Layer must be large
+     * enough to hold the minimum length legal IP datagram (20 bytes).
+     */
+    if (l2_length < sizeof(ip4_hdr_t))
+        return -1;
+    
+    /* 2. The IP checksum must be correct. */
+    /* XXX: add code / HW check for this */
+    
+    /*
+     * 3. The IP version number must be 4. If the version number is not 4
+     * then the packet may be another version of IP, such as IPng or
+     * ST-II.
+     */
+    if (ip4->version != 4)
+        return -3;
+    
+    /*
+     * 4. The IP header length field must be large enough to hold the
+     * minimum length legal IP datagram (20 bytes = 5 words).
+     */
+    if (ip4->ihl < 5)
+        return -4;
+    
+    /*
+     * 5. The IP total length field must be large enough to hold the IP
+     * datagram header, whose length is specified in the IP header length
+     * field.
+     */
+    if (rte_cpu_to_be_16(ip4->tot_len) < sizeof(ip4_hdr_t))
+        return -5;
+    
+    return 0;
+}

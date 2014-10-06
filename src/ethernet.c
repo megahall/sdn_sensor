@@ -22,7 +22,7 @@
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 
-void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int port_id) {
+void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int lcore_id, unsigned int port_id) {
     int rv;
     ss_frame_t rx_buf;
     ss_frame_t tx_buf;
@@ -117,7 +117,7 @@ void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int port_id) {
 
     if (tx_buf.active && tx_buf.mbuf) {
         RTE_LOG(INFO, STACK, "sending tx_buf size %d\n", rte_pktmbuf_pkt_len(tx_buf.mbuf));
-        rv = ss_send_packet(tx_buf.mbuf, tx_buf.data.port_id);
+        rv = ss_send_packet(tx_buf.mbuf, tx_buf.data.port_id, lcore_id);
         if (rv) {
             RTE_LOG(ERR, STACK, "could not transmit tx_buf, rv: %d\n", rv);
             // XXX: what would we do here?
@@ -138,7 +138,7 @@ void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int port_id) {
 int ss_frame_prepare_eth(ss_frame_t* tx_buf, int port_id, eth_addr_t* d_addr, uint16_t type) {
     tx_buf->data.port_id = port_id;
 
-    tx_buf->mbuf = rte_pktmbuf_alloc(ss_pool);
+    tx_buf->mbuf = rte_pktmbuf_alloc(ss_pool[rte_socket_id()]);
     if (tx_buf->mbuf == NULL) {
         RTE_LOG(ERR, STACK, "could not allocate ethernet mbuf\n");
         goto error_out;
