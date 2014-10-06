@@ -114,9 +114,9 @@ int ss_extract_dns(ss_frame_t* fbuf) {
     RTE_LOG(INFO, EXTRACTOR, "rx dns query for name [%s] type [%s] class [%s]\n",
         dns_question->name, dns_type_text(dns_question->type), dns_class_text(dns_question->class));
     strlcpy((char*) &fbuf->data.dns_name, dns_question->name, SS_DNS_NAME_MAX);
-    size_t ancount = dns_query->ancount;
+    int ancount = dns_query->ancount;
     if (ancount > SS_DNS_RESULT_MAX) ancount = SS_DNS_RESULT_MAX;
-    for (size_t i = 0; i < ancount; ++i) {
+    for (int i = 0; i < ancount; ++i) {
         dns_answer = &dns_query->answers[i];
         rv = ss_extract_dns_atype(&fbuf->data.dns_answers[i], dns_answer);
         if (rv) {
@@ -130,7 +130,7 @@ int ss_extract_dns(ss_frame_t* fbuf) {
         if (pptr->dns[0] && strcasestr(dns_question->name, pptr->dns)) {
             is_match = 1; goto done;
         }
-        for (int i = 0; i < SS_DNS_RESULT_MAX; ++i) {
+        for (int i = 0; i < ancount; ++i) {
             ss_answer = &fbuf->data.dns_answers[i];
             switch (ss_answer->type) {
                 case SS_TYPE_NAME: {
