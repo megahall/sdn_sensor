@@ -13,15 +13,13 @@
 #include "common.h"
 #include "sensor_conf.h"
 
-/* GLOBAL VARIABLES */
+/* DEFINES */
 
-extern pcap_t*           ss_pcap;
-extern ss_conf_t*        ss_conf;
-extern rte_mempool_t*    ss_pool;
-extern struct ether_addr port_eth_addrs[];
+#define MBUF_SIZE (ETHER_MAX_LEN + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_COUNT 6144
 
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
-#define NB_MBUF   8192
+#define SOCKET_COUNT 2
+#define NUMA_ENABLED 1
 
 /*
  * RX and TX Prefetch, Host, and Write-back threshold values should be
@@ -51,26 +49,28 @@ extern struct ether_addr port_eth_addrs[];
 #define RTE_TEST_RX_DESC_DEFAULT 128
 #define RTE_TEST_TX_DESC_DEFAULT 512
 
-#define MAX_RX_QUEUE_PER_LCORE 16
-#define MAX_TX_QUEUE_PER_PORT 16
+#define LCORE_RX_QUEUE_MAX    16
+#define LCORE_PARAMS_MAX    1024
+#define PORT_TX_QUEUE_MAX     16
 
 #define TIMER_MILLISECOND 2000000ULL /* around 1ms at 2 Ghz */
 #define MAX_TIMER_PERIOD 86400 /* 1 day max */
 
-struct mbuf_table {
-    unsigned length;
+/* GLOBAL VARIABLES */
+
+extern pcap_t*        ss_pcap;
+extern ss_conf_t*     ss_conf;
+extern rte_mempool_t* ss_pool[SOCKET_COUNT];
+extern struct ether_addr port_eth_addrs[];
+
+/* STRUCTURES */
+
+struct mbuf_table_entry {
+    unsigned int length;
     struct rte_mbuf* mbufs[MAX_PKT_BURST];
-} __rte_cache_aligned;
+};
 
-typedef struct mbuf_table mbuf_table_t;
-
-struct lcore_queue_conf {
-    unsigned rx_port_count;
-    unsigned rx_port_list[MAX_RX_QUEUE_PER_LCORE];
-    struct mbuf_table tx_table[RTE_MAX_ETHPORTS];
-} __rte_cache_aligned;
-
-typedef struct lcore_queue_conf lcore_queue_conf_t;
+typedef struct mbuf_table_entry mbuf_table_entry_t;
 
 struct ss_port_statistics {
     uint64_t tx;
@@ -82,8 +82,8 @@ typedef struct ss_port_statistics ss_port_statistics_t;
 
 /* BEGIN PROTOTYPES */
 
-int ss_send_burst(struct lcore_queue_conf* queue_conf, unsigned int n, uint8_t port);
-int ss_send_packet(struct rte_mbuf* m, uint8_t port_id);
+int ss_send_burst(uint8_t port_id, unsigned int lcore_id);
+int ss_send_packet(struct rte_mbuf* mbuf, uint8_t port_id, unsigned int lcore_id);
 void ss_main_loop(void);
 int ss_launch_one_lcore(void* dummy);
 int main(int argc, char* argv[]);
