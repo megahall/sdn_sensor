@@ -27,7 +27,6 @@ done
 
 script_directory="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
 source "${script_directory}/../sdn_sensor_rc"
-script_directory="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
 
 export RTE_SDK="${HOME}/src/dpdk"
 export RTE_TOOLS="${RTE_SDK}/tools"
@@ -55,13 +54,13 @@ if [[ $setup -gt 0 ]]; then
     exit 0
 fi
 
-cd "${script_directory}/.."
+cd "${build_directory}"
 
 export NN_PRINT_ERRORS=1
 #export NN_PRINT_STATISTICS=1
 
 if [[ $debug -gt 0 ]]; then
-    gdb "${script_directory}/../src/sdn_sensor"
+    gdb "${build_directory}/src/sdn_sensor"
 else
-    "${script_directory}/../src/sdn_sensor"
+    "${build_directory}/src/sdn_sensor"
 fi
