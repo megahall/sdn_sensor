@@ -2,33 +2,38 @@
 
 set -e -x
 
+script_directory="$(dirname $(readlink -f $BASH_SOURCE))"
+source "${script_directory}/../sdn_sensor_rc"
+
+# Note: RE2 uses some constructs which are forever incompatible with clang,
+# because clang refuses to add support for them.
+
 export CC="llvm-gcc"
 export CXX="llvm-g++"
-export CFLAGS="-std=gnu11"
-export CXXFLAGS="-std=gnu++11"
-
-export SDN_SENSOR_BASE=${SDN_SENSOR_BASE:-~/src/sdn_sensor}
-
-echo "SDN_SENSOR_BASE set to ${SDN_SENSOR_BASE}"
+export CFLAGS="${CFLAGS} -std=gnu11"
+export CXXFLAGS="${CXXFLAGS} -std=gnu++11"
 
 # RE2
 
-cd "${SDN_SENSOR_BASE}/external/re2"
+cd "${build_directory}/external/re2"
 
 make clean
 make
-make test
+#make test
 sudo make install
 sudo ldconfig
 make testinstall
 
 # CRE2
 
-cd "${SDN_SENSOR_BASE}/external/cre2"
+cd "${build_directory}/external/cre2"
 
-sh autogen.sh
+if [[ ! -f configure ]]; then
+    sh autogen.sh
+fi
 ./configure \
 --prefix=/usr/local \
 --enable-maintainer-mode
 make
 sudo make install
+sudo ldconfig
