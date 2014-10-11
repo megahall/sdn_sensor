@@ -1,0 +1,20 @@
+--no-group
+--smart-case
+--sort-files
+
+--type-set=msl=.msl
+
+--type-set=csv=.txt,.csv,.tsv
+--type-set=gettext=.pot,.po
+--type-set=ini=.ini,.cfg
+
+--nogettext
+--nomsl
+
+# less options:
+# -F: skip if < 1 screen
+# -R: allow color excapes
+# -S: chop lines (disabled)
+# -X: disable termcap init
+# 
+--pager=less -F -R -X
