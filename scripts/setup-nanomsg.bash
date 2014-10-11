@@ -7,8 +7,9 @@ source "${script_directory}/../sdn_sensor_rc"
 
 cd "${build_directory}/external/nanomsg"
 
-# XXX: requires ~800MB of packages for asciidoc
-# --enable-doc \
+if [[ ! -f configure ]]; then
+    autoreconf -ifv
+fi
 
 ./configure \
 --prefix=/usr/local \
@@ -18,8 +19,10 @@ cd "${build_directory}/external/nanomsg"
 --enable-shared \
 --enable-static
 
+# XXX: requires ~800MB of packages for asciidoc
+# --enable-doc \
+
 make clean
 make
-
 sudo make install
 sudo ldconfig
