@@ -3,10 +3,13 @@
 	url = git@github.com:nanomsg/nanomsg.git
 [submodule "external/spcdns"]
 	path = external/spcdns
-	url = git@github.com:megahall/SPCDNS.git
+	url = git@github.com:spc476/SPCDNS.git
 [submodule "external/jemalloc"]
 	path = external/jemalloc
-	url = git@github.com:jemalloc/jemalloc.git
+	url = git@github.com:megahall/jemalloc.git
 [submodule "external/cre2"]
 	path = external/cre2
 	url = git@github.com:marcomaggi/cre2.git
+[submodule "external/dpdk"]
+	path = external/dpdk
+	url = git@github.com:megahall/dpdk_mhall.git
