@@ -2,7 +2,8 @@
 
 set -e -x
 
-export CC=clang
+script_directory="$(dirname $(readlink -f $BASH_SOURCE))"
+source "${script_directory}/../sdn_sensor_rc"
 
 # install the following additional packages:
 # libunwind-setjmp0
@@ -10,7 +11,11 @@ export CC=clang
 # libunwind7
 # libunwind7-dev
 
-autoconf
+cd "${build_directory}/external/jemalloc"
+
+if [[ ! -f configure ]]; then
+    autoconf
+fi
 
 ./configure \
 --enable-autogen \
@@ -26,7 +31,6 @@ autoconf
 --enable-xmalloc \
 --disable-lazy-lock
 
-#--with-private-namespace=je_ \
-
-#make
-#sudo make install
+make dist
+make
+sudo make install
