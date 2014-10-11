@@ -51,7 +51,9 @@ Makefile.in
 core
 vgcore.*
 
-src/sdn_sensor
+/.vagrant
+/scripts/ack-grep_1.96-2_all.deb
+/src/sdn_sensor
 
 # Perl Code
 /blib/
