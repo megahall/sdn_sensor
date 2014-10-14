@@ -29,6 +29,8 @@ struct ss_conf_s {
     char* eal_options;
     uint32_t log_level;
     uint32_t port_mask;
+    uint16_t rxd_count;
+    uint16_t txd_count;
     uint64_t timer_msec;
     
     wordexp_t eal_vector;

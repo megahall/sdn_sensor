@@ -231,6 +231,30 @@ int ss_conf_dpdk_parse(json_object* items) {
     else {
         ss_conf->port_mask = 0xFFFFFFFF;
     }
+    
+    item = json_object_object_get(items, "rxd_count");
+    if (item) {
+        if (!json_object_is_type(item, json_type_int)) {
+            fprintf(stderr, "rxd_count is not integer\n");
+            return -1;
+        }
+        ss_conf->rxd_count = json_object_get_int(item);
+    }
+    else {
+        ss_conf->rxd_count = 128 /* RTE_TEST_RX_DESC_DEFAULT */;
+    }
+    
+    item = json_object_object_get(items, "txd_count");
+    if (item) {
+        if (!json_object_is_type(item, json_type_int)) {
+            fprintf(stderr, "txd_count is not integer\n");
+            return -1;
+        }
+        ss_conf->txd_count = json_object_get_int(item);
+    }
+    else {
+        ss_conf->txd_count = 512 /* RTE_TEST_TX_DESC_DEFAULT */;
+    }
 
     item = json_object_object_get(items, "timer_msec");
     if (item) {
