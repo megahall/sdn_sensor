@@ -14,10 +14,13 @@ export RTE_SDK_BIN="${RTE_SDK}/build"
 #export RTE_OUTPUT="${RTE_SDK}/build"
 export RTE_TARGET="x86_64-native-linuxapp-clang"
 export RTE_ARCH="x86_64"
+export RTE_INCLUDE="${RTE_SDK_BIN}/include"
 
 export EXTRA_CFLAGS="-g -O0 -fPIC -msse4"
 
 cd "${RTE_SDK}"
+
+#make clean || true
 
 if [[ ! -f ${RTE_SDK_BIN}/.config ]]; then
     mkdir -p "${RTE_SDK_BIN}"
@@ -25,11 +28,15 @@ if [[ ! -f ${RTE_SDK_BIN}/.config ]]; then
     cp "${script_directory}/dpdk-config.txt" "${RTE_SDK_BIN}/.config"
 fi
 
-#make clean
 make -j "${thread_count}"
 make -j "${thread_count}" -C examples "RTE_SDK=${RTE_SDK}" "RTE_TARGET=build" "RTE_SDK_BIN=${RTE_SDK}/build"
 
+sudo mkdir -p /lib/modules/$(uname -r)/kernel/drivers/uio
 sudo cp build/build/lib/librte_eal/linuxapp/igb_uio/igb_uio.ko /lib/modules/$(uname -r)/kernel/drivers/uio/igb_uio.ko
 sudo depmod -a
+
+cd "${build_directory}/external/virtio-net-pmd"
+
+make "RTE_INCLUDE=${RTE_INCLUDE}"
 
 exit 0
