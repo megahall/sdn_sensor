@@ -6,8 +6,9 @@ ifeq ($(CC),gcc)
 endif
 CC     ?= clang
 
-RTE_SDK ?= $(HOME)/src/dpdk
-SDN_SENSOR_BASE ?= $(HOME)/src/sdn_sensor
+MAKEFILE_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+SDN_SENSOR_BASE ?= $(shell dirname $(MAKEFILE_DIR))
+RTE_SDK ?= $(SDN_SENSOR_BASE)/external/dpdk
 
 # XXX: -Wunused-but-set-variable doesn't work
 # See: http://llvm.org/bugs/show_bug.cgi?id=9824
@@ -36,10 +37,41 @@ ifneq ($(strip $(LESS)),)
     CFLAGS += -fcolor-diagnostics
 endif
 
-DPDK_LINK = -Wl,--whole-archive -Wl,--start-group -lintel_dpdk -Wl,--end-group -Wl,--no-whole-archive
+DPDK_LINK = \
+-Wl,--whole-archive -Wl,--start-group \
+-lethdev \
+-lrte_acl \
+-lrte_cfgfile \
+-lrte_cmdline \
+-lrte_distributor \
+-lrte_eal \
+-lrte_hash \
+-lrte_ip_frag \
+-lrte_kvargs \
+-lrte_lpm \
+-lrte_malloc \
+-lrte_mbuf \
+-lrte_mempool \
+-lrte_meter \
+-lrte_pipeline \
+-lrte_pmd_bond \
+-lrte_pmd_e1000 \
+-lrte_pmd_pcap \
+-lrte_pmd_ring \
+-lrte_pmd_virtio_uio \
+-lrte_pmd_vmxnet3_uio \
+-lrte_port \
+-lrte_power \
+-lrte_ring \
+-lrte_sched \
+-lrte_table \
+-lrte_timer \
+-Wl,--end-group -Wl,--no-whole-archive \
+
+#DPDK_LINK = -Wl,--whole-archive -Wl,--start-group -lintel_dpdk -Wl,--end-group -Wl,--no-whole-archive
 SPCDNS_LINK = -Wl,-Bstatic -lspcdns -lspcdnsmisc -Wl,-Bdynamic
 
-LDFLAGS = -L$(RTE_SDK)/build/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built -L/usr/local/jemalloc/lib -Wl,-rpath,/usr/local/jemalloc/lib
+LDFLAGS = -L$(RTE_SDK)/build/lib -Wl,-rpath,$(RTE_SDK)/build/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built -L/usr/local/jemalloc/lib -Wl,-rpath,/usr/local/jemalloc/lib
 
 HEADERS = $(wildcard *.h)
 SOURCES = $(wildcard *.c)
