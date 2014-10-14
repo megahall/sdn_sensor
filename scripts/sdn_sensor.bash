@@ -8,15 +8,11 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 debug=0
-setup=0
 
-while getopts ":ds" optopt; do
+while getopts ":dv" optopt; do
     case "${optopt}" in
         d)
             debug=1
-            ;;
-        s)
-            setup=1
             ;;
         *)
             echo "invalid command line options"
@@ -28,39 +24,17 @@ done
 script_directory="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
 source "${script_directory}/../sdn_sensor_rc"
 
-export RTE_SDK="${HOME}/src/dpdk"
-export RTE_TOOLS="${RTE_SDK}/tools"
-export RTE_NIC_BIND="${RTE_TOOLS}/dpdk_nic_bind.py"
-
-export PCI_ID_1="0000:01:00.0"
-export PCI_ID_2="0000:01:00.1"
-
-"${RTE_NIC_BIND}" --status | fgrep "${PCI_ID_1}"
-"${RTE_NIC_BIND}" -b none          "${PCI_ID_1}"
-"${RTE_NIC_BIND}" -b igb           "${PCI_ID_1}"
-"${RTE_NIC_BIND}" --status | fgrep "${PCI_ID_1}"
-
-"${RTE_NIC_BIND}" --status | fgrep "${PCI_ID_2}"
-"${RTE_NIC_BIND}" -b none          "${PCI_ID_2}"
-"${RTE_NIC_BIND}" -b igb_uio       "${PCI_ID_2}"
-"${RTE_NIC_BIND}" --status | fgrep "${PCI_ID_2}"
-
-modprobe igb || true
-ip link set dev em1 up
-ip addr add 192.168.2.6/24 dev em1 || true
-
-if [[ $setup -gt 0 ]]; then
-    echo "setup only, stopping"
-    exit 0
-fi
-
 cd "${build_directory}"
 
 export NN_PRINT_ERRORS=1
 #export NN_PRINT_STATISTICS=1
 
+command_line="${build_directory}/src/sdn_sensor -c ${build_directory}/conf/sdn_sensor_vagrant.json"
+
 if [[ $debug -gt 0 ]]; then
-    gdb "${build_directory}/src/sdn_sensor"
+    gdb --args ${command_line}
 else
-    "${build_directory}/src/sdn_sensor"
+    ${command_line}
 fi
+
+exit $?
