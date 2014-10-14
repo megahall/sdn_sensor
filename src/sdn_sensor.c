@@ -1,8 +1,11 @@
 #include <errno.h>
+#include <getopt.h>
+#include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <wordexp.h>
 
 #include <rte_branch_prediction.h>
@@ -25,6 +28,7 @@
 #include "common.h"
 #include "dpdk.h"
 #include "ethernet.h"
+#include "je_utils.h"
 #include "re_utils.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
