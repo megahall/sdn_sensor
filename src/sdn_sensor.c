@@ -46,6 +46,8 @@ struct ether_addr port_eth_addrs[RTE_MAX_ETHPORTS];
 
 mbuf_table_entry_t mbuf_table[RTE_MAX_ETHPORTS][RTE_MAX_LCORE];
 
+static unsigned int port_count = 0;
+
 static const struct rte_eth_conf port_conf = {
     .rxmode = {
         .mq_mode        = ETH_MQ_RX_RSS,
@@ -276,6 +278,16 @@ int main(int argc, char* argv[]) {
     if (port_count > RTE_MAX_ETHPORTS) {
         port_count = RTE_MAX_ETHPORTS;
     }
+    
+    signal_handler_init("SIGHUP",  SIGHUP);
+    signal_handler_init("SIGINT",  SIGINT);
+    signal_handler_init("SIGQUIT", SIGQUIT);
+    signal_handler_init("SIGILL",  SIGILL);
+    signal_handler_init("SIGABRT", SIGABRT);
+    signal_handler_init("SIGSEGV", SIGSEGV);
+    signal_handler_init("SIGPIPE", SIGPIPE);
+    signal_handler_init("SIGTERM", SIGTERM);
+    signal_handler_init("SIGBUS",  SIGBUS);
 
     last_port = 0;
     
