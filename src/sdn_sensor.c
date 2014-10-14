@@ -44,9 +44,6 @@ struct ether_addr port_eth_addrs[RTE_MAX_ETHPORTS];
 
 //const char* icmp_payload = "mhallmhallmhallmhallmhallmhallmhallmhall!!!!!!!!";
 
-static uint16_t rxd_count = RTE_TEST_RX_DESC_DEFAULT;
-static uint16_t txd_count = RTE_TEST_TX_DESC_DEFAULT;
-
 mbuf_table_entry_t mbuf_table[RTE_MAX_ETHPORTS][RTE_MAX_LCORE];
 
 static const struct rte_eth_conf port_conf = {
@@ -303,7 +300,7 @@ int main(int argc, char* argv[]) {
             /* init one RX queue */
             fflush(stderr);
             rv = rte_eth_rx_queue_setup(
-                port_id, lcore_id /*queue_id*/, rxd_count,
+                port_id, lcore_id /*queue_id*/, ss_conf->rxd_count,
                 eth_socket_id, &rx_conf,
                 ss_pool[eth_socket_id]);
             if (rv < 0) {
@@ -312,7 +309,9 @@ int main(int argc, char* argv[]) {
             
             /* init one TX queue */
             fflush(stderr);
-            rv = rte_eth_tx_queue_setup(port_id, lcore_id /*queue_id*/, txd_count, eth_socket_id, &tx_conf);
+            rv = rte_eth_tx_queue_setup(
+                port_id, lcore_id /*queue_id*/, ss_conf->txd_count,
+                eth_socket_id, &tx_conf);
             if (rv < 0) {
                 rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: error: port: %u lcore: %d error: %d\n", port_id, lcore_id, rv);
             }
