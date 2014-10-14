@@ -213,15 +213,69 @@ int ss_launch_one_lcore(__attribute__((unused)) void *dummy) {
     return 0;
 }
 
+void fatal_signal_handler(int signal) {
+    fprintf(stderr, "received fatal signal %d...\n", signal);
+    for (unsigned int port = 0; port < port_count; ++port) {
+        fprintf(stderr, "closing dpdk port_id %d...\n", port);
+        rte_eth_dev_close(port);
+        fprintf(stderr, "closed dpdk port_id %d.\n", port);
+    }
+    kill(getpid(), signal);
+}
+
+void signal_handler_init(const char* signal_name, int signal) {
+    int rv;
+    struct sigaction sa;
+    
+    memset(&sa, 0, sizeof(sa));
+    
+    sa.sa_handler = &fatal_signal_handler;
+    sigfillset(&sa.sa_mask);
+    sa.sa_flags   = SA_RESTART | ~SA_SIGINFO;
+    
+    rv = sigaction(SIGINT, &sa, NULL);
+    if (rv) {
+        fprintf(stderr, "warning: could not install %s handler: rv %d: %s\n",
+            signal_name, rv, strerror(errno));
+    }
+}
+
 int main(int argc, char* argv[]) {
     struct rte_eth_dev_info dev_info;
     int rv;
+    int c;
     uint8_t port_id, last_port;
-    unsigned int port_count, lcore_count;
+    unsigned int lcore_count;
     unsigned int lcore_id;
+    char* conf_path = NULL;
     char pool_name[32];
     
     fprintf(stderr, "launching sdn_sensor version %s\n", SS_VERSION);
+    
+    opterr = 0;
+    while ((c = getopt(argc, argv, "c:")) != -1) {
+        switch (c) {
+            case 'c': {
+                rv = access(optarg, R_OK);
+                if (rv != 0) {
+                    fprintf(stderr, "could not read conf file: %s: %s\n", optarg, strerror(errno));
+                    exit(1);
+                }
+                conf_path = je_strdup(optarg);
+                break;
+            }
+            case '?': {
+                break;
+            }
+            default: {
+                break;
+            }
+        }
+    }
+    
+    // NOTE: optind must be reset, since it contains hidden state,
+    // otherwise rte_eal_init will fail extremely mysteriously
+    optind = 1;
     
     rv = ss_re_init();
     if (rv) {
@@ -235,7 +289,7 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
     
-    ss_conf = ss_conf_file_parse();
+    ss_conf = ss_conf_file_parse(conf_path);
     if (ss_conf == NULL) {
         fprintf(stderr, "could not parse sdn_sensor configuration\n");
         exit(1);
