@@ -64,13 +64,17 @@ char* ss_conf_path_get() {
     return program_directory;
 }
 
-char* ss_conf_file_read() {
+char* ss_conf_file_read(char* conf_path) {
     int is_ok = 1;
+    int free_conf_path = 0;
     int rv;
     size_t srv;
-    
-    char* conf_path = ss_conf_path_get();
     char* conf_content = NULL;
+    
+    if (conf_path == NULL) {
+        conf_path = ss_conf_path_get();
+        free_conf_path = 1;
+    }
     
     FILE* conf_file = fopen(conf_path, "rb");
     if (conf_file == NULL) {
@@ -114,9 +118,9 @@ char* ss_conf_file_read() {
     conf_content[size - 1] = '\0';
     
     error_out:
-    if (conf_path)              { je_free(conf_path);    conf_path    = NULL; }
-    if (conf_file)              { fclose(conf_file);     conf_file    = NULL; }
-    if (!is_ok && conf_content) { je_free(conf_content); conf_content = NULL; }
+    if (free_conf_path && conf_path) { je_free(conf_path);    conf_path    = NULL; }
+    if (conf_file)                   { fclose(conf_file);     conf_file    = NULL; }
+    if (!is_ok && conf_content)      { je_free(conf_content); conf_content = NULL; }
     
     return conf_content;
 }
@@ -318,7 +322,7 @@ int ss_conf_dpdk_parse(json_object* items) {
     return 0;
 }
 
-ss_conf_t* ss_conf_file_parse() {
+ss_conf_t* ss_conf_file_parse(char* conf_path) {
     int is_ok = 1;
     int rv;
     char* conf_buffer            = NULL;
@@ -328,7 +332,7 @@ ss_conf_t* ss_conf_file_parse() {
     json_object* item            = NULL;
     json_error_t json_error      = json_tokener_success;
     
-    conf_buffer                  = ss_conf_file_read();
+    conf_buffer                  = ss_conf_file_read(conf_path);
     if (conf_buffer == NULL) {
         fprintf(stderr, "conf file read error\n");
         is_ok = 0; goto error_out;
