@@ -1,0 +1,129 @@
+{
+    "network": {
+        "promiscuous_mode": true,
+        "mtu":              1454,
+        "ipv4_address":     "192.168.2.7/24",
+        "ipv4_gateway":     "192.168.2.1",
+        "ipv6_address":     "2602:306:322e:5ae8::7/64",
+        "ipv6_gateway":     "2602:306:322e:5ae8::1",
+    },
+    
+    "dpdk": {
+        // XXX: DPDK options are always strings right now
+        "eal_options":      "sdn_sensor -c ${CORE_MASK} -n 2 --huge-dir /hugetlbfs --proc-type primary -w ${PCI_ID}",
+        "log_level":        "notice",
+        "port_mask":        4294967295, // 0xffffffff
+        "timer_msec":       200,
+    },
+    
+    // matches raw traffic against this list of libpcap filters,
+    // dispatches metadata to nanomsg queues
+    "pcap_chain": [
+        {
+            "name":      "http_get_request",
+            "filter":    "(port 80 or port 443) and (tcp[((tcp[12:1] & 0xf0) >> 2):4] = 0x47455420 or tcp[((tcp[12:1] & 0xf0) >> 2)+8:4] = 0x20323030)",
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10001",
+        },
+        {
+            "name":      "udp_packet",
+            "filter":    "udp port 31337",
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10001",
+        }
+    ],
+    
+    // matches IPs, DNS, URL, Email, against these IOC data files,
+    // dispatches metadata to nanomsg queues
+    "ioc_files": [
+        {
+            "path":      "/home/vagrant/output.csv",
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10002",
+        }
+    ],
+    
+    // matches Syslog messages against this list of PCRE's,
+    // dispatches matches to nanomsg queues
+    // 
+    // NOTE: backslashes doubled to get through JSON parser
+    "re_chain": [
+        {
+            "name":      "extract_ip_addresses",
+            "re":        "\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}",
+            "backend":   "re2",
+            "type":      "substring",
+            "ioc_type":  "ip",
+            
+            "nocase":    true,
+            "utf8":      true,
+            "inverted":  false,
+            
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10003",
+        },
+        {
+            "name":      "extract_domain_names",
+            "re":        "(?:(?:[\\dA-Za-z.-]+)\\.){1,}(?:[A-Za-z.]{2,6})\\.?",
+            "backend":   "re2",
+            "type":      "substring",
+            "ioc_type":  "domain",
+            
+            "nocase":    true,
+            "utf8":      true,
+            "inverted":  false,
+            
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10003",
+        },
+    ],
+    
+    // matches raw traffic IP addresses against this list of CIDRs,
+    // dispatches metadata to nanomsg queues
+    "cidr_chain": [
+        {
+            "name":      "cidr_rule",
+            "cidr":      "",
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10004",
+        }
+    ],
+    
+    // matches DNS packet content against this list of DNS names and/or IPs,
+    // dispatches metadata to nanomsg queues
+    // NOTE: names must be in canonical form (trailing '.')
+    "dns_chain": [
+        {
+            "name":      "dns_rule",
+            "dns":       "daisy.ubuntu.com.",
+            // "ip":        "",
+            "nm_format": "metadata",
+            "nm_type":   "PUSH",
+            "nm_url":    "tcp://[192.168.1.6]:10005",
+        }
+    ],
+    
+    // list of source CIDRs sending Syslog
+    "syslog_udp_sources": {
+    },
+    "syslog_tcp_sources": {
+    },
+    
+    // list of source CIDRs sending Raw traffic
+    "raw_sources": {
+    },
+    
+    // list of source CIDRs sending sFlow traffic
+    "sflow_sources": {
+    },
+    
+    // list of source CIDRs sending Netflow / IPFIX traffic
+    "ipfix_sources": {
+    },
+}
