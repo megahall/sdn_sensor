@@ -333,7 +333,7 @@ int main(int argc, char* argv[]) {
     
     lcore_count = rte_lcore_count();
     port_count = rte_eth_dev_count();
-    RTE_LOG(INFO, SS, "port_count %d\n", port_count);
+    RTE_LOG(NOTICE, SS, "port_count %d\n", port_count);
     if (port_count == 0) {
         rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
     }
