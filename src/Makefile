@@ -37,38 +37,38 @@ ifneq ($(strip $(LESS)),)
     CFLAGS += -fcolor-diagnostics
 endif
 
-DPDK_LINK = \
--Wl,--whole-archive -Wl,--start-group \
--lethdev \
--lrte_acl \
--lrte_cfgfile \
--lrte_cmdline \
--lrte_distributor \
--lrte_eal \
--lrte_hash \
--lrte_ip_frag \
--lrte_kvargs \
--lrte_lpm \
--lrte_malloc \
--lrte_mbuf \
--lrte_mempool \
--lrte_meter \
--lrte_pipeline \
--lrte_pmd_bond \
--lrte_pmd_e1000 \
--lrte_pmd_pcap \
--lrte_pmd_ring \
--lrte_pmd_virtio_uio \
--lrte_pmd_vmxnet3_uio \
--lrte_port \
--lrte_power \
--lrte_ring \
--lrte_sched \
--lrte_table \
--lrte_timer \
--Wl,--end-group -Wl,--no-whole-archive \
+#DPDK_LINK = \
+#-Wl,--whole-archive -Wl,--start-group \
+#-lethdev \
+#-lrte_acl \
+#-lrte_cfgfile \
+#-lrte_cmdline \
+#-lrte_distributor \
+#-lrte_eal \
+#-lrte_hash \
+#-lrte_ip_frag \
+#-lrte_kvargs \
+#-lrte_lpm \
+#-lrte_malloc \
+#-lrte_mbuf \
+#-lrte_mempool \
+#-lrte_meter \
+#-lrte_pipeline \
+#-lrte_pmd_bond \
+#-lrte_pmd_e1000 \
+#-lrte_pmd_pcap \
+#-lrte_pmd_ring \
+#-lrte_pmd_virtio_uio \
+#-lrte_pmd_vmxnet3_uio \
+#-lrte_port \
+#-lrte_power \
+#-lrte_ring \
+#-lrte_sched \
+#-lrte_table \
+#-lrte_timer \
+#-Wl,--end-group -Wl,--no-whole-archive
 
-#DPDK_LINK = -Wl,--whole-archive -Wl,--start-group -lintel_dpdk -Wl,--end-group -Wl,--no-whole-archive
+DPDK_LINK = -Wl,--whole-archive -Wl,--start-group -lintel_dpdk -Wl,--end-group -Wl,--no-whole-archive
 SPCDNS_LINK = -Wl,-Bstatic -lspcdns -lspcdnsmisc -Wl,-Bdynamic
 
 LDFLAGS = -L$(RTE_SDK)/build/lib -Wl,-rpath,$(RTE_SDK)/build/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built -L/usr/local/jemalloc/lib -Wl,-rpath,/usr/local/jemalloc/lib
