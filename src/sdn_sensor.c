@@ -48,7 +48,7 @@ mbuf_table_entry_t mbuf_table[RTE_MAX_ETHPORTS][RTE_MAX_LCORE];
 
 static unsigned int port_count = 0;
 
-static const struct rte_eth_conf port_conf = {
+static struct rte_eth_conf port_conf = {
     .rxmode = {
         .mq_mode        = ETH_MQ_RX_RSS,
         .max_rx_pkt_len = MBUF_SIZE,
@@ -61,12 +61,12 @@ static const struct rte_eth_conf port_conf = {
     },
     .rx_adv_conf = {
         .rss_conf = {
-            .rss_key = NULL,
-            .rss_hf = ETH_RSS_IP,
+            .rss_key    = NULL,
+            .rss_hf     = 0,
         },
     },
     .txmode = {
-        .mq_mode = ETH_MQ_TX_NONE,
+        .mq_mode        = ETH_MQ_TX_NONE,
     },
 };
 
@@ -293,6 +293,15 @@ int main(int argc, char* argv[]) {
     if (ss_conf == NULL) {
         fprintf(stderr, "could not parse sdn_sensor configuration\n");
         exit(1);
+    }
+    
+    /* copy over any ss_conf settings used in DPDK */
+    if (ss_conf->rss_enabled) {
+        port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
+        port_conf.rx_adv_conf.rss_conf.rss_hf = ETH_RSS_IP;
+    }
+    else {
+        port_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
     }
 
     /* init EAL */
