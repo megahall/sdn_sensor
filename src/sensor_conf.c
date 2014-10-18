@@ -217,6 +217,11 @@ int ss_conf_dpdk_parse(json_object* items) {
         fprintf(stderr, "parse eal options %s\n", json_object_get_string(item));
         memset(&ss_conf->eal_vector, 0, sizeof(ss_conf->eal_vector));
         rv = wordexp(json_object_get_string(item), &ss_conf->eal_vector, WRDE_NOCMD);
+        fprintf(stderr, "eal option vector [ ");
+        for (size_t i = 0; i < ss_conf->eal_vector.we_wordc; ++i) {
+            fprintf(stderr, "%02zu: %s ", i, ss_conf->eal_vector.we_wordv[i]);
+        }
+        fprintf(stderr, "]\n");
         if (rv) {
             fprintf(stderr, "could not parse eal options: %d\n", rv);
             return -1;
@@ -260,6 +265,18 @@ int ss_conf_dpdk_parse(json_object* items) {
         ss_conf->txd_count = 512 /* RTE_TEST_TX_DESC_DEFAULT */;
     }
 
+    item = json_object_object_get(items, "rss_enabled");
+    if (item) {
+        if (!json_object_is_type(item, json_type_boolean)) {
+            fprintf(stderr, "queue_count is not boolean\n");
+            return -1;
+        }
+        ss_conf->rss_enabled = json_object_get_boolean(item);
+    }
+    else {
+        ss_conf->rss_enabled = 1;
+    }
+    
     item = json_object_object_get(items, "timer_msec");
     if (item) {
         if (!json_object_is_type(item, json_type_int)) {
