@@ -13,6 +13,9 @@
         "eal_options":      "sdn_sensor -c ${CORE_MASK} -n 2 --huge-dir /hugetlbfs --proc-type primary -w ${PCI_ID}",
         "log_level":        "notice",
         "port_mask":        4294967295, // 0xffffffff
+        "rxd_count":        256,
+        "txd_count":        256,
+        "rss_enabled":      false,
         "timer_msec":       200,
     },
     
@@ -24,14 +27,14 @@
             "filter":    "(port 80 or port 443) and (tcp[((tcp[12:1] & 0xf0) >> 2):4] = 0x47455420 or tcp[((tcp[12:1] & 0xf0) >> 2)+8:4] = 0x20323030)",
             "nm_format": "metadata",
             "nm_type":   "PUSH",
-            "nm_url":    "tcp://[192.168.1.6]:10001",
+            "nm_url":    "tcp://[127.0.0.1]:10001",
         },
         {
             "name":      "udp_packet",
             "filter":    "udp port 31337",
             "nm_format": "metadata",
             "nm_type":   "PUSH",
-            "nm_url":    "tcp://[192.168.1.6]:10001",
+            "nm_url":    "tcp://[127.0.0.1]:10001",
         }
     ],
     
@@ -42,7 +45,7 @@
             "path":      "/home/vagrant/output.csv",
             "nm_format": "metadata",
             "nm_type":   "PUSH",
-            "nm_url":    "tcp://[192.168.1.6]:10002",
+            "nm_url":    "tcp://[127.0.0.1]:10002",
         }
     ],
     
@@ -64,7 +67,7 @@
             
             "nm_format": "metadata",
             "nm_type":   "PUSH",
-            "nm_url":    "tcp://[192.168.1.6]:10003",
+            "nm_url":    "tcp://[127.0.0.1]:10003",
         },
         {
             "name":      "extract_domain_names",
@@ -79,7 +82,7 @@
             
             "nm_format": "metadata",
             "nm_type":   "PUSH",
-            "nm_url":    "tcp://[192.168.1.6]:10003",
+            "nm_url":    "tcp://[127.0.0.1]:10003",
         },
     ],
     
@@ -91,7 +94,7 @@
             "cidr":      "",
             "nm_format": "metadata",
             "nm_type":   "PUSH",
-            "nm_url":    "tcp://[192.168.1.6]:10004",
+            "nm_url":    "tcp://[127.0.0.1]:10004",
         }
     ],
     
@@ -105,7 +108,7 @@
             // "ip":        "",
             "nm_format": "metadata",
             "nm_type":   "PUSH",
-            "nm_url":    "tcp://[192.168.1.6]:10005",
+            "nm_url":    "tcp://[127.0.0.1]:10005",
         }
     ],
     
