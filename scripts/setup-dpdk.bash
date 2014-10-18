@@ -36,7 +36,7 @@ sudo cp build/build/lib/librte_eal/linuxapp/igb_uio/igb_uio.ko /lib/modules/$(un
 sudo depmod -a
 
 cd "${build_directory}/external/virtio-net-pmd"
-
+make clean
 make "RTE_INCLUDE=${RTE_INCLUDE}"
 
 exit 0
