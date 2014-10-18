@@ -31,6 +31,7 @@ struct ss_conf_s {
     uint32_t port_mask;
     uint16_t rxd_count;
     uint16_t txd_count;
+    int      rss_enabled;
     uint64_t timer_msec;
     
     wordexp_t eal_vector;
