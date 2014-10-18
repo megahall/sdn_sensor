@@ -6,8 +6,6 @@ script_directory="$(dirname $(readlink -f $BASH_SOURCE))"
 source "${script_directory}/../sdn_sensor_rc"
 cd "${build_directory}"
 
-cat "${script_directory}/ackrc" > "/home/vagrant/.ackrc"
-
 # Git settings required for the sdn_sensor repo to work properly
 # XXX: git stuff installed as vagrant user, but here we're root
 git config --global push.default simple
@@ -17,8 +15,17 @@ git submodule init
 git fetch
 git submodule update --recursive
 
-#echo "running Debian package setup"
-#sudo "${script_directory}/setup-debian.bash"
+cat "${script_directory}/ackrc" > "${HOME}/.ackrc"
+cat "${script_directory}/nanorc" > "${HOME}/.nanorc"
+
+echo "running vagrant sudo setup"
+sudo "${script_directory}/setup-vagrant-sudo.bash"
+
+echo "running Debian package setup"
+sudo "${script_directory}/setup-debian.bash"
+
+echo "running Perl package setup"
+sudo "${script_directory}/setup-perl.bash"
 
 echo "running Intel DPDK library setup"
 "${script_directory}/setup-dpdk.bash"
