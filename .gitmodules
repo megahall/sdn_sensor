@@ -1,18 +1,18 @@
 [submodule "external/nanomsg"]
 	path = external/nanomsg
-	url = git@github.com:nanomsg/nanomsg.git
+	url = https://github.com/nanomsg/nanomsg.git
 [submodule "external/spcdns"]
 	path = external/spcdns
-	url = git@github.com:spc476/SPCDNS.git
+	url = https://github.com/spc476/SPCDNS.git
 [submodule "external/jemalloc"]
 	path = external/jemalloc
-	url = git@github.com:megahall/jemalloc.git
+	url = https://github.com/jemalloc/jemalloc.git
 [submodule "external/cre2"]
 	path = external/cre2
-	url = git@github.com:marcomaggi/cre2.git
+	url = https://github.com/marcomaggi/cre2.git
 [submodule "external/dpdk"]
 	path = external/dpdk
-	url = git@github.com:megahall/dpdk_mhall.git
+	url = https://github.com/megahall/dpdk_mhall
 [submodule "external/virtio-net-pmd"]
 	path = external/virtio-net-pmd
 	url = git://dpdk.org/virtio-net-pmd
