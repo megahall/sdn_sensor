@@ -12,7 +12,7 @@
 	url = https://github.com/marcomaggi/cre2.git
 [submodule "external/dpdk"]
 	path = external/dpdk
-	url = https://github.com/megahall/dpdk_mhall
+	url = https://github.com/megahall/dpdk_mhall.git
 [submodule "external/virtio-net-pmd"]
 	path = external/virtio-net-pmd
-	url = git://dpdk.org/virtio-net-pmd
+	url = http://dpdk.org/git/virtio-net-pmd
