@@ -15,4 +15,4 @@
 	url = https://github.com/megahall/dpdk_mhall.git
 [submodule "external/virtio-net-pmd"]
 	path = external/virtio-net-pmd
-	url = http://dpdk.org/git/virtio-net-pmd
+	url = https://github.com/megahall/virtio_net_pmd.git
