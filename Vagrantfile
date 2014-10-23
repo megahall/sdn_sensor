@@ -1,5 +1,7 @@
 VAGRANTFILE_API_VERSION = "2"
 
+require './vagrant-reboot-plugin'
+
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.provider "virtualbox" do |vb|
         #vb.gui = true
@@ -21,5 +23,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     
     #config.vm.synced_folder ".", "/vagrant"
     config.vm.provision :shell, inline: "cd /vagrant; scripts/setup-vagrant.bash", :privileged => false
+    config.vm.provision :unix_reboot
+    # XXX: DPDK is kernel specific, and setup-vagrant upgrades the kernel
+    config.vm.provision :shell, inline: "cd /vagrant; scripts/setup-dpdk.bash", :privileged => false
     config.vm.provision :shell, run: "always", inline: "cd /vagrant; scripts/configure-vagrant.bash", :privileged => true
 end
