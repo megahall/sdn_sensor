@@ -69,7 +69,7 @@ endif
 #-Wl,--end-group -Wl,--no-whole-archive
 
 DPDK_LINK = -Wl,--whole-archive -Wl,--start-group -lintel_dpdk -Wl,--end-group -Wl,--no-whole-archive
-SPCDNS_LINK = -Wl,-Bstatic -lspcdns -lspcdnsmisc -Wl,-Bdynamic
+STATIC_LINK = -Wl,-Bstatic -lbsd -lcre2 -lre2 -ljemalloc -lunwind -llzma -ljson-c -lnanomsg -lanl -lpcap -lpcre -lspcdns -lspcdnsmisc -Wl,-Bdynamic
 
 LDFLAGS = -L$(RTE_SDK)/build/lib -Wl,-rpath,$(RTE_SDK)/build/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built -L/usr/local/jemalloc/lib -Wl,-rpath,/usr/local/jemalloc/lib
 
@@ -82,7 +82,7 @@ DEPENDS = $(patsubst %.c,%.d,$(wildcard *.c))
 
 sdn_sensor: $(OBJECTS)
 	@echo 'Linking sdn_sensor...'
-	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) -lbsd -ldl -ljemalloc -lunwind -ljson-c -lm -lnanomsg -lpcap -lpcre -lcre2 -lpthread -lrt $(SPCDNS_LINK)
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) $(STATIC_LINK) -ldl -lm -lpthread -lrt -lstdc++
 
 #$(OBJECTS): $(DEPENDS)
 
