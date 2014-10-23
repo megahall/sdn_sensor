@@ -24,7 +24,7 @@ cd "${RTE_SDK}"
 
 if [[ ! -f ${RTE_SDK_BIN}/.config ]]; then
     mkdir -p "${RTE_SDK_BIN}"
-    make config T="${RTE_TARGET}"
+    #make config T="${RTE_TARGET}"
     cp "${script_directory}/dpdk-config.txt" "${RTE_SDK_BIN}/.config"
 fi
 
@@ -38,5 +38,7 @@ sudo depmod -a
 cd "${build_directory}/external/virtio-net-pmd"
 make clean
 make "RTE_INCLUDE=${RTE_INCLUDE}"
+
+echo "dpdk setup completed successfully"
 
 exit 0
