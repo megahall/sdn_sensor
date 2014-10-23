@@ -27,9 +27,15 @@ if [[ ! -e $conf_output ]]; then
     cat "${conf_input}" | envsubst > "${conf_output}"
 fi
 
+depmod -a
+modprobe uio
+modprobe igb_uio
+
 "${RTE_NIC_BIND}" --status | fgrep "${PCI_ID}"
 "${RTE_NIC_BIND}" -b none          "${PCI_ID}"
 "${RTE_NIC_BIND}" -b igb_uio       "${PCI_ID}"
 "${RTE_NIC_BIND}" --status | fgrep "${PCI_ID}"
+
+echo "dpdk vagrant configuration completed successfully"
 
 exit 0
