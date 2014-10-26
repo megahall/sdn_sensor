@@ -81,7 +81,7 @@ int addr_xaddr_to_sa(const struct xaddr* xa, struct sockaddr* sa, socklen_t* len
 #endif
         in4->sin_family = AF_INET;
         in4->sin_port = htons(port);
-        memcpy(&in4->sin_addr, &xa->v4, sizeof(in4->sin_addr));
+        rte_memcpy(&in4->sin_addr, &xa->v4, sizeof(in4->sin_addr));
         break;
     case AF_INET6:
         if (*len < sizeof(*in6))
@@ -93,7 +93,7 @@ int addr_xaddr_to_sa(const struct xaddr* xa, struct sockaddr* sa, socklen_t* len
 #endif
         in6->sin6_family = AF_INET6;
         in6->sin6_port = htons(port);
-        memcpy(&in6->sin6_addr, &xa->v6, sizeof(in6->sin6_addr));
+        rte_memcpy(&in6->sin6_addr, &xa->v6, sizeof(in6->sin6_addr));
         in6->sin6_scope_id = xa->scope_id;
         break;
     default:
@@ -114,13 +114,13 @@ int addr_sa_to_xaddr(struct sockaddr* sa, socklen_t slen, struct xaddr* xa)
         if (slen < sizeof(*in4))
             return (-1);
         xa->af = AF_INET;
-        memcpy(&xa->v4, &in4->sin_addr, sizeof(xa->v4));
+        rte_memcpy(&xa->v4, &in4->sin_addr, sizeof(xa->v4));
         break;
     case AF_INET6:
         if (slen < sizeof(*in6))
             return (-1);
         xa->af = AF_INET6;
-        memcpy(&xa->v6, &in6->sin6_addr, sizeof(xa->v6));
+        rte_memcpy(&xa->v6, &in6->sin6_addr, sizeof(xa->v6));
         xa->scope_id = in6->sin6_scope_id;
         break;
     default:
@@ -214,7 +214,7 @@ int addr_and(struct xaddr* dst, const struct xaddr* a, const struct xaddr* b)
     if (dst == NULL || a == NULL || b == NULL || a->af != b->af)
         return (-1);
 
-    memcpy(dst, a, sizeof(*dst));
+    rte_memcpy(dst, a, sizeof(*dst));
     switch (a->af) {
     case AF_INET:
         dst->v4.s_addr &= b->v4.s_addr;
@@ -236,7 +236,7 @@ int addr_or(struct xaddr* dst, const struct xaddr* a, const struct xaddr* b)
     if (dst == NULL || a == NULL || b == NULL || a->af != b->af)
         return (-1);
 
-    memcpy(dst, a, sizeof(*dst));
+    rte_memcpy(dst, a, sizeof(*dst));
     switch (a->af) {
     case AF_INET:
         dst->v4.s_addr |= b->v4.s_addr;
@@ -303,7 +303,7 @@ int addr_host_is_all0s(const struct xaddr* a, u_int masklen)
 {
     struct xaddr tmp_addr, tmp_mask, tmp_result;
 
-    memcpy(&tmp_addr, a, sizeof(tmp_addr));
+    rte_memcpy(&tmp_addr, a, sizeof(tmp_addr));
     if (addr_hostmask(a->af, masklen, &tmp_mask) == -1)
         return (-1);
     if (addr_and(&tmp_result, &tmp_addr, &tmp_mask) == -1)
@@ -315,7 +315,7 @@ int addr_host_is_all1s(const struct xaddr* a, u_int masklen)
 {
     struct xaddr tmp_addr, tmp_mask, tmp_result;
 
-    memcpy(&tmp_addr, a, sizeof(tmp_addr));
+    rte_memcpy(&tmp_addr, a, sizeof(tmp_addr));
     if (addr_netmask(a->af, masklen, &tmp_mask) == -1)
         return (-1);
     if (addr_or(&tmp_result, &tmp_addr, &tmp_mask) == -1)
@@ -388,7 +388,7 @@ int addr_sa_pton(const char* h, const char* s, struct sockaddr* sa, socklen_t sl
     if (sa != NULL) {
         if (slen < ai->ai_addrlen)
             return (-1);
-        memcpy(sa, &ai->ai_addr, ai->ai_addrlen);
+        rte_memcpy(sa, &ai->ai_addr, ai->ai_addrlen);
     }
 
     freeaddrinfo(ai);
@@ -451,7 +451,7 @@ int addr_pton_cidr(const char* p, struct xaddr* n, u_int* l)
         return (-1);
 
     if (n != NULL)
-        memcpy(n, &tmp, sizeof(*n));
+        rte_memcpy(n, &tmp, sizeof(*n));
     if (l != NULL)
         *l = masklen;
 
