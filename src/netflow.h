@@ -44,7 +44,7 @@ struct flow_packet* flow_packet_alloc(void);
 void flow_packet_dealloc(struct flow_packet* f);
 const char* data_ntoa(const u_int8_t* p, int len);
 void dump_packet(const char* tag, const u_int8_t* p, int len);
-void process_flow(struct store_flow_complete* flow);
+int process_flow(struct store_flow_complete* flow);
 void process_netflow_v1(struct flow_packet* fp, struct peer_state* peer);
 void process_netflow_v5(struct flow_packet* fp, struct peer_state* peer);
 void process_netflow_v7(struct flow_packet* fp, struct peer_state* peer);
@@ -60,7 +60,7 @@ int nf10_flowset_to_store(u_int8_t* pkt, size_t len, struct timeval* tv, struct 
 int process_netflow_v10_template(u_int8_t* pkt, size_t len, struct peer_state* peer, u_int32_t source_id);
 int process_netflow_v10_data(u_int8_t* pkt, size_t len, struct timeval* tv, struct peer_state* peer, u_int32_t source_id, struct NF10_HEADER* nf10_hdr, u_int* num_flows);
 void process_netflow_v10(struct flow_packet* fp, struct peer_state* peer);
-void process_packet(struct flow_packet* fp);
+int process_packet(struct flow_packet* fp);
 int netflow_frame_handle(ss_frame_t* fbuf);
 int netflow_init(int argc, char* *argv);
 
