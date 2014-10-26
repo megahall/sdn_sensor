@@ -72,7 +72,9 @@
 #define L4_PORT_SYSLOG      514
 #define L4_PORT_SYSLOG_TLS  601
 #define L4_PORT_SFLOW      6343
-#define L4_PORT_NETFLOW    9996
+#define L4_PORT_NETFLOW_1  2055
+#define L4_PORT_NETFLOW_2  9995
+#define L4_PORT_NETFLOW_3  9996
 
 /* TYPEDEFS */
 

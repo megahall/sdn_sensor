@@ -61,7 +61,9 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
             RTE_LOG(DEBUG, STACK, "rx tcp sFlow packet\n");
             break;
         }
-        case L4_PORT_NETFLOW: {
+        case L4_PORT_NETFLOW_1:
+        case L4_PORT_NETFLOW_2:
+        case L4_PORT_NETFLOW_3: {
             RTE_LOG(DEBUG, STACK, "rx tcp NetFlow packet\n");
             break;
         }

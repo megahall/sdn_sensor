@@ -54,7 +54,9 @@ int ss_frame_handle_udp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
             SS_CHECK_SELF(rx_buf, 0);
             break;
         }
-        case L4_PORT_NETFLOW: {
+        case L4_PORT_NETFLOW_1:
+        case L4_PORT_NETFLOW_2:
+        case L4_PORT_NETFLOW_3: {
             RTE_LOG(DEBUG, STACK, "rx udp NetFlow packet\n");
             SS_CHECK_SELF(rx_buf, 0);
             break;
