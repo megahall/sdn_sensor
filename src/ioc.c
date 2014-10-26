@@ -24,6 +24,8 @@
 #include "ip_utils.h"
 #include "je_utils.h"
 #include "json.h"
+#include "netflow_addr.h"
+#include "netflow_format.h"
 #include "sdn_sensor.h"
 
 #define SS_IOC_LINE_DELIMITER   '\n'
@@ -610,5 +612,36 @@ ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type) {
     }
     
     out:
+    return iptr;
+}
+
+ss_ioc_entry_t* ss_ioc_xaddr_match(struct xaddr* addr) {
+    ss_ioc_entry_t* iptr = NULL;
+    uint32_t ip;
+    
+    if      (addr->af == SS_AF_INET4) {
+        ip = *(uint32_t*) &addr->v4.s_addr;
+        HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
+    }
+    else if (addr->af == SS_AF_INET6) {
+        HASH_FIND(hh, ss_conf->ip6_table, addr->v6.s6_addr, sizeof(addr->v6.s6_addr), iptr);
+    }
+    
+    return iptr;
+}
+
+ss_ioc_entry_t* ss_ioc_netflow_match(struct store_flow_complete* flow) {
+    ss_ioc_entry_t* iptr = NULL;
+    
+    /* XXX: some day, check the src_as and dst_as */
+    iptr = ss_ioc_xaddr_match(&flow->agent_addr);
+    if (iptr) return iptr;
+    iptr = ss_ioc_xaddr_match(&flow->src_addr);
+    if (iptr) return iptr;
+    iptr = ss_ioc_xaddr_match(&flow->dst_addr);
+    if (iptr) return iptr;
+    iptr = ss_ioc_xaddr_match(&flow->gateway_addr);
+    if (iptr) return iptr;
+    
     return iptr;
 }
