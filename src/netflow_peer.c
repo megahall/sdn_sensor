@@ -37,12 +37,17 @@
 #include "netflow_peer.h"
 #include "netflow_format.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunreachable-code"
+
 /* Debugging for general peer tracking */
-/* #define PEER_DEBUG */
+#define PEER_DEBUG 0
 
 /* Debugging for NetFlow 9 tracking */
-/* #define PEER_DEBUG_NF9 */
+#define PEER_DEBUG_NF9 0
 
+/* Debugging for NetFlow 10 tracking */
+#define PEER_DEBUG_NF10 0
 
 /* NetFlow v.9 specific function */
 
@@ -109,30 +114,30 @@ struct peer_nf9_template* peer_nf9_find_template(struct peer_state* peer,
 
     nf9src = peer_nf9_lookup_source(peer, source_id);
 
-#ifdef PEER_DEBUG_NF9
-    logit(LOG_DEBUG, "%s: Lookup source 0x%08x for peer %s: %sFOUND",
-        __func__, source_id, addr_ntop_buf(&peer->from),
-        nf9src == NULL ? "NOT " : "");
-#endif
+    if (PEER_DEBUG_NF9) {
+        logit(LOG_DEBUG, "%s: Lookup source 0x%08x for peer %s: %sFOUND",
+            __func__, source_id, addr_ntop_buf(&peer->from),
+            nf9src == NULL ? "NOT " : "");
+    }
 
     if (nf9src == NULL)
         return (NULL);
 
     nf9tmpl = peer_nf9_lookup_template(nf9src, template_id);
 
-#ifdef PEER_DEBUG_NF9
-    logit(LOG_DEBUG, "%s: Lookup template 0x%04x: %sFOUND", __func__,
-        template_id, nf9tmpl == NULL ? "NOT " : "");
-#endif
+    if (PEER_DEBUG_NF9) {
+        logit(LOG_DEBUG, "%s: Lookup template 0x%04x: %sFOUND", __func__,
+            template_id, nf9tmpl == NULL ? "NOT " : "");
+    }
 
     if (nf9tmpl == NULL)
         return (NULL);
 
-#ifdef PEER_DEBUG_NF9
-    logit(LOG_DEBUG, "%s: Found template %s/0x%08x/0x%04x: %d records %p",
-        __func__, addr_ntop_buf(&peer->from), source_id, template_id,
-        nf9tmpl->num_records, nf9tmpl->records);
-#endif
+    if (PEER_DEBUG_NF9) {
+        logit(LOG_DEBUG, "%s: Found template %s/0x%08x/0x%04x: %d records %p",
+            __func__, addr_ntop_buf(&peer->from), source_id, template_id,
+            nf9tmpl->num_records, nf9tmpl->records);
+    }
     return (nf9tmpl);
 }
 
@@ -143,10 +148,10 @@ peer_nf9_template_update(struct peer_state* peer, u_int32_t source_id,
     struct peer_nf9_source* nf9src;
     struct peer_nf9_template* nf9tmpl;
 
-#ifdef PEER_DEBUG_NF9
-    logit(LOG_DEBUG, "%s: Lookup template %s/0x%08x/0x%04x",
-        __func__, addr_ntop_buf(&peer->from), template_id, source_id);
-#endif
+    if (PEER_DEBUG_NF9) {
+        logit(LOG_DEBUG, "%s: Lookup template %s/0x%08x/0x%04x",
+            __func__, addr_ntop_buf(&peer->from), template_id, source_id);
+    }
     nf9src = peer_nf9_lookup_source(peer, source_id);
     if (nf9src == NULL)
         return;
@@ -154,21 +159,21 @@ peer_nf9_template_update(struct peer_state* peer, u_int32_t source_id,
     if (nf9tmpl == NULL)
         return;
 
-#ifdef PEER_DEBUG_NF9
-    logit(LOG_DEBUG, "%s: found template", __func__);
-#endif
+    if (PEER_DEBUG_NF9) {
+        logit(LOG_DEBUG, "%s: found template", __func__);
+    }
     /* Move source and template to the head of the list */
     if (nf9src != TAILQ_FIRST(&peer->nf9)) {
-#ifdef PEER_DEBUG_NF9
-        logit(LOG_DEBUG, "%s: update source", __func__);
-#endif
+        if (PEER_DEBUG_NF9) {
+            logit(LOG_DEBUG, "%s: update source", __func__);
+        }
         TAILQ_REMOVE(&peer->nf9, nf9src, lp);
         TAILQ_INSERT_HEAD(&peer->nf9, nf9src, lp);
     }
     if (nf9tmpl != TAILQ_FIRST(&nf9src->templates)) {
-#ifdef PEER_DEBUG_NF9
-        logit(LOG_DEBUG, "%s: update template", __func__);
-#endif
+        if (PEER_DEBUG_NF9) {
+            logit(LOG_DEBUG, "%s: update template", __func__);
+        }
         TAILQ_REMOVE(&nf9src->templates, nf9tmpl, lp);
         TAILQ_INSERT_HEAD(&nf9src->templates, nf9tmpl, lp);
     }
@@ -195,10 +200,10 @@ struct peer_nf9_source* peer_nf9_new_source(struct peer_state* peer, struct peer
     TAILQ_INIT(&nf9src->templates);
     TAILQ_INSERT_HEAD(&peer->nf9, nf9src, lp);
 
-#ifdef PEER_DEBUG_NF9
-    logit(LOG_DEBUG, "%s: new source %s/0x%08x", __func__,
-        addr_ntop_buf(&peer->from), source_id);
-#endif
+    if (PEER_DEBUG_NF9) {
+        logit(LOG_DEBUG, "%s: new source %s/0x%08x", __func__,
+            addr_ntop_buf(&peer->from), source_id);
+    }
 
     return (nf9src);
 }
@@ -231,10 +236,10 @@ peer_nf9_new_template(struct peer_state* peer, struct peers* peers,
     nf9tmpl->template_id = template_id;
     TAILQ_INSERT_HEAD(&nf9src->templates, nf9tmpl, lp);
 
-#ifdef PEER_DEBUG_NF9
-    logit(LOG_DEBUG, "%s: new template %s/0x%08x/0x%04x", __func__,
-        addr_ntop_buf(&peer->from), source_id, template_id);
-#endif
+    if (PEER_DEBUG_NF9) {
+        logit(LOG_DEBUG, "%s: new template %s/0x%08x/0x%04x", __func__,
+            addr_ntop_buf(&peer->from), source_id, template_id);
+    }
 
     /* Move source and template to the head of the list */
     if (nf9src != TAILQ_FIRST(&peer->nf9)) {
@@ -312,30 +317,30 @@ peer_nf10_find_template(struct peer_state* peer,
 
     nf10src = peer_nf10_lookup_source(peer, source_id);
 
-#ifdef PEER_DEBUG_NF10
-    logit(LOG_DEBUG, "%s: Lookup source 0x%08x for peer %s: %sFOUND",
-        __func__, source_id, addr_ntop_buf(&peer->from),
-        nf10src == NULL ? "NOT " : "");
-#endif
+    if (PEER_DEBUG_NF10) {
+        logit(LOG_DEBUG, "%s: Lookup source 0x%08x for peer %s: %sFOUND",
+            __func__, source_id, addr_ntop_buf(&peer->from),
+            nf10src == NULL ? "NOT " : "");
+    }
 
     if (nf10src == NULL)
         return (NULL);
 
     nf10tmpl = peer_nf10_lookup_template(nf10src, template_id);
 
-#ifdef PEER_DEBUG_NF10
-    logit(LOG_DEBUG, "%s: Lookup template 0x%04x: %sFOUND", __func__,
-        template_id, nf10tmpl == NULL ? "NOT " : "");
-#endif
+    if (PEER_DEBUG_NF10) {
+        logit(LOG_DEBUG, "%s: Lookup template 0x%04x: %sFOUND", __func__,
+            template_id, nf10tmpl == NULL ? "NOT " : "");
+    }
 
     if (nf10tmpl == NULL)
         return (NULL);
 
-#ifdef PEER_DEBUG_NF10
-    logit(LOG_DEBUG, "%s: Found template %s/0x%08x/0x%04x: %d records %p",
-        __func__, addr_ntop_buf(&peer->from), source_id, template_id,
-        nf10tmpl->num_records, nf10tmpl->records);
-#endif
+    if (PEER_DEBUG_NF10) {
+        logit(LOG_DEBUG, "%s: Found template %s/0x%08x/0x%04x: %d records %p",
+            __func__, addr_ntop_buf(&peer->from), source_id, template_id,
+            nf10tmpl->num_records, nf10tmpl->records);
+    }
     return (nf10tmpl);
 }
 
@@ -346,10 +351,10 @@ peer_nf10_template_update(struct peer_state* peer, u_int32_t source_id,
     struct peer_nf10_source* nf10src;
     struct peer_nf10_template* nf10tmpl;
 
-#ifdef PEER_DEBUG_NF10
-    logit(LOG_DEBUG, "%s: Lookup template %s/0x%08x/0x%04x",
-        __func__, addr_ntop_buf(&peer->from), template_id, source_id);
-#endif
+    if (PEER_DEBUG_NF10) {
+        logit(LOG_DEBUG, "%s: Lookup template %s/0x%08x/0x%04x",
+            __func__, addr_ntop_buf(&peer->from), template_id, source_id);
+    }
     nf10src = peer_nf10_lookup_source(peer, source_id);
     if (nf10src == NULL)
         return;
@@ -357,21 +362,21 @@ peer_nf10_template_update(struct peer_state* peer, u_int32_t source_id,
     if (nf10tmpl == NULL)
         return;
 
-#ifdef PEER_DEBUG_NF10
-    logit(LOG_DEBUG, "%s: found template", __func__);
-#endif
+    if (PEER_DEBUG_NF10) {
+        logit(LOG_DEBUG, "%s: found template", __func__);
+    }
     /* Move source and template to the head of the list */
     if (nf10src != TAILQ_FIRST(&peer->nf10)) {
-#ifdef PEER_DEBUG_NF10
-        logit(LOG_DEBUG, "%s: update source", __func__);
-#endif
+        if (PEER_DEBUG_NF10) {
+            logit(LOG_DEBUG, "%s: update source", __func__);
+        }
         TAILQ_REMOVE(&peer->nf10, nf10src, lp);
         TAILQ_INSERT_HEAD(&peer->nf10, nf10src, lp);
     }
     if (nf10tmpl != TAILQ_FIRST(&nf10src->templates)) {
-#ifdef PEER_DEBUG_NF10
-        logit(LOG_DEBUG, "%s: update template", __func__);
-#endif
+        if (PEER_DEBUG_NF10) {
+            logit(LOG_DEBUG, "%s: update template", __func__);
+        }
         TAILQ_REMOVE(&nf10src->templates, nf10tmpl, lp);
         TAILQ_INSERT_HEAD(&nf10src->templates, nf10tmpl, lp);
     }
@@ -398,10 +403,10 @@ struct peer_nf10_source* peer_nf10_new_source(struct peer_state* peer, struct pe
     TAILQ_INIT(&nf10src->templates);
     TAILQ_INSERT_HEAD(&peer->nf10, nf10src, lp);
 
-#ifdef PEER_DEBUG_NF10
-    logit(LOG_DEBUG, "%s: new source %s/0x%08x", __func__,
-        addr_ntop_buf(&peer->from), source_id);
-#endif
+    if (PEER_DEBUG_NF10) {
+        logit(LOG_DEBUG, "%s: new source %s/0x%08x", __func__,
+            addr_ntop_buf(&peer->from), source_id);
+    }
 
     return (nf10src);
 }
@@ -434,10 +439,10 @@ peer_nf10_new_template(struct peer_state* peer, struct peers* peers,
     nf10tmpl->template_id = template_id;
     TAILQ_INSERT_HEAD(&nf10src->templates, nf10tmpl, lp);
 
-#ifdef PEER_DEBUG_NF10
-    logit(LOG_DEBUG, "%s: new template %s/0x%08x/0x%04x", __func__,
-        addr_ntop_buf(&peer->from), source_id, template_id);
-#endif
+    if (PEER_DEBUG_NF10) {
+        logit(LOG_DEBUG, "%s: new template %s/0x%08x/0x%04x", __func__,
+            addr_ntop_buf(&peer->from), source_id, template_id);
+    }
 
     /* Move source and template to the head of the list */
     if (nf10src != TAILQ_FIRST(&peer->nf10)) {
@@ -485,9 +490,9 @@ struct peer_state* new_peer(struct peers* peers, struct xaddr* addr) {
     memcpy(&peer->from, addr, sizeof(peer->from));
     TAILQ_INIT(&peer->nf9);
 
-#ifdef PEER_DEBUG
-    logit(LOG_DEBUG, "new peer %s", addr_ntop_buf(addr));
-#endif
+    if (PEER_DEBUG) {
+        logit(LOG_DEBUG, "new peer %s", addr_ntop_buf(addr));
+    }
 
     TAILQ_INSERT_HEAD(&peers->peer_list, peer, lp);
     SPLAY_INSERT(peer_tree, &peers->peer_tree, peer);
@@ -509,13 +514,12 @@ update_peer(struct peers* peers, struct peer_state* peer, u_int nflows,
     peer->nflows += nflows;
     peer->npackets++;
     peer->last_version = netflow_version;
-#ifdef PEER_DEBUG
-    logit(LOG_DEBUG, "update peer %s", addr_ntop_buf(&peer->from));
-#endif
+    if (PEER_DEBUG) {
+        logit(LOG_DEBUG, "update peer %s", addr_ntop_buf(&peer->from));
+    }
 }
 
-struct peer_state*
-find_peer(struct peers* peers, struct xaddr* addr)
+struct peer_state* find_peer(struct peers* peers, struct xaddr* addr)
 {
     struct peer_state tmp;
     struct peer_state* peer;
@@ -524,16 +528,15 @@ find_peer(struct peers* peers, struct xaddr* addr)
     memcpy(&tmp.from, addr, sizeof(tmp.from));
 
     peer = SPLAY_FIND(peer_tree, &peers->peer_tree, &tmp);
-#ifdef PEER_DEBUG
-    logit(LOG_DEBUG, "%s: found %s", __func__,
-        peer == NULL ? "NONE" : addr_ntop_buf(addr));
-#endif
+    if (PEER_DEBUG) {
+        logit(LOG_DEBUG, "%s: found %s", __func__,
+            peer == NULL ? "NONE" : addr_ntop_buf(addr));
+    }
 
     return (peer);
 }
 
-void
-dump_peers(struct peers* peers)
+void dump_peers(struct peers* peers)
 {
     struct peer_state* peer;
     u_int i;
@@ -558,7 +561,6 @@ dump_peers(struct peers* peers)
             peer->last_version);
         i++;
     }
-#ifdef PEER_DEBUG_NF9
-    /* XXX netflow 9 data */
-#endif
 }
+
+#pragma clang diagnostic pop
