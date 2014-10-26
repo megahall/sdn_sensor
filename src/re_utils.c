@@ -513,7 +513,7 @@ int ss_re_chain_match_re2_substring(ss_re_match_t* re_match, ss_re_entry_t* re_e
         
         // extract substring 0 (full content of match)
         match_length = match[0].length;
-        memcpy(substring, match[0].data, match_length > SS_IOC_DNS_SIZE? SS_IOC_DNS_SIZE : match_length);
+        rte_memcpy(substring, match[0].data, match_length > SS_IOC_DNS_SIZE? SS_IOC_DNS_SIZE : match_length);
         substring[match_length] = '\0';
         
         RTE_LOG(DEBUG, EXTRACTOR, "attempt ioc match against substring %s\n",
