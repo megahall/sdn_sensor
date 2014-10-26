@@ -116,7 +116,7 @@ int ss_frame_handle_echo4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         RTE_LOG(ERR, STACK, "could not allocate mbuf icmp4 dptr\n");
         goto error_out;
     }
-    memcpy(dptr, (uint8_t*) rx_buf->icmp4 + sizeof(icmp4_hdr_t), rx_buf->ip4->tot_len - sizeof(ip4_hdr_t) - sizeof(icmp4_hdr_t));
+    rte_memcpy(dptr, (uint8_t*) rx_buf->icmp4 + sizeof(icmp4_hdr_t), rx_buf->ip4->tot_len - sizeof(ip4_hdr_t) - sizeof(icmp4_hdr_t));
 
     checksum = ss_in_cksum((uint16_t*) tx_buf->icmp4, rte_pktmbuf_pkt_len(tx_buf->mbuf) - ((uint8_t*) tx_buf->icmp4 - rte_pktmbuf_mtod(tx_buf->mbuf, uint8_t*)));
     tx_buf->icmp4->checksum          = checksum;
@@ -176,7 +176,7 @@ int ss_frame_handle_echo6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         RTE_LOG(ERR, STACK, "could not allocate mbuf icmp6 dptr\n");
         goto error_out;
     }
-    memcpy(dptr, (uint8_t*) rx_buf->icmp6 + sizeof(icmp6_hdr_t), rx_dlen);
+    rte_memcpy(dptr, (uint8_t*) rx_buf->icmp6 + sizeof(icmp6_hdr_t), rx_dlen);
     tx_plen                          = rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t) - sizeof(ip6_hdr_t); // XXX: better way?
     tx_buf->ip6->ip6_plen            = rte_bswap16(tx_plen);
 
