@@ -176,7 +176,7 @@ int ss_inet_pton4(const char* src, uint8_t* dst) {
     if (octets < 4)
         return (0);
     
-    memcpy(dst, tmp, IPV4_ALEN);
+    rte_memcpy(dst, tmp, IPV4_ALEN);
     return (1);
 }
 
@@ -288,7 +288,7 @@ int ss_inet_pton6(const char* src, uint8_t* dst) {
         return (0);
     }
     
-    memcpy(dst, tmp, IPV6_ALEN);
+    rte_memcpy(dst, tmp, IPV6_ALEN);
     return (1);
 }
 
