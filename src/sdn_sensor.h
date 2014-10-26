@@ -86,6 +86,8 @@ int ss_send_burst(uint8_t port_id, unsigned int lcore_id);
 int ss_send_packet(struct rte_mbuf* mbuf, uint8_t port_id, unsigned int lcore_id);
 void ss_main_loop(void);
 int ss_launch_one_lcore(void* dummy);
+void fatal_signal_handler(int signal);
+void signal_handler_init(const char* signal_name, int signal);
 int main(int argc, char* argv[]);
 
 /* END PROTOTYPES */
