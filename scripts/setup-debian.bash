@@ -27,7 +27,7 @@ run_aptitude install build-essential libc6-dbg clang llvm-gcc-4.7 flex bison iwy
 run_aptitude install uthash-dev libbsd-dev libpcre3-dev zlib1g-dev libglib2.0-dev gnulib libjson-c-dev libjson-c-doc liblog4c-dev liblog4c-doc libpcap-dev libfuse-dev libevtlog-dev libgeoip-dev geoip-bin libnet1-dev
 
 # jemalloc
-run_aptitude install libunwind-setjmp0 libunwind-setjmp0-dev libunwind8 libunwind8-dev docbook-xml docbook-xsl sgml-data xsltproc
+run_aptitude install libunwind-setjmp0 libunwind-setjmp0-dev libunwind8 libunwind8-dev liblzma-dev docbook-xml docbook-xsl sgml-data xsltproc
 
 # python2.7
 # run_aptitude install nginx nginx-extras

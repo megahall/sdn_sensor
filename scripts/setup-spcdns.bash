@@ -10,4 +10,6 @@ cd "${build_directory}/external/spcdns"
 # XXX switch to master version and find out how to build misc lib
 make lib so
 
+echo "spcdns built successfully"
+
 exit 0
