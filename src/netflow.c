@@ -36,8 +36,10 @@
 
 #include <jemalloc/jemalloc.h>
 
-#include "common.h"
+#include "sdn_sensor.h"
 
+#include "common.h"
+#include "metadata.h"
 #include "netflow.h"
 #include "netflow_common.h"
 #include "netflow_format.h"
@@ -109,12 +111,22 @@ dump_packet(const char* tag, const u_int8_t* p, int len)
     }
 }
 
-void process_flow(struct store_flow_complete* flow) {
+/*
+ * Netflow frame extractor function
+ * Match netflow metadata against ioc_entries
+ * Relay matches to appropriate nm_queue
+ */
+int process_flow(struct store_flow_complete* flow) {
+    ss_ioc_entry_t* iptr;
+    uint8_t* metadata = NULL;
+    int mlength = 0;
+    int rv = 0;
+    
     /* Another sanity check */
     if (flow->src_addr.af != flow->dst_addr.af) {
         logit(LOG_WARNING, "%s: flow src(%d)/dst(%d) AF mismatch",
             __func__, flow->src_addr.af, flow->dst_addr.af);
-        return;
+        return -1;
     }
 
     /* Prepare for writing */
@@ -127,6 +139,21 @@ void process_flow(struct store_flow_complete* flow) {
     netflow_format_flow(flow, fmtbuf, sizeof(fmtbuf), 0,
         STORE_DISPLAY_ALL, 0);
     logit(LOG_DEBUG, "%s: ACCEPT flow %s", __func__, fmtbuf);
+    
+    iptr = ss_ioc_netflow_match(flow);
+    if (iptr) {
+        // match
+        RTE_LOG(NOTICE, EXTRACTOR, "successful netflow ioc match from frame\n");
+        ss_ioc_entry_dump_dpdk(iptr);
+        nn_queue_t* nn_queue = &ss_conf->ioc_files[iptr->file_id].nn_queue;
+        metadata = ss_metadata_prepare_netflow("netflow_ioc", nn_queue, flow, iptr);
+        // XXX: for now assume the output is C char*
+        mlength = strlen((char*) metadata);
+        //printf("metadata: %s\n", metadata);
+        rv = ss_nn_queue_send(nn_queue, metadata, mlength);
+    }
+    
+    return rv;
 }
 
 void process_netflow_v1(struct flow_packet* fp, struct peer_state* peer)
@@ -185,7 +212,7 @@ void process_netflow_v1(struct flow_packet* fp, struct peer_state* peer)
         flow.pft.protocol = nf1_flow->protocol;
         flow.pft.tos = nf1_flow->tos;
 
-        memcpy(&flow.agent_addr, &fp->flow_source,
+        rte_memcpy(&flow.agent_addr, &fp->flow_source,
             sizeof(flow.agent_addr));
 
         flow.src_addr.v4.s_addr = nf1_flow->src_ip;
@@ -272,7 +299,7 @@ void process_netflow_v5(struct flow_packet* fp, struct peer_state* peer)
         flow.pft.protocol = nf5_flow->protocol;
         flow.pft.tos = nf5_flow->tos;
 
-        memcpy(&flow.agent_addr, &fp->flow_source,
+        rte_memcpy(&flow.agent_addr, &fp->flow_source,
             sizeof(flow.agent_addr));
 
         flow.src_addr.v4.s_addr = nf5_flow->src_ip;
@@ -374,7 +401,7 @@ void process_netflow_v7(struct flow_packet* fp, struct peer_state* peer)
         flow.pft.protocol = nf7_flow->protocol;
         flow.pft.tos = nf7_flow->tos;
 
-        memcpy(&flow.agent_addr, &fp->flow_source,
+        rte_memcpy(&flow.agent_addr, &fp->flow_source,
             sizeof(flow.agent_addr));
 
         flow.src_addr.v4.s_addr = nf7_flow->src_ip;
@@ -420,7 +447,7 @@ int nf9_rec_to_flow(struct peer_nf9_record* rec, struct store_flow_complete* flo
     switch (rec->type) {
 
 /* Copy an int (possibly shorter than the target) keeping their LSBs aligned */
-#define BE_COPY(a) memcpy((u_char*)&a + (sizeof(a) - rec->len), data, rec->len);
+#define BE_COPY(a) rte_memcpy((u_char*)&a + (sizeof(a) - rec->len), data, rec->len);
 #define V9_FIELD(v9_field, store_field, flow_field) \
     case v9_field: \
         flow->hdr.fields |= STORE_FIELD_##store_field; \
@@ -429,7 +456,7 @@ int nf9_rec_to_flow(struct peer_nf9_record* rec, struct store_flow_complete* flo
 #define V9_FIELD_ADDR(v9_field, store_field, flow_field, sub, family) \
     case v9_field: \
         flow->hdr.fields |= STORE_FIELD_##store_field; \
-        memcpy(&flow->flow_field.v##sub, data, rec->len); \
+        rte_memcpy(&flow->flow_field.v##sub, data, rec->len); \
         flow->flow_field.af = AF_##family; \
         break
 
@@ -535,7 +562,7 @@ int nf9_flowset_to_store(u_int8_t* pkt, size_t len, struct timeval* tv,
     flow->finf.source_id = htonl(source_id);
     flow->recv_time.recv_sec = tv->tv_sec;
     flow->recv_time.recv_usec = tv->tv_usec;
-    memcpy(&flow->agent_addr, flow_source, sizeof(flow->agent_addr));
+    rte_memcpy(&flow->agent_addr, flow_source, sizeof(flow->agent_addr));
 
     offset = 0;
     for (i = 0; i < template->num_records; i++) {
@@ -842,7 +869,7 @@ int nf10_rec_to_flow(struct peer_nf10_record* rec, struct store_flow_complete* f
     switch (rec->type) {
 
 /* Copy an int (possibly shorter than the target) keeping their LSBs aligned */
-#define BE_COPY(a) memcpy((u_char*)&a + (sizeof(a) - rec->len), data, rec->len);
+#define BE_COPY(a) rte_memcpy((u_char*)&a + (sizeof(a) - rec->len), data, rec->len);
 #define V10_FIELD(v10_field, store_field, flow_field) \
     case v10_field: \
         flow->hdr.fields |= STORE_FIELD_##store_field; \
@@ -851,7 +878,7 @@ int nf10_rec_to_flow(struct peer_nf10_record* rec, struct store_flow_complete* f
 #define V10_FIELD_ADDR(v10_field, store_field, flow_field, sub, family) \
     case v10_field: \
         flow->hdr.fields |= STORE_FIELD_##store_field; \
-        memcpy(&flow->flow_field.v##sub, data, rec->len); \
+        rte_memcpy(&flow->flow_field.v##sub, data, rec->len); \
         flow->flow_field.af = AF_##family; \
         break
 
@@ -957,7 +984,7 @@ int nf10_flowset_to_store(u_int8_t* pkt, size_t len, struct timeval* tv,
     flow->finf.source_id = htonl(source_id);
     flow->recv_time.recv_sec = tv->tv_sec;
     flow->recv_time.recv_usec = tv->tv_usec;
-    memcpy(&flow->agent_addr, flow_source, sizeof(flow->agent_addr));
+    rte_memcpy(&flow->agent_addr, flow_source, sizeof(flow->agent_addr));
 
     offset = 0;
     for (i = 0; i < template->num_records; i++) {
@@ -1259,7 +1286,7 @@ void process_netflow_v10(struct flow_packet* fp, struct peer_state* peer)
         update_peer(&peers, peer, total_flows, 10);
 }
 
-void process_packet(struct flow_packet* fp) {
+int process_packet(struct flow_packet* fp) {
     struct peer_state* peer;
     struct NF_HEADER_COMMON* hdr = (struct NF_HEADER_COMMON*)fp->packet;
 
@@ -1267,7 +1294,7 @@ void process_packet(struct flow_packet* fp) {
         logit(LOG_WARNING, "flow source %s was expired between "
             "between flow packet reception and processing", 
             addr_ntop_buf(&fp->flow_source));
-        return;
+        return -1;
     }
 
     switch (ntohs(hdr->version)) {
@@ -1290,8 +1317,10 @@ void process_packet(struct flow_packet* fp) {
         logit(LOG_INFO, "Unsupported netflow version %u from %s",
             ntohs(hdr->version), addr_ntop_buf(&fp->flow_source));
         if (DEBUG) dump_packet("Unknown packet type", fp->packet, fp->len);
-        return;
+        return -1;
     }
+    
+    return 0;
 }
 
 int netflow_frame_handle(ss_frame_t* fbuf) {
@@ -1308,7 +1337,6 @@ int netflow_frame_handle(ss_frame_t* fbuf) {
         return -1;
     }
 
- retry:
     fp->len = fbuf->data.l4_length;
     gettimeofday(&fp->recv_time, NULL);
 
@@ -1341,7 +1369,7 @@ int netflow_frame_handle(ss_frame_t* fbuf) {
         flow_packet_dealloc(fp);
         return (0);
     }
-    memcpy(fp->packet, fbuf->l4_offset, fp->len);
+    rte_memcpy(fp->packet, fbuf->l4_offset, fp->len);
     process_packet(fp);
 
     return (1);
