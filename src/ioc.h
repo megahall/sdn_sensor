@@ -9,6 +9,8 @@
 
 #include "common.h"
 #include "ip_utils.h"
+#include "netflow_addr.h"
+#include "netflow_format.h"
 
 /* CONSTANTS */
 
@@ -55,6 +57,8 @@ struct ss_ioc_chain_s {
 
 typedef struct ss_ioc_chain_s ss_ioc_chain_t;
 
+struct store_flow_complete;
+
 /* BEGIN PROTOTYPES */
 
 int ss_ioc_file_load(json_object* ioc_json);
@@ -74,6 +78,8 @@ int ss_ioc_chain_optimize(void);
 ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md);
 ss_ioc_entry_t* ss_ioc_dns_match(ss_metadata_t* md);
 ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type);
+ss_ioc_entry_t* ss_ioc_xaddr_match(struct xaddr* addr);
+ss_ioc_entry_t* ss_ioc_netflow_match(struct store_flow_complete* flow);
 
 /* END PROTOTYPES */
 
