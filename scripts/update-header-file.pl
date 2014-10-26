@@ -19,8 +19,14 @@ sub check_header_file {
     my $tmp_path      = $header_path . ".new";
     my $code_path     = dirname($header_path) . "/" . basename($header_path, ".h") . ".c";
     
-    die "header file $header_path does not exist" unless -f $header_path && $header_path =~ /\.h$/;
-    die "code file $code_path does not exist"     unless -f $code_path   && $code_path =~ /\.c$/;
+    unless (-f $header_path && $header_path =~ /\.h$/) {
+        warn "header file $header_path does not exist";
+        return {};
+    }
+    unless (-f $code_path   && $code_path =~ /\.c$/) {
+        warn "code file $code_path does not exist";
+        return {};
+    }
     
     return {
         'header_path' => $header_path,
@@ -93,7 +99,10 @@ my $cproto_options = join(" ", @option_list);
 #print "co: " . $cproto_options . "\n";
 
 foreach my $header_path (@file_list) {
+    # skip over files w/ missing header / code pairs
     my $h = check_header_file($header_path);
+    next unless keys(%$h);
+    
     $h->{'cproto_options'} = $cproto_options;
     
     copy($h->{'header_path'}, $h->{'bak_path'}) or die "could not backup header file: $!";
