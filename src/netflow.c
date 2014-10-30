@@ -51,7 +51,10 @@
 #define DEBUG 1
 
 /* Reams of netflow v.9 verbosity */
-#define DEBUG_NF9
+#define DEBUG_NF9 1
+
+/* Reams of netflow v.10 verbosity */
+#define DEBUG_NF10 1
 
 /* Prototype this (can't make it static because it only #ifdef DEBUG) */
 void dump_packet(const char *tag, const u_int8_t *p, int len);
@@ -988,11 +991,11 @@ int nf10_flowset_to_store(u_int8_t* pkt, size_t len, struct timeval* tv,
 
     offset = 0;
     for (i = 0; i < template->num_records; i++) {
-#ifdef DEBUG_NF10
-        logit(LOG_DEBUG, "    record %d: type %d len %d: %s",
-            i, template->records[i].type, template->records[i].len,
-            data_ntoa(pkt + offset, template->records[i].len));
-#endif
+        if (DEBUG_NF10) {
+            logit(LOG_DEBUG, "    record %d: type %d len %d: %s",
+                i, template->records[i].type, template->records[i].len,
+                data_ntoa(pkt + offset, template->records[i].len));
+        }
         nf10_rec_to_flow(&template->records[i], flow, pkt + offset);
         offset += template->records[i].len;
     }
@@ -1008,16 +1011,16 @@ int process_netflow_v10_template(u_int8_t* pkt, size_t len, struct peer_state* p
     struct peer_nf10_record* recs;
     struct peer_nf10_template* template;
 
-    logit(LOG_DEBUG, "netflow v.9 template flowset from source 0x%x "
+    logit(LOG_DEBUG, "netflow v.10 template flowset from source 0x%x "
         "(len %zd)", source_id, len);
-#ifdef DEBUG_NF10
-    dump_packet(__func__, pkt, len);
-#endif
+    if (DEBUG_NF10) {
+        dump_packet(__func__, pkt, len);
+    }
 
     template_header = (struct NF10_FLOWSET_HEADER_COMMON*)pkt;
     if (len < sizeof(*template_header)) {
         peer->ninvalid++;
-        logit(LOG_WARNING, "short netflow v.9 flowset template header "
+        logit(LOG_WARNING, "short netflow v.10 flowset template header "
             "%zd bytes from %s/0x%x", len, addr_ntop_buf(&peer->from),
             source_id);
         /* XXX ratelimit */
@@ -1047,7 +1050,7 @@ int process_netflow_v10_template(u_int8_t* pkt, size_t len, struct peer_state* p
         for (i = 0; i < count; i++) {
             if (offset >= len) {
                 peer->ninvalid++;
-                logit(LOG_WARNING, "short netflow v.9 flowset "
+                logit(LOG_WARNING, "short netflow v.10 flowset "
                     "template 0x%08x/0x%04x %zd bytes from %s",
                     source_id, template_id, len,
                     addr_ntop_buf(&peer->from));
@@ -1062,15 +1065,15 @@ int process_netflow_v10_template(u_int8_t* pkt, size_t len, struct peer_state* p
             offset += sizeof(*tmplr);
             if (recs[i].type & NF10_ENTERPRISE)
                 offset += sizeof(u_int32_t);    /* XXX -- ? */
-#ifdef DEBUG_NF10
-            logit(LOG_DEBUG, "  record %d: type %d len %d",
-                i, recs[i].type, recs[i].len);
-#endif
+            if (DEBUG_NF10) {
+                logit(LOG_DEBUG, "  record %d: type %d len %d",
+                    i, recs[i].type, recs[i].len);
+            }
             total_size += recs[i].len;
             if (total_size > peers.max_template_len) {
                 je_free(recs);
                 peer->ninvalid++;
-                logit(LOG_WARNING, "netflow v.9 flowset "
+                logit(LOG_WARNING, "netflow v.10 flowset "
                     "template 0x%08x/0x%04x from %s too large "
                     "len %d > max %d", source_id, template_id,
                     addr_ntop_buf(&peer->from), total_size,
@@ -1081,7 +1084,7 @@ int process_netflow_v10_template(u_int8_t* pkt, size_t len, struct peer_state* p
             if (!nf10_check_rec_len(recs[i].type, recs[i].len)) {
                 peer->ninvalid++;
                 logit(LOG_WARNING, "Invalid field length in "
-                    "netflow v. flowset template %d from "
+                    "netflow v.10 flowset template %d from "
                     "%s/0x%08x type %d len %d", template_id,
                     addr_ntop_buf(&peer->from), source_id,
                     recs[i].type, recs[i].len);
@@ -1193,9 +1196,9 @@ void process_netflow_v10(struct flow_packet* fp, struct peer_state* peer)
         peer->ninvalid++;
         logit(LOG_WARNING, "short netflow v.10 header %d bytes from %s",
             fp->len, addr_ntop_buf(&fp->flow_source));
-#ifdef DEBUG_NF10
-        dump_packet(__func__, fp->packet, fp->len);
-#endif
+        if (DEBUG_NF10) {
+            dump_packet(__func__, fp->packet, fp->len);
+        }
         return;
     }
 
@@ -1205,10 +1208,9 @@ void process_netflow_v10(struct flow_packet* fp, struct peer_state* peer)
 
     logit(LOG_DEBUG, "netflow v.10 packet (len %d) %d recs, source 0x%08x",
         fp->len, pktlen, source_id);
-
-#ifdef DEBUG_NF10
-    dump_packet(__func__, fp->packet, fp->len);
-#endif
+    if (DEBUG_NF10) {
+        dump_packet(__func__, fp->packet, fp->len);
+    }
 
     offset = sizeof(*nf10_hdr);
     total_flows = 0;
@@ -1228,13 +1230,13 @@ void process_netflow_v10(struct flow_packet* fp, struct peer_state* peer)
         flowset_id = ntohs(flowset->flowset_id);
         flowset_len = ntohs(flowset->length);
 
-#ifdef DEBUG_NF10
-        logit(LOG_DEBUG, "offset=%d i=%d len=%d pktlen=%d",
-            offset, i, fp->len, pktlen);
-        logit(LOG_DEBUG, "netflow v.10 flowset %d: type %d(0x%04x) "
-            "len %d(0x%04x)",
-            i, flowset_id, flowset_id, flowset_len, flowset_len);
-#endif
+        if (DEBUG_NF10) {
+            logit(LOG_DEBUG, "offset=%d i=%d len=%d pktlen=%d",
+                offset, i, fp->len, pktlen);
+            logit(LOG_DEBUG, "netflow v.10 flowset %d: type %d(0x%04x) "
+                "len %d(0x%04x)",
+                i, flowset_id, flowset_id, flowset_len, flowset_len);
+        }
 
         /*
          * Yes, this is a near duplicate of the short packet check
