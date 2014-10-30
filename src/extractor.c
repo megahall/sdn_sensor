@@ -137,11 +137,13 @@ int ss_extract_dns(ss_frame_t* fbuf) {
                     if (pptr->dns[0] && strcasestr((char*) ss_answer->payload, pptr->dns)) {
                         is_match = 1; goto done;
                     }
+                    break;
                 }
                 case SS_TYPE_IP: {
                     if (pptr->ip.family && !memcmp(ss_answer->payload, &pptr->ip, sizeof(ip_addr_t))) {
                         is_match = 1; goto done;
                     }
+                    break;
                 }
                 default: {
                     if (ss_answer->type != SS_TYPE_EMPTY)
