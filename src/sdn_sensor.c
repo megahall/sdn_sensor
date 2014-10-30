@@ -202,7 +202,7 @@ void ss_main_loop(void) {
             for (i = 0; i < rx_count; i++) {
                 mbuf = mbufs[i];
                 rte_prefetch0(rte_pktmbuf_mtod(mbuf, void *));
-                ss_frame_handle(mbuf, port_id, lcore_id);
+                ss_frame_handle(mbuf, lcore_id, port_id);
             }
         }
     }
