@@ -110,10 +110,8 @@ void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int lcore_id, unsigned int 
         rte_pktmbuf_dump(stderr, mbuf, rte_pktmbuf_pkt_len(mbuf));
     }
 
-    if (rx_buf.mbuf) {
-        rte_pktmbuf_free(rx_buf.mbuf);
-        rx_buf.mbuf = NULL;
-    }
+    rte_pktmbuf_free(rx_buf.mbuf);
+    rx_buf.mbuf = NULL;
 
     if (tx_buf.active && tx_buf.mbuf) {
         RTE_LOG(INFO, STACK, "sending tx_buf size %d\n", rte_pktmbuf_pkt_len(tx_buf.mbuf));
