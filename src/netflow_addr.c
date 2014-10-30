@@ -361,7 +361,7 @@ int addr_pton(const char* p, struct xaddr* n)
 
     if (ai == NULL || ai->ai_addr == NULL) {
         freeaddrinfo(ai);
-        return (-1)
+        return (-1);
     }
 
     if (n != NULL && addr_sa_to_xaddr(ai->ai_addr, ai->ai_addrlen,
