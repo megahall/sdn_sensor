@@ -359,6 +359,7 @@ int addr_pton(const char* p, struct xaddr* n)
         return (-1);
 
     if (ai == NULL || ai->ai_addr == NULL)
+        freeaddrinfo(ai);
         return (-1);
 
     if (n != NULL && addr_sa_to_xaddr(ai->ai_addr, ai->ai_addrlen,
@@ -387,6 +388,7 @@ int addr_sa_pton(const char* h, const char* s, struct sockaddr* sa, socklen_t sl
 
     if (sa != NULL) {
         if (slen < ai->ai_addrlen)
+            freeaddrinfo(ai);
             return (-1);
         rte_memcpy(sa, &ai->ai_addr, ai->ai_addrlen);
     }
