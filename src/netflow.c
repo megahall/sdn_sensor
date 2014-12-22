@@ -149,7 +149,8 @@ int process_flow(struct store_flow_complete* flow) {
         RTE_LOG(NOTICE, EXTRACTOR, "successful netflow ioc match from frame\n");
         ss_ioc_entry_dump_dpdk(iptr);
         nn_queue_t* nn_queue = &ss_conf->ioc_files[iptr->file_id].nn_queue;
-        metadata = ss_metadata_prepare_netflow("netflow_ioc", nn_queue, flow, iptr);
+        // XXX: fill in something useful in rule field
+        metadata = ss_metadata_prepare_netflow("netflow_ioc", NULL, nn_queue, flow, iptr);
         // XXX: for now assume the output is C char*
         mlength = strlen((char*) metadata);
         //printf("metadata: %s\n", metadata);
