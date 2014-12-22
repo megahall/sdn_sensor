@@ -208,10 +208,11 @@ int ss_metadata_prepare_ioc(const char* source, const char* rule, nn_queue_t* nn
     return -1;
 }
 
-uint8_t* ss_metadata_prepare_frame(const char* source, nn_queue_t* nn_queue, ss_frame_t* fbuf, ss_ioc_entry_t* iptr) {
+uint8_t* ss_metadata_prepare_frame(const char* source, const char* rule, nn_queue_t* nn_queue, ss_frame_t* fbuf, ss_ioc_entry_t* iptr) {
     int          irv;
     uint8_t*     rv      = NULL;
     json_object* jobject = NULL;
+    json_object* item    = NULL;
     uint8_t*     jstring = NULL;
     
     if (nn_queue->format != NN_FORMAT_METADATA) {
@@ -225,14 +226,26 @@ uint8_t* ss_metadata_prepare_frame(const char* source, nn_queue_t* nn_queue, ss_
         goto error_out;
     }
     
-    irv = ss_metadata_prepare_eth(source, nn_queue, jobject, fbuf);
+    item = json_object_new_string(source);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "source", item);
+    if (rule) {
+        item = json_object_new_string(rule);
+        if (item == NULL) goto error_out;
+        json_object_object_add(jobject, "rule", item);
+    }
+    item = json_object_new_int(__sync_add_and_fetch(&nn_queue->tx_messages, 1));
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "seq_num", item);
+    
+    irv = ss_metadata_prepare_eth(source, rule, nn_queue, jobject, fbuf);
     if (irv) goto error_out;
     
-    irv = ss_metadata_prepare_ip(source, nn_queue, jobject, fbuf);
+    irv = ss_metadata_prepare_ip(source, rule, nn_queue, jobject, fbuf);
     if (irv) goto error_out;
     
     if (iptr) {
-        irv = ss_metadata_prepare_ioc(source, nn_queue, iptr, jobject);
+        irv = ss_metadata_prepare_ioc(source, rule, nn_queue, iptr, jobject);
         if (irv) goto error_out;
     }
     
@@ -241,13 +254,15 @@ uint8_t* ss_metadata_prepare_frame(const char* source, nn_queue_t* nn_queue, ss_
     rv = (uint8_t*) je_strdup((char*)jstring);
     if (!rv) goto error_out;
     
+    item = NULL;
     json_object_put(jobject); jobject = NULL;
     
     return rv;
     
     error_out:
     fprintf(stderr, "could not serialize packet metadata\n");
-    if (rv) { je_free(rv); rv = NULL; }
+    if (rv)      { je_free(rv); rv = NULL; }
+    if (item)    { json_object_put(jobject); item    = NULL; }
     if (jobject) { json_object_put(jobject); jobject = NULL; }
     
     return NULL;
