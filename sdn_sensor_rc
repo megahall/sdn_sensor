@@ -2,10 +2,9 @@ export CC="clang"
 export CXX="clang++"
 
 # options for GNU autotools builds
-export CFLAGS="-g"
-export CCFLAGS="-g"
-export CPPFLAGS="-g"
-export CXXFLAGS="-g"
+export CFLAGS="-O2 -g"
+export CCFLAGS="-O2 -g"
+export CXXFLAGS="-O2 -g"
 
 # start with g* for OS X
 # then switch to without for Linux if needed
