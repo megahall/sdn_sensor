@@ -26,23 +26,8 @@ git submodule init
 git fetch
 git submodule update --recursive
 
-echo "running nanomsg library setup"
-"${script_directory}/setup-nanomsg.bash"
-
-echo "running Perl package setup"
-sudo "${script_directory}/setup-perl.bash"
-
-echo "running Python package setup"
-sudo "${script_directory}/setup-python.bash"
-
-echo "running jemalloc library setup"
-"${script_directory}/setup-jemalloc.bash"
-
-echo "running re2 library setup"
-"${script_directory}/setup-re2.bash"
-
-echo "running spcdns library setup"
-"${script_directory}/setup-spcdns.bash"
+echo "running dependency library setup"
+sudo "${script_directory}/setup-libraries.bash"
 
 echo "vagrant phase 1 setup completed"
 exit 0
