@@ -20,7 +20,7 @@ run_aptitude purge puppet puppet-common chef chef-zero
 
 run_aptitude install linux-generic linux-headers-generic
 
-run_aptitude install gawk strace ltrace telnet netcat-traditional tshark ssh rsync cproto cscope
+run_aptitude install gawk strace ltrace telnet netcat-traditional tshark ssh rsync cproto cscope randomize-lines wamerican-insane
 
 run_aptitude install build-essential libc6-dbg clang llvm-gcc-4.7 flex bison iwyu gdb-multiarch gdb-doc valgrind autoconf automake libtool git git-man git-email subversion manpages-dev manpages-posix-dev
 
