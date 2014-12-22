@@ -18,63 +18,48 @@
 #include "json.h"
 #include "nn_queue.h"
 
-int ss_metadata_prepare_eth(const char* source, nn_queue_t* nn_queue, json_object* jobject, ss_frame_t* fbuf) {
+int ss_metadata_prepare_eth(const char* source, const char* rule, nn_queue_t* nn_queue, json_object* jobject, ss_frame_t* fbuf) {
     char tmp[1024];
-    json_object* jsource   = NULL;
-    json_object* port_id   = NULL;
-    json_object* direction = NULL;
-    json_object* self      = NULL;
-    json_object* length    = NULL;
-    json_object* eth_type  = NULL;
-    json_object* smac      = NULL;
-    json_object* dmac      = NULL;
+    json_object* item = NULL;
     
-    jsource     = json_object_new_string(source);
-    if (jsource == NULL) goto error_out;
-    port_id     = json_object_new_int(fbuf->data.port_id);
-    if (port_id == NULL) goto error_out;
-    direction   = json_object_new_int(fbuf->data.direction);
-    if (direction == NULL) goto error_out;
-    self        = json_object_new_int(fbuf->data.self);
-    if (self == NULL) goto error_out;
-    length      = json_object_new_int(fbuf->data.length);
-    if (length == NULL) goto error_out;
-    eth_type    = json_object_new_int(fbuf->data.eth_type);
-    if (eth_type == NULL) goto error_out;
+    item = json_object_new_int(fbuf->data.port_id);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "port_id", item);
+    item = json_object_new_string(ss_direction_dump(fbuf->data.direction));
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "direction", item);
+    item = json_object_new_int(fbuf->data.self);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "self", item);
+    item = json_object_new_int(fbuf->data.length);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "length", item);
+    item = json_object_new_int(fbuf->data.eth_type);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "eth_type", item);
 
     snprintf(tmp, sizeof(tmp), "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
         fbuf->data.smac[0], fbuf->data.smac[1], fbuf->data.smac[2],
         fbuf->data.smac[3], fbuf->data.smac[4], fbuf->data.smac[5]);
-    smac        = json_object_new_string(tmp);
-    if (smac == NULL) goto error_out;
+    item = json_object_new_string(tmp);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "smac", item);
     
     snprintf(tmp, sizeof(tmp), "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
         fbuf->data.dmac[0], fbuf->data.dmac[1], fbuf->data.dmac[2],
         fbuf->data.dmac[3], fbuf->data.dmac[4], fbuf->data.dmac[5]);
-    dmac        = json_object_new_string(tmp);
-    if (dmac == NULL) goto error_out;
-        
-    json_object_object_add(jobject, "source",    jsource);
-    json_object_object_add(jobject, "port_id",   port_id);
-    json_object_object_add(jobject, "direction", direction);
-    json_object_object_add(jobject, "self",      self);
-    json_object_object_add(jobject, "length",    length);
-    json_object_object_add(jobject, "eth_type",  eth_type);
-    json_object_object_add(jobject, "smac",      smac);
-    json_object_object_add(jobject, "dmac",      dmac);
+    item = json_object_new_string(tmp);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "dmac", item);
+    
+    item = NULL;
     
     return 0;
     
     error_out:
     fprintf(stderr, "could not serialize ethernet metadata\n");
-    if (jsource)   json_object_put(jsource);
-    if (port_id)   json_object_put(port_id);
-    if (direction) json_object_put(direction);
-    if (self)      json_object_put(self);
-    if (length)    json_object_put(length);
-    if (smac)      json_object_put(smac);
-    if (dmac)      json_object_put(dmac);
-    if (eth_type)  json_object_put(eth_type);
+    if (item)    { json_object_put(item);    item = NULL;    }
+    if (jobject) { json_object_put(jobject); jobject = NULL; }
     
     return -1;
 }
