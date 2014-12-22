@@ -64,7 +64,7 @@ int ss_metadata_prepare_eth(const char* source, const char* rule, nn_queue_t* nn
     return -1;
 }
 
-int ss_metadata_prepare_ip(const char* source, nn_queue_t* nn_queue, json_object* jobject, ss_frame_t* fbuf) {
+int ss_metadata_prepare_ip(const char* source, const char* rule, nn_queue_t* nn_queue, json_object* jobject, ss_frame_t* fbuf) {
     char tmp[1024];
     json_object* sip         = NULL;
     json_object* dip         = NULL;
@@ -136,16 +136,16 @@ int ss_metadata_prepare_ip(const char* source, nn_queue_t* nn_queue, json_object
     
     error_out:
     fprintf(stderr, "could not serialize ethernet metadata\n");
-    if (sip)         json_object_put(sip);
-    if (dip)         json_object_put(dip);
-    if (ip_protocol) json_object_put(ip_protocol);
-    if (ttl)         json_object_put(ttl);
-    if (l4_length)   json_object_put(l4_length);
-    if (icmp_type)   json_object_put(icmp_type);
-    if (icmp_code)   json_object_put(icmp_code);
-    if (sport)       json_object_put(sport);
-    if (dport)       json_object_put(dport);
-    if (dns_name)    json_object_put(dns_name);
+    if (sip)         { json_object_put(sip);         sip = NULL;         }
+    if (dip)         { json_object_put(dip);         dip = NULL;         }
+    if (ip_protocol) { json_object_put(ip_protocol); ip_protocol = NULL; }
+    if (ttl)         { json_object_put(ttl);         ttl = NULL;         }
+    if (l4_length)   { json_object_put(l4_length);   l4_length = NULL;   }
+    if (icmp_type)   { json_object_put(icmp_type);   icmp_type = NULL;   }
+    if (icmp_code)   { json_object_put(icmp_code);   icmp_code = NULL;   }
+    if (sport)       { json_object_put(sport);       sport = NULL;       }
+    if (dport)       { json_object_put(dport);       dport = NULL;       }
+    if (dns_name)    { json_object_put(dns_name);    dns_name = NULL;    }
     
     return -1;
 }
