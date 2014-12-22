@@ -53,7 +53,6 @@
 #define LCORE_PARAMS_MAX    1024
 #define PORT_TX_QUEUE_MAX     16
 
-#define TIMER_MILLISECOND 2000000ULL /* around 1ms at 2 Ghz */
 #define MAX_TIMER_PERIOD 86400 /* 1 day max */
 
 /* GLOBAL VARIABLES */
