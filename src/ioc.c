@@ -453,7 +453,7 @@ int ss_ioc_chain_optimize() {
 #ifdef SS_IOC_BACKEND_RAM
                         HASH_FIND_INT(ss_conf->ip4_table, &iptr->ip.ip4_addr, hiptr);
                         if (hiptr == NULL) {
-                            HASH_ADD_INT(ss_conf->ip4_table, &iptr->ip.ip4_addr, iptr);
+                            HASH_ADD_INT(ss_conf->ip4_table, ip.ip4_addr, iptr);
                         }
                         else {
                             fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
@@ -475,7 +475,7 @@ int ss_ioc_chain_optimize() {
 #ifdef SS_IOC_BACKEND_RAM
                         HASH_FIND(hh, ss_conf->ip6_table, &iptr->ip.ip6_addr, sizeof(iptr->ip.ip6_addr), hiptr);
                         if (hiptr == NULL) {
-                            HASH_ADD(hh, ss_conf->ip6_table, &iptr->ip.ip6_addr, sizeof(iptr->ip.ip6_addr), iptr);
+                            HASH_ADD(hh, ss_conf->ip6_table, ip.ip6_addr, sizeof(iptr->ip.ip6_addr), iptr);
                         }
                         else {
                             fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
@@ -932,7 +932,8 @@ ss_ioc_entry_t* ss_ioc_ip_match(ip_addr_t* ip) {
     switch (ip->family) {
         case SS_AF_INET4: {
 #ifdef SS_IOC_BACKEND_RAM
-            HASH_FIND_INT(ss_conf->ip4_table, ip->ip4_addr, iptr);
+            uint32_t* iip = (uint32_t*) &ip->ip4_addr;
+            HASH_FIND_INT(ss_conf->ip4_table, &iip, iptr);
             if (iptr) goto out;
 #elif SS_IOC_BACKEND_DISK
             key.mv_size   = sizeof(uint32_t);
@@ -947,7 +948,7 @@ ss_ioc_entry_t* ss_ioc_ip_match(ip_addr_t* ip) {
         }
         case SS_AF_INET6: {
 #ifdef SS_IOC_BACKEND_RAM
-            HASH_FIND(hh, ss_conf->ip6_table, ip->ip6_addr, sizeof(ip->ip6_addr), iptr);
+            HASH_FIND(hh, ss_conf->ip6_table, &ip->ip6_addr, sizeof(ip->ip6_addr), iptr);
             if (iptr) goto out;
 #elif SS_IOC_BACKEND_DISK
             key.mv_size   = sizeof(ip->ip6_addr);
