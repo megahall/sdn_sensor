@@ -7,8 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <wordexp.h>
+#include <sys/stat.h>
 
 #include <bsd/string.h>
 #include <bsd/sys/queue.h>
@@ -27,6 +29,11 @@
 
 #define PROGRAM_PATH "/proc/self/exe"
 #define CONF_PATH "/../conf/sdn_sensor.json"
+
+#define SS_NS_PER_SEC 1E9
+#define SS_NS_PER_HALF_SEC 5E8
+
+static uint64_t ss_conf_tsc_hz;
 
 int ss_conf_destroy() {
     // XXX: destroy everything else in ss_conf_t
@@ -62,6 +69,53 @@ char* ss_conf_path_get() {
     if (program_path) je_free(program_path);
     
     return program_directory;
+}
+
+/* All of this weird TSC code is borrowed from DPDK. */
+
+uint64_t ss_conf_tsc_read() {
+    union {
+        uint64_t tsc_64;
+        struct {
+            uint32_t lo_32;
+            uint32_t hi_32;
+        };
+    } tsc;
+    
+    asm volatile("rdtsc" : "=a" (tsc.lo_32), "=d" (tsc.hi_32));
+
+    return tsc.tsc_64;
+}
+
+uint64_t ss_conf_tsc_hz_get() {
+    int rv;
+    uint64_t ns;
+    uint64_t end;
+    struct timespec sleeptime = { .tv_nsec = SS_NS_PER_HALF_SEC }; /* 1/2 second */
+    struct timespec t_start, t_end;
+    
+    rv = clock_gettime(CLOCK_MONOTONIC_RAW, &t_start);
+    if (rv) goto error_out;
+    
+    uint64_t start = ss_conf_tsc_read();
+    rv = nanosleep(&sleeptime, NULL);
+    if (rv) goto error_out;
+
+    rv = clock_gettime(CLOCK_MONOTONIC_RAW, &t_end);
+    if (rv) goto error_out;
+    
+    end  = ss_conf_tsc_read();
+    ns   = ((t_end.tv_sec - t_start.tv_sec) * SS_NS_PER_SEC);
+    ns  +=  (t_end.tv_nsec - t_start.tv_nsec);
+    
+    double secs = (double) ns / SS_NS_PER_SEC;
+    ss_conf_tsc_hz = (uint64_t) ((end - start) / secs);
+    return 0;
+    
+    error_out:
+    fprintf(stderr, "could not initialize ss_conf_tsc_hz\n");
+    ss_conf_tsc_hz = -1;
+    return -1;
 }
 
 char* ss_conf_file_read(char* conf_path) {
@@ -277,14 +331,17 @@ int ss_conf_dpdk_parse(json_object* items) {
         ss_conf->rss_enabled = 1;
     }
     
+    rv = ss_conf_tsc_hz_get();
+    if (rv) return -1;
+
     item = json_object_object_get(items, "timer_msec");
     if (item) {
         if (!json_object_is_type(item, json_type_int)) {
-            fprintf(stderr, "queue_count is not integer\n");
+            fprintf(stderr, "timer_msec is not integer\n");
             return -1;
         }
-        ss_conf->timer_msec = json_object_get_int(item);
-        if (ss_conf->timer_msec > MAX_TIMER_PERIOD) {
+        ss_conf->timer_cycles = json_object_get_int(item) * ss_conf_tsc_hz / 1000;
+        if (ss_conf->timer_cycles / ss_conf_tsc_hz > MAX_TIMER_PERIOD) {
             fprintf(stderr, "timer_msec larger than %d\n", MAX_TIMER_PERIOD);
             return -1;
         }
@@ -292,7 +349,7 @@ int ss_conf_dpdk_parse(json_object* items) {
     else {
         /* A TSC-based timer responsible for triggering statistics printout */
         /* default period is 10 seconds */
-        ss_conf->timer_msec = 10 * TIMER_MILLISECOND * 1000;
+        ss_conf->timer_cycles = 10 * ss_conf_tsc_hz;
     }
     
     item = json_object_object_get(items, "log_level");
