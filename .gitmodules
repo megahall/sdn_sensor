@@ -3,7 +3,7 @@
 	url = https://github.com/nanomsg/nanomsg.git
 [submodule "external/spcdns"]
 	path = external/spcdns
-	url = https://github.com/spc476/SPCDNS.git
+	url = https://github.com/megahall/SPCDNS.git
 [submodule "external/jemalloc"]
 	path = external/jemalloc
 	url = https://github.com/jemalloc/jemalloc.git
@@ -21,4 +21,4 @@
 	url = https://github.com/megahall/ndpi.git
 [submodule "external/lmdb"]
 	path = external/lmdb
-	url = git@github.com:megahall/lmdb.git
+	url = https://github.com/megahall/lmdb.git
