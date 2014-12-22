@@ -143,7 +143,7 @@ enum direction_e {
     SS_FRAME_MAX,
 };
 
-typedef enum direction_e direction_t;
+typedef enum direction_e ss_direction_t;
 
 enum ss_answer_type_e {
     SS_TYPE_EMPTY = 0,
@@ -296,16 +296,11 @@ struct ss_cidr_table_s {
 
 typedef struct ss_cidr_table_s ss_cidr_table_t;
 
-/* STRING TRIE */
-
-struct ss_string_trie_s {
-} __rte_cache_aligned;
-
-typedef struct ss_string_trie_s ss_string_trie_t;
-
 /* BEGIN PROTOTYPES */
 
 int ss_metadata_prepare(ss_frame_t* fbuf);
+ss_direction_t ss_direction_load(const char* direction);
+const char* ss_direction_dump(ss_direction_t direction);
 int ss_pcap_chain_destroy(void);
 ss_pcap_entry_t* ss_pcap_entry_create(json_object* pcap_json);
 int ss_pcap_entry_destroy(ss_pcap_entry_t* pcap_entry);
