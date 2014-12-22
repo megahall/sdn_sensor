@@ -19,3 +19,6 @@
 [submodule "external/ndpi"]
 	path = external/ndpi
 	url = https://github.com/megahall/ndpi.git
+[submodule "external/lmdb"]
+	path = external/lmdb
+	url = git@github.com:megahall/lmdb.git
