@@ -45,7 +45,7 @@ int ss_extract_eth(ss_frame_t* fbuf) {
         if (rv > 0) {
             // match
             RTE_LOG(INFO, EXTRACTOR, "successful match against pcap rule %s\n", pptr->name);
-            metadata = ss_metadata_prepare_frame("pcap", &pptr->nn_queue, fbuf, NULL);
+            metadata = ss_metadata_prepare_frame("pcap", pptr->name, &pptr->nn_queue, fbuf, NULL);
             // XXX: for now assume the output is C char*
             mlength = strlen((char*) metadata);
             //printf("metadata: %s\n", metadata);
@@ -67,7 +67,8 @@ int ss_extract_eth(ss_frame_t* fbuf) {
         RTE_LOG(NOTICE, EXTRACTOR, "successful ioc match from frame\n");
         ss_ioc_entry_dump_dpdk(iptr);
         nn_queue_t* nn_queue = &ss_conf->ioc_files[iptr->file_id].nn_queue;
-        metadata = ss_metadata_prepare_frame("frame_ioc", nn_queue, fbuf, iptr);
+        // XXX: figure out what to put into "rule" field
+        metadata = ss_metadata_prepare_frame("frame_ioc", NULL, nn_queue, fbuf, iptr);
         // XXX: for now assume the output is C char*
         mlength = strlen((char*) metadata);
         //printf("metadata: %s\n", metadata);
