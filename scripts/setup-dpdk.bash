@@ -16,7 +16,7 @@ export RTE_TARGET="x86_64-native-linuxapp-clang"
 export RTE_ARCH="x86_64"
 export RTE_INCLUDE="${RTE_SDK_BIN}/include"
 
-export EXTRA_CFLAGS="-g -O0 -fPIC -msse4"
+export EXTRA_CFLAGS="-g -O2 -fPIC -msse4"
 
 cd "${RTE_SDK}"
 
