@@ -23,13 +23,13 @@ void ss_port_stats_print(ss_port_statistics_t* port_statistics, unsigned int por
     /* Clear screen and move to top left */
     //printf("%s%s", clr, topLeft);
 
-    printf("\nPort statistics ====================================");
+    printf("Port statistics ====================================\n");
 
     for (port_id = 0; port_id < port_limit; port_id++) {
-        printf("\nStatistics for port %u ------------------------------"
-               "\nPackets sent: %24"PRIu64
-               "\nPackets received: %20"PRIu64
-               "\nPackets dropped: %21"PRIu64,
+        printf("Statistics for port %u ------------------------------\n"
+               "Packets sent: %24lu\n"
+               "Packets received: %20lu\n"
+               "Packets dropped: %21lu\n",
                port_id,
                port_statistics[port_id].tx,
                port_statistics[port_id].rx,
@@ -39,14 +39,14 @@ void ss_port_stats_print(ss_port_statistics_t* port_statistics, unsigned int por
         total_packets_tx += port_statistics[port_id].tx;
         total_packets_rx += port_statistics[port_id].rx;
     }
-    printf("\nAggregate statistics ==============================="
-           "\nTotal packets sent: %18"PRIu64
-           "\nTotal packets received: %14"PRIu64
-           "\nTotal packets dropped: %15"PRIu64,
+    printf("Aggregate statistics ===============================\n"
+           "Total packets sent: %18lu\n"
+           "Total packets received: %14lu\n"
+           "Total packets dropped: %15lu\n",
            total_packets_tx,
            total_packets_rx,
            total_packets_dropped);
-    printf("\n====================================================\n");
+    printf("====================================================\n");
 }
 
 /* Check the link status of all ports in up to 9s, and print them finally */
