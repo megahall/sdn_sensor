@@ -91,10 +91,6 @@ static const struct rte_eth_txconf tx_conf = {
 
 struct ss_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 
-/* A tsc-based timer responsible for triggering statistics printout */
-/* default period is 10 seconds */
-static int64_t timer_period = 10 * TIMER_MILLISECOND * 1000;
-
 /* TX burst of packets on a port */
 int ss_send_burst(uint8_t port_id, unsigned int lcore_id) {
     unsigned int count;
@@ -170,20 +166,18 @@ void ss_main_loop(void) {
                 mbuf_table[port_id][lcore_id].length = 0;
             }
 
-            /* if timer is enabled */
-            if (timer_period > 0) {
-                /* advance the timer */
-                timer_tsc += diff_tsc;
+            /* advance the timer */
+            timer_tsc += diff_tsc;
 
-                /* if timer has reached its timeout */
-                if (unlikely(timer_tsc >= (uint64_t) timer_period)) {
-
-                    /* do this only on master core */
-                    if (lcore_id == rte_get_master_lcore()) {
-                        ss_port_stats_print(port_statistics, rte_eth_dev_count());
-                        /* reset the timer */
-                        timer_tsc = 0;
-                    }
+            /* if timer has reached its timeout */
+            if (unlikely(timer_tsc >= (uint64_t) ss_conf->timer_cycles)) {
+                /* do this only on master core */
+                if (lcore_id == rte_get_master_lcore()) {
+                    double elapsed = timer_tsc / rte_get_tsc_hz();
+                    RTE_LOG(NOTICE, SS, "call ss_port_stats_print after %011.6f secs.\n", elapsed);
+                    ss_port_stats_print(port_statistics, rte_eth_dev_count());
+                    /* reset the timer */
+                    timer_tsc = 0;
                 }
             }
 
