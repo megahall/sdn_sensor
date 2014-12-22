@@ -214,6 +214,7 @@ void fatal_signal_handler(int signal) {
         rte_eth_dev_close(port);
         fprintf(stderr, "closed dpdk port_id %d.\n", port);
     }
+    ss_conf_destroy();
     kill(getpid(), signal);
 }
 
