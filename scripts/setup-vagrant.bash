@@ -32,6 +32,9 @@ echo "running nanomsg library setup"
 echo "running Perl package setup"
 sudo "${script_directory}/setup-perl.bash"
 
+echo "running Python package setup"
+sudo "${script_directory}/setup-python.bash"
+
 echo "running jemalloc library setup"
 "${script_directory}/setup-jemalloc.bash"
 
