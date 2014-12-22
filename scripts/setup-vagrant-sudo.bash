@@ -21,6 +21,17 @@ EOF
 hostname sdn-sensor
 echo "sdn-sensor" > /etc/hostname
 
+ipv6_active=$(grep inet6 /etc/network/interfaces /etc/network/interfaces.d/* || true)
+if [[ -z $ipv6_active ]]; then
+    echo "iface eth0 inet6 auto" >> "/etc/network/interfaces.d/eth0.cfg"
+fi
+
+sed -i \
+-e 's/^net\.ipv6\.conf\.all\.use_tempaddr.*/net.ipv6.conf.all.use_tempaddr = 0/g' \
+-e 's/^net\.ipv6\.conf\.default\.use_tempaddr.*/net.ipv6.conf.default.use_tempaddr = 0/g' \
+/etc/sysctl.d/10-ipv6-privacy.conf
+sysctl -p /etc/sysctl.d/10-ipv6-privacy.conf
+
 cat "${script_directory}/inputrc" > "/etc/inputrc"
 cat "${script_directory}/sources.list" > "/etc/apt/sources.list"
 sed -i -e 's/^color ,green/#color ,green/' /usr/share/nano/*.nanorc
@@ -40,12 +51,6 @@ if [[ ! -e "/hugetlbfs" ]]; then
     mkdir /hugetlbfs
     mount /hugetlbfs
 fi
-
-sed -i \
--e 's/^net\.ipv6\.conf\.all\.use_tempaddr.*/net.ipv6.conf.all.use_tempaddr = 0/g' \
--e 's/^net\.ipv6\.conf\.default\.use_tempaddr.*/net.ipv6.conf.default.use_tempaddr = 0/g' \
-/etc/sysctl.d/10-ipv6-privacy.conf
-sysctl -p /etc/sysctl.d/10-ipv6-privacy.conf
 
 found_uio=$(egrep "^uio" /etc/modules || true)
 if [[ -z ${found_uio} ]]; then
