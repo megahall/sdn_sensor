@@ -21,7 +21,8 @@ libsocket6-perl libio-socket-inet6-perl libio-socket-ssl-perl \
 libwww-perl \
 libdigest-hmac-perl libdigest-sha-perl \
 libperl6-slurp-perl \
-libtest-fatal-perl libtest-sharedfork-perl libtest-tcp-perl
+libtest-fatal-perl libtest-sharedfork-perl libtest-tcp-perl \
+libgd-perl libgd-graph-perl
 
 cat "${script_directory}/ackrc" > "/home/vagrant/.ackrc"
 chown vagrant.vagrant "/home/vagrant/.ackrc"
