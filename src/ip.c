@@ -34,7 +34,7 @@ int ss_frame_handle_ip4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     RTE_LOG(DEBUG, STACK, "ip4 protocol %hhu\n", rx_buf->ip4->protocol);
     rx_buf->data.ip_protocol = rx_buf->ip4->protocol;
     rv = ss_frame_find_l4_header(rx_buf, rx_buf->ip4->protocol);
-    if (rv) {
+    if (rv && rx_buf->ip4->protocol != IPPROTO_IGMP) {
         RTE_LOG(ERR, STACK, "port %u received damaged ip4 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip4->protocol);
         rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
     }
@@ -53,8 +53,10 @@ int ss_frame_handle_ip4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
             break;
         }
         default: {
-            RTE_LOG(INFO, STACK, "port %u received unsupported ip4 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip4->protocol);
-            rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+            if (rx_buf->ip4->protocol != IPPROTO_IGMP) {
+                RTE_LOG(INFO, STACK, "port %u received unsupported ip4 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip4->protocol);
+                rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+            }
             rv = -1;
             break;
         }
