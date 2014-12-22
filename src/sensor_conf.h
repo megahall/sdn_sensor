@@ -35,7 +35,7 @@ struct ss_conf_s {
     uint16_t rxd_count;
     uint16_t txd_count;
     int      rss_enabled;
-    uint64_t timer_msec;
+    uint64_t timer_cycles;
     
     wordexp_t eal_vector;
     
@@ -43,7 +43,6 @@ struct ss_conf_s {
     ss_cidr_table_t cidr_table;
     ss_dns_chain_t dns_chain;
     ss_re_chain_t re_chain;
-    ss_string_trie_t string_trie;
     
     uint64_t ioc_file_id;
     ss_ioc_file_t ioc_files[SS_IOC_FILE_MAX];
