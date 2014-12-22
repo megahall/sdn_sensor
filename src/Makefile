@@ -24,11 +24,12 @@ WARNINGS = \
 -Wno-unused-parameter
 
 SS_VERSION := $(shell echo `date "+%Y%m%d-%H%M%S"`-`git rev-parse --short HEAD`)
+SS_IOC_BACKEND := SS_IOC_BACKEND_RAM
 
 FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -pthread -march=native -std=gnu11 -ferror-limit=5
 INCLUDE_FILES  = -include $(RTE_SDK)/build/include/rte_config.h
-INCLUDE_PATHS  = -I$(RTE_SDK)/build/include -I$(SDN_SENSOR_BASE)/external/spcdns/src -I/usr/local/jemalloc/include
-CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) -DSS_VERSION="\"$(SS_VERSION)\""
+INCLUDE_PATHS  = -I$(RTE_SDK)/build/include -I$(SDN_SENSOR_BASE)/external/spcdns/src -I/usr/local/jemalloc/include -I/usr/local/lmdb/include
+CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) -DSS_VERSION="\"$(SS_VERSION)\"" -DSS_IOC_BACKEND_DISK
 
 # XXX: work around bugs in iwyu utility
 IWYU_PATHS = -I/usr/local/include -I/usr/lib/llvm-3.4/lib/clang/3.4/include -I/usr/lib/gcc/x86_64-linux-gnu/4.8/include -I/usr/include/x86_64-linux-gnu -I/usr/include
@@ -69,9 +70,9 @@ endif
 #-Wl,--end-group -Wl,--no-whole-archive
 
 DPDK_LINK = -Wl,--whole-archive -Wl,--start-group -lintel_dpdk -Wl,--end-group -Wl,--no-whole-archive
-STATIC_LINK = -Wl,-Bstatic -lbsd -lcre2 -lre2 -ljemalloc -lunwind -llzma -ljson-c -lnanomsg -lanl -lpcap -lpcre -lspcdns -lspcdnsmisc -Wl,-Bdynamic
+STATIC_LINK = -Wl,-Bstatic -lbsd -lcre2 -lre2 -llzma -ljson-c -llmdb -lnanomsg -lanl -lpcap -lpcre -lspcdns -lspcdnsmisc -Wl,-Bdynamic
 
-LDFLAGS = -L$(RTE_SDK)/build/lib -Wl,-rpath,$(RTE_SDK)/build/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built -L/usr/local/jemalloc/lib -Wl,-rpath,/usr/local/jemalloc/lib
+LDFLAGS = -L$(RTE_SDK)/build/lib -Wl,-rpath,$(RTE_SDK)/build/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built -L/usr/local/jemalloc/lib -Wl,-rpath,/usr/local/jemalloc/lib -L/usr/local/lmdb/lib -Wl,-rpath,/usr/local/jemalloc/lib
 
 HEADERS = $(wildcard *.h)
 SOURCES = $(wildcard *.c)
@@ -82,7 +83,7 @@ DEPENDS = $(patsubst %.c,%.d,$(wildcard *.c))
 
 sdn_sensor: $(OBJECTS)
 	@echo 'Linking sdn_sensor...'
-	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) $(STATIC_LINK) -ldl -lm -lpthread -lrt -lstdc++
+	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) $(STATIC_LINK) -ljemalloc -lunwind -ldl -lm -lpthread -lrt -lstdc++
 
 #$(OBJECTS): $(DEPENDS)
 
