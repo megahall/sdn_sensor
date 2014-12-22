@@ -12,8 +12,6 @@
 
 #include <jemalloc/jemalloc.h>
 
-#include <uthash.h>
-
 #include "ioc.h"
 #include "ip_utils.h"
 #include "nn_queue.h"
