@@ -83,8 +83,8 @@ int ss_extract_eth(ss_frame_t* fbuf) {
 }
 
 int ss_extract_dns(ss_frame_t* fbuf) {
-    ss_dns_entry_t* pptr;
-    ss_dns_entry_t* ptmp;
+    ss_dns_entry_t* dptr;
+    ss_dns_entry_t* dtmp;
     ss_ioc_entry_t* iptr;
     int rv;
     uint8_t* metadata;
@@ -126,22 +126,22 @@ int ss_extract_dns(ss_frame_t* fbuf) {
         }
     }
     
-    TAILQ_FOREACH_SAFE(pptr, &ss_conf->dns_chain.dns_list, entry, ptmp) {
+    TAILQ_FOREACH_SAFE(dptr, &ss_conf->dns_chain.dns_list, entry, dtmp) {
         int is_match = 0;
-        if (pptr->dns[0] && strcasestr(dns_question->name, pptr->dns)) {
+        if (dptr->dns[0] && strcasestr(dns_question->name, dptr->dns)) {
             is_match = 1; goto done;
         }
         for (int i = 0; i < ancount; ++i) {
             ss_answer = &fbuf->data.dns_answers[i];
             switch (ss_answer->type) {
                 case SS_TYPE_NAME: {
-                    if (pptr->dns[0] && strcasestr((char*) ss_answer->payload, pptr->dns)) {
+                    if (dptr->dns[0] && strcasestr((char*) ss_answer->payload, dptr->dns)) {
                         is_match = 1; goto done;
                     }
                     break;
                 }
                 case SS_TYPE_IP: {
-                    if (pptr->ip.family && !memcmp(ss_answer->payload, &pptr->ip, sizeof(ip_addr_t))) {
+                    if (dptr->ip.family && !memcmp(ss_answer->payload, &dptr->ip, sizeof(ip_addr_t))) {
                         is_match = 1; goto done;
                     }
                     break;
