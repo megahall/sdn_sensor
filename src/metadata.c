@@ -150,7 +150,7 @@ int ss_metadata_prepare_ip(const char* source, const char* rule, nn_queue_t* nn_
     return -1;
 }
 
-int ss_metadata_prepare_ioc(const char* source, nn_queue_t* nn_queue, ss_ioc_entry_t* iptr, json_object* json) {
+int ss_metadata_prepare_ioc(const char* source, const char* rule, nn_queue_t* nn_queue, ss_ioc_entry_t* iptr, json_object* json) {
     char ip_str[SS_ADDR_STR_MAX];
     const char* result;
     
@@ -197,13 +197,13 @@ int ss_metadata_prepare_ioc(const char* source, nn_queue_t* nn_queue, ss_ioc_ent
     
     error_out:
     fprintf(stderr, "could not serialize ioc id: %lu\n", iptr->id);
-    if (file_id)     json_object_put(file_id);
-    if (ioc_id)      json_object_put(ioc_id);
-    if (type)        json_object_put(type);
-    if (threat_type) json_object_put(threat_type);
-    if (ip)          json_object_put(ip);
-    if (value)       json_object_put(value);
-    if (dns)         json_object_put(dns);
+    if (file_id)     { json_object_put(file_id);     file_id = NULL;     }
+    if (ioc_id)      { json_object_put(ioc_id);      ioc_id = NULL;      }
+    if (type)        { json_object_put(type);        type = NULL;        }
+    if (threat_type) { json_object_put(threat_type); threat_type = NULL; }
+    if (ip)          { json_object_put(ip);          ip = NULL;          }
+    if (value)       { json_object_put(value);       value = NULL;       }
+    if (dns)         { json_object_put(dns);         dns = NULL;         }
     
     return -1;
 }
