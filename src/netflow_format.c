@@ -120,7 +120,7 @@ u_int16_t netflow_swp_fake16(u_int16_t v) {
 }
 
 uint8_t* ss_metadata_prepare_netflow(
-    const char* source, nn_queue_t* nn_queue,
+    const char* source, const char* rule, nn_queue_t* nn_queue,
     struct store_flow_complete* flow,
     ss_ioc_entry_t* ioc_entry) {
     json_object* jobject    = NULL;
@@ -143,102 +143,143 @@ uint8_t* ss_metadata_prepare_netflow(
         goto error_out;
     }
 
+    item = json_object_new_string("netflow_ioc");
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "source", item);
+    item = json_object_new_int(__sync_add_and_fetch(&nn_queue->tx_messages, 1));
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "seq_num", item);
+
     if (SHASFIELD(TAG)) {
         item = json_object_new_int(fmt_ntoh32(flow->tag.tag));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "tag", item);
     }
     if (SHASFIELD(RECV_TIME)) {
         item = json_object_new_string(iso_time(fmt_ntoh32(flow->recv_time.recv_sec), utc_flag));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "flow_sec", item);
         item = json_object_new_int(fmt_ntoh32(flow->recv_time.recv_usec));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "flow_usec", item);
     }
     if (SHASFIELD(PROTO_FLAGS_TOS)) {
         item = json_object_new_int(flow->pft.protocol);
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "ip_protocol", item);
         item = json_object_new_int(flow->pft.tcp_flags);
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "tcp_flags", item);
         item = json_object_new_int(flow->pft.tos);
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "ip_tos", item);
     }
     if (SHASFIELD(AGENT_ADDR4) || SHASFIELD(AGENT_ADDR6)) {
         item = json_object_new_string(addr_ntop_buf(&flow->agent_addr));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "agentip", item);
     }
     if (SHASFIELD(SRC_ADDR4) || SHASFIELD(SRC_ADDR6)) {
         item = json_object_new_string(addr_ntop_buf(&flow->src_addr));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "sip", item);
         item = json_object_new_int(fmt_ntoh16(flow->ports.src_port));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "sport", item);
     }
     if (SHASFIELD(DST_ADDR4) || SHASFIELD(DST_ADDR6)) {
         item = json_object_new_string(addr_ntop_buf(&flow->dst_addr));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "dip", item);
         item = json_object_new_int(fmt_ntoh16(flow->ports.dst_port));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "dport", item);
     }
     if (SHASFIELD(GATEWAY_ADDR4) || SHASFIELD(GATEWAY_ADDR6)) {
         item = json_object_new_string(addr_ntop_buf(&flow->gateway_addr));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "gatewayip", item);
     }
     if (SHASFIELD(PACKETS)) {
         item = json_object_new_int(fmt_ntoh64(flow->packets.flow_packets));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "packets", item);
     }
     if (SHASFIELD(OCTETS)) {
         item = json_object_new_int(fmt_ntoh64(flow->octets.flow_octets));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "bytes", item);
     }
     if (SHASFIELD(IF_INDICES)) {
         item = json_object_new_int(fmt_ntoh32(flow->ifndx.if_index_in));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "sifindex", item);
         item = json_object_new_int(fmt_ntoh32(flow->ifndx.if_index_out));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "difindex", item);
     }
     if (SHASFIELD(AGENT_INFO)) {
         item = json_object_new_string(interval_time(fmt_ntoh32(flow->ainfo.sys_uptime_ms) / 1000));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "sys_uptime_sec", item);
         item = json_object_new_int(fmt_ntoh32(flow->ainfo.sys_uptime_ms) % 1000);
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "sys_uptime_msec", item);
         item = json_object_new_string(iso_time(fmt_ntoh32(flow->ainfo.time_sec), utc_flag));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "sys_time_sec", item);
         item = json_object_new_int((u_long)fmt_ntoh32(flow->ainfo.time_nanosec));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "sys_time_nsec", item);
         item = json_object_new_int(fmt_ntoh16(flow->ainfo.netflow_version));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "netflow_version", item);
     }
     if (SHASFIELD(FLOW_TIMES)) {
         item = json_object_new_string(interval_time(fmt_ntoh32(flow->ftimes.flow_start) / 1000));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "flow_start_sec", item);
         item = json_object_new_int(fmt_ntoh32(flow->ftimes.flow_start) % 1000);
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "flow_start_msec", item);
         item = json_object_new_string(interval_time(fmt_ntoh32(flow->ftimes.flow_finish) / 1000));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "flow_stop_sec", item);
         item = json_object_new_int(fmt_ntoh32(flow->ftimes.flow_finish) % 1000);
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "flow_stop_msec", item);
     }
     if (SHASFIELD(AS_INFO)) {
         item = json_object_new_int(fmt_ntoh32(flow->asinf.src_as));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "src_as", item);
         item = json_object_new_int(fmt_ntoh32(flow->asinf.src_mask));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "src_masklen", item);
         item = json_object_new_int(fmt_ntoh32(flow->asinf.dst_as));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "dst_as", item);
         item = json_object_new_int(fmt_ntoh32(flow->asinf.dst_mask));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "dst_masklen", item);
     }
     if (SHASFIELD(FLOW_ENGINE_INFO)) {
         item = json_object_new_int(fmt_ntoh16(flow->finf.engine_type));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "engine_type", item);
         item = json_object_new_int(fmt_ntoh16(flow->finf.engine_id));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "engine_id", item);
         item = json_object_new_int((u_long)fmt_ntoh32(flow->finf.flow_sequence));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "seq_num", item);
         item = json_object_new_int((u_long)fmt_ntoh32(flow->finf.source_id));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "source_id", item);
     }
     if (SHASFIELD(CRC32)) {
         item = json_object_new_int(fmt_ntoh32(flow->crc32.crc32));
+        if (item == NULL) goto error_out;
         json_object_object_add(jobject, "crc32", item);
     }
 
@@ -256,9 +297,9 @@ uint8_t* ss_metadata_prepare_netflow(
     
     error_out:
     fprintf(stderr, "could not serialize packet metadata\n");
-    if (rv) { je_free(rv); rv = NULL; }
+    if (rv)      { je_free(rv); rv = NULL; }
     if (jobject) { json_object_put(jobject); jobject = NULL; }
-    if (item) { json_object_put(item); item = NULL; }
+    if (item)    { json_object_put(item); item = NULL; }
 
     return NULL;
 }
