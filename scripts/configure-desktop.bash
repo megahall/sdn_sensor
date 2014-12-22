@@ -7,7 +7,7 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-script_directory="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
+script_directory="$(dirname $(readlink -f ${BASH_SOURCE}))"
 source "${script_directory}/../sdn_sensor_rc"
 
 export RTE_SDK="${HOME}/src/dpdk"
