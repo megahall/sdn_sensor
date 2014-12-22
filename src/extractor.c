@@ -155,12 +155,12 @@ int ss_extract_dns(ss_frame_t* fbuf) {
         }
         done:
         if (!is_match) continue;
-        RTE_LOG(NOTICE, EXTRACTOR, "successful match against dns rule %s\n", pptr->name);
-        metadata = ss_metadata_prepare_frame("dns_rule", &pptr->nn_queue, fbuf, NULL);
+        RTE_LOG(NOTICE, EXTRACTOR, "successful match against dns rule %s\n", dptr->name);
+        metadata = ss_metadata_prepare_frame("dns_rule", dptr->name, &dptr->nn_queue, fbuf, NULL);
         // XXX: for now assume the output is C string
         mlength = strlen((char*) metadata);
         //printf("metadata: %s\n", metadata);
-        rv = ss_nn_queue_send(&pptr->nn_queue, metadata, mlength);
+        rv = ss_nn_queue_send(&dptr->nn_queue, metadata, mlength);
     }
 
     iptr = ss_ioc_dns_match(&fbuf->data);
@@ -169,7 +169,7 @@ int ss_extract_dns(ss_frame_t* fbuf) {
         RTE_LOG(NOTICE, EXTRACTOR, "successful ioc match from dns frame\n");
         ss_ioc_entry_dump_dpdk(iptr);
         nn_queue_t* nn_queue = &ss_conf->ioc_files[iptr->file_id].nn_queue;
-        metadata = ss_metadata_prepare_frame("dns_ioc", nn_queue, fbuf, iptr);
+        metadata = ss_metadata_prepare_frame("dns_ioc", NULL, nn_queue, fbuf, iptr);
         // XXX: for now assume the output is C char*
         mlength = strlen((char*) metadata);
         //printf("metadata: %s\n", metadata);
@@ -263,12 +263,12 @@ int ss_extract_syslog(ss_frame_t* fbuf) {
     
     if (re_match.re_entry->type == SS_RE_TYPE_COMPLETE) {
         // include length of null byte
-        metadata = ss_metadata_prepare_syslog("udp_syslog", &re_match.re_entry->nn_queue, fbuf, NULL);
+        metadata = ss_metadata_prepare_syslog("udp_syslog", re_match.re_entry->name, &re_match.re_entry->nn_queue, fbuf, NULL);
     }
     else if (re_match.re_entry->type == SS_RE_TYPE_SUBSTRING) {
         ss_ioc_entry_dump_dpdk(re_match.ioc_entry);
         // include length of null byte
-        metadata = ss_metadata_prepare_syslog("udp_syslog", &re_match.re_entry->nn_queue, fbuf, re_match.ioc_entry);
+        metadata = ss_metadata_prepare_syslog("udp_syslog", re_match.re_entry->name, &re_match.re_entry->nn_queue, fbuf, re_match.ioc_entry);
     }
     
     if (metadata) {
