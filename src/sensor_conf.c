@@ -36,8 +36,21 @@
 static uint64_t ss_conf_tsc_hz;
 
 int ss_conf_destroy() {
-    // XXX: destroy everything else in ss_conf_t
+    // XXX: destroy everything in ss_conf_t
+    wordfree(&ss_conf->eal_vector);
+
+    ss_pcap_chain_destroy();
+    ss_cidr_table_destroy(&ss_conf->cidr_table);
+    ss_dns_chain_destroy();
+    ss_re_chain_destroy();
+    ss_ioc_chain_destroy();
+
+    // XXX: destroy ss_ioc_entry_t* tables
+
+    mdb_env_close(ss_conf->mdb_env);
+
     je_free(ss_conf);
+
     return 0;
 }
 
