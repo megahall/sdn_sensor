@@ -28,6 +28,10 @@
 #include "netflow_format.h"
 #include "sdn_sensor.h"
 
+#if defined(SS_IOC_BACKEND_RAM) && defined(SS_IOC_BACKEND_DISK)
+#error "SS_IOC_BACKEND_RAM and SS_IOC_BACKEND_DISK are mutually exclusive"
+#endif
+
 #define SS_IOC_LINE_DELIMITER   '\n'
 #define SS_IOC_FIELD_DELIMITERS ",\n"
 
@@ -116,7 +120,9 @@ int ss_ioc_file_load(json_object* ioc_json) {
     error_out:
     if (ioc_file->path) je_free(ioc_file->path);
     if (ioc_fd)         fclose(ioc_fd);
-    fprintf(stderr, "ioc_file %s could not be loaded\n", ioc_file->path);
+    if (rv != 0) {
+        fprintf(stderr, "ioc_file %s could not be loaded\n", ioc_file->path);
+    }
     
     return rv;
 }
@@ -140,52 +146,124 @@ int ss_ioc_chain_dump(uint64_t limit) {
 int ss_ioc_tables_dump(uint64_t limit) {
     uint64_t counter;
     ss_ioc_entry_t* iptr;
+#ifdef SS_IOC_BACKEND_RAM
     ss_ioc_entry_t* itmp;
+#elif SS_IOC_BACKEND_DISK
+    int rv;
+    MDB_txn*    txn;
+    MDB_cursor* cursor;
+    MDB_val     key, value;
+    rv = mdb_txn_begin(ss_conf->mdb_env, NULL, 0, &txn);
+#endif
     
     counter = 1;
     fprintf(stderr, "dumping %lu entries from ip4_table...\n", limit);
+#ifdef SS_IOC_BACKEND_RAM
     HASH_ITER(hh, ss_conf->ip4_table, iptr, itmp) {
         fprintf(stderr, "ip4_table entry number %lu\n", counter);
         ss_ioc_entry_dump(iptr);
         counter++;
         if (limit && counter > limit) break;
     }
+#elif SS_IOC_BACKEND_DISK
+    rv = mdb_cursor_open(txn, ss_conf->ip4_dbi, &cursor);
+    while (mdb_cursor_get(cursor, &key, &value, MDB_NEXT) == 0) {
+        fprintf(stderr, "ip4_table entry number %lu\n", counter);
+        iptr = (ss_ioc_entry_t*) value.mv_data;
+        ss_ioc_entry_dump(iptr);
+        counter++;
+        if (limit && counter > limit) break;
+    }
+    mdb_cursor_close(cursor);
+#endif
     
     counter = 1;
     fprintf(stderr, "dumping %lu entries from ip6_table...\n", limit);
+#ifdef SS_IOC_BACKEND_RAM
     HASH_ITER(hh, ss_conf->ip6_table, iptr, itmp) {
         fprintf(stderr, "ip6_table entry number %lu\n", counter);
         ss_ioc_entry_dump(iptr);
         counter++;
         if (limit && counter > limit) break;
     }
+#elif SS_IOC_BACKEND_DISK
+    rv = mdb_cursor_open(txn, ss_conf->ip6_dbi, &cursor);
+    while (mdb_cursor_get(cursor, &key, &value, MDB_NEXT) == 0) {
+        fprintf(stderr, "ip6_table entry number %lu\n", counter);
+        iptr = (ss_ioc_entry_t*) value.mv_data;
+        ss_ioc_entry_dump(iptr);
+        counter++;
+        if (limit && counter > limit) break;
+    }
+    mdb_cursor_close(cursor);
+#endif
     
     counter = 1;
     fprintf(stderr, "dumping %lu entries from domain_table...\n", limit);
+#ifdef SS_IOC_BACKEND_RAM
     HASH_ITER(hh, ss_conf->domain_table, iptr, itmp) {
         fprintf(stderr, "domain_table entry number %lu\n", counter);
         ss_ioc_entry_dump(iptr);
         counter++;
         if (limit && counter > limit) break;
     }
+#elif SS_IOC_BACKEND_DISK
+    rv = mdb_cursor_open(txn, ss_conf->domain_dbi, &cursor);
+    while (mdb_cursor_get(cursor, &key, &value, MDB_NEXT) == 0) {
+        fprintf(stderr, "domain_table entry number %lu\n", counter);
+        iptr = (ss_ioc_entry_t*) value.mv_data;
+        ss_ioc_entry_dump(iptr);
+        counter++;
+        if (limit && counter > limit) break;
+    }
+    mdb_cursor_close(cursor);
+#endif
     
     counter = 1;
     fprintf(stderr, "dumping %lu entries from url_table...\n", limit);
+#ifdef SS_IOC_BACKEND_RAM
     HASH_ITER(hh_full, ss_conf->url_table, iptr, itmp) {
         fprintf(stderr, "url_table entry number %lu\n", counter);
         ss_ioc_entry_dump(iptr);
         counter++;
         if (limit && counter > limit) break;
     }
-    
+#elif SS_IOC_BACKEND_DISK
+    rv = mdb_cursor_open(txn, ss_conf->url_dbi, &cursor);
+    while (mdb_cursor_get(cursor, &key, &value, MDB_NEXT) == 0) {
+        fprintf(stderr, "url_table entry number %lu\n", counter);
+        iptr = (ss_ioc_entry_t*) value.mv_data;
+        ss_ioc_entry_dump(iptr);
+        counter++;
+        if (limit && counter > limit) break;
+    }
+    mdb_cursor_close(cursor);
+#endif
+
     counter = 1;
     fprintf(stderr, "dumping %lu entries from email_table...\n", limit);
+#ifdef SS_IOC_BACKEND_RAM
     HASH_ITER(hh_full, ss_conf->email_table, iptr, itmp) {
         fprintf(stderr, "email_table entry number %lu\n", counter);
         ss_ioc_entry_dump(iptr);
         counter++;
         if (limit && counter > limit) break;
     }
+#elif SS_IOC_BACKEND_DISK
+    rv = mdb_cursor_open(txn, ss_conf->email_dbi, &cursor);
+    while (mdb_cursor_get(cursor, &key, &value, MDB_NEXT) == 0) {
+        fprintf(stderr, "email_table entry number %lu\n", counter);
+        iptr = (ss_ioc_entry_t*) value.mv_data;
+        ss_ioc_entry_dump(iptr);
+        counter++;
+        if (limit && counter > limit) break;
+    }
+    mdb_cursor_close(cursor);
+#endif
+
+#ifdef SS_IOC_BACKEND_DISK
+    if (txn) mdb_txn_abort(txn);
+#endif
     
     return 0;
 }
@@ -293,13 +371,13 @@ ss_ioc_type_t ss_ioc_type_load(const char* ioc_type) {
 
 const char* ss_ioc_type_dump(ss_ioc_type_t ioc_type) {
     switch (ioc_type) {
-        case SS_IOC_TYPE_IP:     return "SS_IOC_TYPE_IP";
-        case SS_IOC_TYPE_DOMAIN: return "SS_IOC_TYPE_DOMAIN";
-        case SS_IOC_TYPE_URL:    return "SS_IOC_TYPE_URL";
-        case SS_IOC_TYPE_EMAIL:  return "SS_IOC_TYPE_EMAIL";
-        case SS_IOC_TYPE_MD5:    return "SS_IOC_TYPE_MD5";
-        case SS_IOC_TYPE_SHA256: return "SS_IOC_TYPE_SHA256";
-        default:                 return "SS_IOC_TYPE_UNKNOWN";
+        case SS_IOC_TYPE_IP:     return "IP";
+        case SS_IOC_TYPE_DOMAIN: return "DOMAIN";
+        case SS_IOC_TYPE_URL:    return "URL";
+        case SS_IOC_TYPE_EMAIL:  return "EMAIL";
+        case SS_IOC_TYPE_MD5:    return "MD5";
+        case SS_IOC_TYPE_SHA256: return "SHA256";
+        default:                 return "UNKNOWN";
     }
 }
 
@@ -317,7 +395,7 @@ int ss_ioc_chain_remove_index(int index) {
     ss_ioc_entry_t* iptr;
     ss_ioc_entry_t* itmp;
     TAILQ_FOREACH_SAFE(iptr, &ss_conf->ioc_chain.ioc_list, entry, itmp) {
-        if (counter == index) {
+       if (counter == index) {
             TAILQ_REMOVE(&ss_conf->ioc_chain.ioc_list, iptr, entry);
             return 0;
         }
@@ -341,10 +419,22 @@ int ss_ioc_chain_remove_id(uint64_t id) {
 int ss_ioc_chain_optimize() {
     ss_ioc_entry_t* iptr;
     ss_ioc_entry_t* itmp;
-    ss_ioc_entry_t* hiptr;
     char* header;
     char  tvalue[SS_DNS_NAME_MAX];
     int   offset;
+#ifdef SS_IOC_BACKEND_RAM
+    ss_ioc_entry_t* hiptr;
+#elif SS_IOC_BACKEND_DISK
+    int   rv;
+    MDB_txn* txn = NULL;
+    MDB_val  key, value;
+    
+    rv = mdb_txn_begin(ss_conf->mdb_env, NULL, 0, &txn);
+    if (rv) {
+        fprintf(stderr, "could not begin ioc optimization mdb transaction: %s\n", mdb_strerror(rv));
+        return -1;
+    }
+#endif
     
     fprintf(stderr, "optimizing IOCs...\n");
     
@@ -360,23 +450,47 @@ int ss_ioc_chain_optimize() {
                 //fprintf(stderr, "ioc id %lu, extracted ip value: %s\n", iptr->id, tvalue);
                 switch (iptr->ip.family) {
                     case SS_AF_INET4: {
+#ifdef SS_IOC_BACKEND_RAM
                         HASH_FIND_INT(ss_conf->ip4_table, &iptr->ip.ip4_addr, hiptr);
                         if (hiptr == NULL) {
-                            HASH_ADD_INT(ss_conf->ip4_table, ip.ip4_addr, iptr);
+                            HASH_ADD_INT(ss_conf->ip4_table, &iptr->ip.ip4_addr, iptr);
                         }
                         else {
                             fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
                         }
+#elif SS_IOC_BACKEND_DISK
+                        key.mv_size   = sizeof(iptr->ip.ip4_addr);
+                        key.mv_data   = &iptr->ip.ip4_addr;
+                        value.mv_size = sizeof(*iptr);
+                        value.mv_data = iptr;
+                        rv = mdb_put(txn, ss_conf->ip4_dbi, &key, &value, 0);
+                        if (rv) {
+                            fprintf(stderr, "ioc id %lu: could not insert in ip4_dbi: %s\n", iptr->id, mdb_strerror(rv));
+                            goto next_ioc;
+                        }
+#endif
                         break;
                     }
                     case SS_AF_INET6: {
+#ifdef SS_IOC_BACKEND_RAM
                         HASH_FIND(hh, ss_conf->ip6_table, &iptr->ip.ip6_addr, sizeof(iptr->ip.ip6_addr), hiptr);
                         if (hiptr == NULL) {
-                            HASH_ADD(hh, ss_conf->ip6_table, ip.ip6_addr, sizeof(iptr->ip.ip6_addr), iptr);
+                            HASH_ADD(hh, ss_conf->ip6_table, &iptr->ip.ip6_addr, sizeof(iptr->ip.ip6_addr), iptr);
                         }
                         else {
                             fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
                         }
+#elif SS_IOC_BACKEND_DISK
+                        key.mv_size   = sizeof(iptr->ip.ip6_addr);
+                        key.mv_data   = &iptr->ip.ip6_addr;
+                        value.mv_size = sizeof(*iptr);
+                        value.mv_data = iptr;
+                        rv = mdb_put(txn, ss_conf->ip6_dbi, &key, &value, 0);
+                        if (rv) {
+                            fprintf(stderr, "ioc id %lu: could not insert in ip6_dbi: %s\n", iptr->id, mdb_strerror(rv));
+                            goto next_ioc;
+                        }
+#endif
                         break;
                     }
                     default: {
@@ -395,6 +509,7 @@ int ss_ioc_chain_optimize() {
                 }
                 strlcpy(iptr->value, tvalue, sizeof(iptr->value));
                 //fprintf(stderr, "ioc %lu extracted dns domain: %s\n", iptr->id, domain);
+#ifdef SS_IOC_BACKEND_RAM
                 HASH_FIND_STR(ss_conf->domain_table, iptr->value, hiptr);
                 if (hiptr == NULL) {
                     HASH_ADD_STR(ss_conf->domain_table, value, iptr);
@@ -402,6 +517,17 @@ int ss_ioc_chain_optimize() {
                 else {
                     fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, iptr->value);
                 }
+#elif SS_IOC_BACKEND_DISK
+                key.mv_size   = strlen(iptr->value);
+                key.mv_data   = iptr->value;
+                value.mv_size = sizeof(*iptr);
+                value.mv_data = iptr;
+                rv = mdb_put(txn, ss_conf->domain_dbi, &key, &value, 0);
+                if (rv) {
+                    fprintf(stderr, "ioc id %lu: could not insert in domain_dbi: %s\n", iptr->id, mdb_strerror(rv));
+                    goto next_ioc;
+                }
+#endif
                 break;
             }
             case SS_IOC_TYPE_URL: {
@@ -429,6 +555,7 @@ int ss_ioc_chain_optimize() {
                 }
                 strlcpy(iptr->dns, tvalue, sizeof(iptr->dns));
                 //fprintf(stderr, "ioc %lu extracted url domain: %s\n", iptr->id, tvalue);
+#ifdef SS_IOC_BACKEND_RAM
                 HASH_FIND_STR(ss_conf->domain_table, iptr->dns, hiptr);
                 if (hiptr == NULL) {
                     HASH_ADD_STR(ss_conf->domain_table, dns, iptr);
@@ -443,6 +570,26 @@ int ss_ioc_chain_optimize() {
                 else {
                     fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, iptr->value);
                 }
+#elif SS_IOC_BACKEND_DISK
+                key.mv_size   = strlen(iptr->dns);
+                key.mv_data   = iptr->dns;
+                value.mv_size = sizeof(*iptr);
+                value.mv_data = iptr;
+                rv = mdb_put(txn, ss_conf->domain_dbi, &key, &value, 0);
+                if (rv) {
+                    fprintf(stderr, "ioc id %lu: could not insert in domain_dbi: %s\n", iptr->id, mdb_strerror(rv));
+                    goto next_ioc;
+                }
+                key.mv_size   = strlen(iptr->value);
+                key.mv_data   = iptr->value;
+                value.mv_size = sizeof(*iptr);
+                value.mv_data = iptr;
+                rv = mdb_put(txn, ss_conf->url_dbi, &key, &value, 0);
+                if (rv) {
+                    fprintf(stderr, "ioc id %lu: could not insert in url_dbi: %s\n", iptr->id, mdb_strerror(rv));
+                    goto next_ioc;
+                }
+#endif
                 break;
             }
             case SS_IOC_TYPE_EMAIL: {
@@ -463,6 +610,7 @@ int ss_ioc_chain_optimize() {
                 }
                 strlcpy(iptr->dns, tvalue, sizeof(iptr->dns));
                 fprintf(stderr, "ioc %lu extracted email domain: %s\n", iptr->id, tvalue);
+#ifdef SS_IOC_BACKEND_RAM
                 HASH_FIND_STR(ss_conf->domain_table, iptr->dns, hiptr);
                 if (hiptr == NULL) {
                     HASH_ADD_STR(ss_conf->domain_table, dns, iptr);
@@ -477,6 +625,26 @@ int ss_ioc_chain_optimize() {
                 else {
                     fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, iptr->value);
                 }
+#elif SS_IOC_BACKEND_DISK
+                key.mv_size   = strlen(iptr->dns);
+                key.mv_data   = iptr->dns;
+                value.mv_size = sizeof(*iptr);
+                value.mv_data = iptr;
+                rv = mdb_put(txn, ss_conf->domain_dbi, &key, &value, 0);
+                if (rv) {
+                    fprintf(stderr, "ioc id %lu: could not insert in domain_dbi: %s\n", iptr->id, mdb_strerror(rv));
+                    goto next_ioc;
+                }
+                key.mv_size   = strlen(iptr->value);
+                key.mv_data   = iptr->value;
+                value.mv_size = sizeof(*iptr);
+                value.mv_data = iptr;
+                rv = mdb_put(txn, ss_conf->email_dbi, &key, &value, 0);
+                if (rv) {
+                    fprintf(stderr, "ioc id %lu: could not insert in email_dbi: %s\n", iptr->id, mdb_strerror(rv));
+                    goto next_ioc;
+                }
+#endif
                 break;
             }
             case SS_IOC_TYPE_MD5: {
@@ -498,6 +666,14 @@ int ss_ioc_chain_optimize() {
         }
     }
     
+#ifdef SS_IOC_BACKEND_DISK
+    rv = mdb_txn_commit(txn);
+    if (rv) {
+        fprintf(stderr, "could not commit ioc optimization mdb transaction: %s\n", mdb_strerror(rv));
+        return -1;
+    }
+#endif
+    
     fprintf(stderr, "optimized %lu IOCs\n", indicators);
     return 0;
 }
@@ -505,44 +681,129 @@ int ss_ioc_chain_optimize() {
 ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md) {
     ss_ioc_entry_t* iptr = NULL;
     uint32_t ip;
+#ifdef SS_IOC_BACKEND_DISK
+    int   rv;
+    MDB_txn* txn = NULL;
+    MDB_val  key, value;
+    
+    rv = mdb_txn_begin(ss_conf->mdb_env, NULL, MDB_RDONLY, &txn);
+    if (rv) {
+        fprintf(stderr, "could not begin ioc metadata mdb transaction: %s\n", mdb_strerror(rv));
+        return NULL;
+    }
+#endif
     
     if (md->eth_type == ETHER_TYPE_IPV4) {
         ip = *(uint32_t*) &md->sip;
+#ifdef SS_IOC_BACKEND_RAM
         HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
         if (iptr) goto out;
+#elif SS_IOC_BACKEND_DISK
+        key.mv_size = sizeof(uint32_t);
+        key.mv_data = (uint32_t*) &md->sip;
+        rv = mdb_get(txn, ss_conf->ip4_dbi, &key, &value);
+        if (rv != MDB_NOTFOUND) {
+            iptr = (ss_ioc_entry_t*) value.mv_data;
+            goto out;
+        }
+#endif
         
         ip = *(uint32_t*) &md->dip;
+#ifdef SS_IOC_BACKEND_RAM
         HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
         if (iptr) goto out;
+#elif SS_IOC_BACKEND_DISK
+        key.mv_size = sizeof(uint32_t);
+        key.mv_data = (uint32_t*) &md->dip;
+        rv = mdb_get(txn, ss_conf->ip4_dbi, &key, &value);
+        if (rv != MDB_NOTFOUND) {
+            iptr = (ss_ioc_entry_t*) value.mv_data;
+            goto out;
+        }
+#endif
     }
     else if (md->eth_type == ETHER_TYPE_IPV6) {
+#ifdef SS_IOC_BACKEND_RAM
         HASH_FIND(hh, ss_conf->ip6_table, &md->sip, sizeof(md->sip), iptr);
         if (iptr) goto out;
+#elif SS_IOC_BACKEND_DISK
+        key.mv_size = sizeof(md->sip);
+        key.mv_data = &md->sip;
+        rv = mdb_get(txn, ss_conf->ip6_dbi, &key, &value);
+        if (rv != MDB_NOTFOUND) {
+            iptr = (ss_ioc_entry_t*) value.mv_data;
+            goto out;
+        }
+#endif
         
+#ifdef SS_IOC_BACKEND_RAM
         HASH_FIND(hh, ss_conf->ip6_table, &md->dip, sizeof(md->dip), iptr);
         if (iptr) goto out;
+#elif SS_IOC_BACKEND_DISK
+        key.mv_size = sizeof(md->dip);
+        key.mv_data = &md->dip;
+        rv = mdb_get(txn, ss_conf->ip6_dbi, &key, &value);
+        if (rv != MDB_NOTFOUND) {
+            iptr = (ss_ioc_entry_t*) value.mv_data;
+            goto out;
+        }
+#endif
     }
     
     out:
+#ifdef SS_IOC_BACKEND_DISK
+    if (txn) mdb_txn_abort(txn);
+#endif
     return iptr;
 }
 
 ss_ioc_entry_t* ss_ioc_dns_match(ss_metadata_t* md) {
     ss_ioc_entry_t* iptr = NULL;
-    uint32_t ip;
+#ifdef SS_IOC_BACKEND_DISK
+    int   rv;
+    MDB_txn* txn = NULL;
+    MDB_val  key, value;
+    
+    rv = mdb_txn_begin(ss_conf->mdb_env, NULL, MDB_RDONLY, &txn);
+    if (rv) {
+        fprintf(stderr, "could not begin ioc dns match mdb transaction: %s\n", mdb_strerror(rv));
+        return NULL;
+    }
+#endif
+
+#ifdef SS_IOC_BACKEND_RAM
     HASH_FIND_STR(ss_conf->domain_table, (char*) md->dns_name, iptr);
-    if (iptr) return iptr;
+    if (iptr) goto out;
+#elif SS_IOC_BACKEND_DISK
+    key.mv_size = strlen((char*)md->dns_name);
+    key.mv_data = &md->dns_name;
+    rv = mdb_get(txn, ss_conf->domain_dbi, &key, &value);
+    if (rv != MDB_NOTFOUND) {
+        iptr = (ss_ioc_entry_t*) value.mv_data;
+        goto out;
+    }
+#endif
     
     for (int i = 0; i < SS_DNS_RESULT_MAX; ++i) {
         ss_answer_t* dns_answer = &md->dns_answers[i];
         switch (dns_answer->type) {
             case SS_TYPE_NAME: {
+#ifdef SS_IOC_BACKEND_RAM
                 HASH_FIND_STR(ss_conf->domain_table, (char*) dns_answer->payload, iptr);
                 if (iptr) goto out;
+#elif SS_IOC_BACKEND_DISK
+                key.mv_size = strlen((char*)md->dns_name);
+                key.mv_data = &md->dns_name;
+                rv = mdb_get(txn, ss_conf->domain_dbi, &key, &value);
+                if (rv != MDB_NOTFOUND) {
+                    iptr = (ss_ioc_entry_t*) value.mv_data;
+                    goto out;
+                }
+#endif
                 break;
             }
             case SS_TYPE_IP: {
-                HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
+                iptr = ss_ioc_ip_match((ip_addr_t*) dns_answer->payload);
                 if (iptr) goto out;
                 break;
             }
@@ -554,15 +815,28 @@ ss_ioc_entry_t* ss_ioc_dns_match(ss_metadata_t* md) {
     }
     
     out:
+#ifdef SS_IOC_BACKEND_DISK
+    if (txn) mdb_txn_abort(txn);
+#endif
     return iptr;
 }
 
+// XXX: for URL and email, this should also try to match the domain
 ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type) {
     int             rv;
     ss_ioc_entry_t* iptr = NULL;
-    uint32_t        ip;
     ip_addr_t       ip_addr;
     char            tdns[SS_DNS_NAME_MAX];
+#ifdef SS_IOC_BACKEND_DISK
+    MDB_txn* txn = NULL;
+    MDB_val  key, value;
+    
+    rv = mdb_txn_begin(ss_conf->mdb_env, NULL, MDB_RDONLY, &txn);
+    if (rv) {
+        fprintf(stderr, "could not begin ioc syslog match mdb transaction: %s\n", mdb_strerror(rv));
+        return NULL;
+    }
+#endif
     
     switch (ioc_type) {
         case SS_IOC_TYPE_IP: {
@@ -570,12 +844,8 @@ ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type) {
             if (rv != 1) {
                 fprintf(stderr, "could not extract ip from ioc %s\n", ioc);
             }
-            else if (ip_addr.family == SS_AF_INET4) {
-                ip = *(uint32_t*) &ip_addr.ip4_addr.addr;
-                HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
-            }
-            else if (ip_addr.family == SS_AF_INET6) {
-                HASH_FIND(hh, ss_conf->ip6_table, &ip_addr.ip6_addr.addr, sizeof(ip_addr.ip6_addr.addr), iptr);
+            else {
+                iptr = ss_ioc_ip_match(&ip_addr);
             }
             break;
         }
@@ -586,15 +856,42 @@ ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type) {
                 tdns[rv]         = '.';
                 tdns[rv + 1]     = '\0';
             }
+#ifdef SS_IOC_BACKEND_RAM
             HASH_FIND_STR(ss_conf->domain_table, tdns, iptr);
+#elif SS_IOC_BACKEND_DISK
+            key.mv_size   = strlen(tdns);
+            key.mv_data   = tdns;
+            rv = mdb_get(txn, ss_conf->domain_dbi, &key, &value);
+            if (rv != MDB_NOTFOUND) {
+                iptr = (ss_ioc_entry_t*) value.mv_data;
+            }
+#endif
             break;
         }
         case SS_IOC_TYPE_URL: {
+#ifdef SS_IOC_BACKEND_RAM
             HASH_FIND(hh_full, ss_conf->url_table, ioc, strlen(ioc), iptr);
+#elif SS_IOC_BACKEND_DISK
+            key.mv_size   = strlen(ioc);
+            key.mv_data   = (void*) ioc;
+            rv = mdb_get(txn, ss_conf->url_dbi, &key, &value);
+            if (rv != MDB_NOTFOUND) {
+                iptr = (ss_ioc_entry_t*) value.mv_data;
+            }
+#endif
             break;
         }
         case SS_IOC_TYPE_EMAIL: {
+#ifdef SS_IOC_BACKEND_RAM
             HASH_FIND(hh_full, ss_conf->email_table, ioc, strlen(ioc), iptr);
+#elif SS_IOC_BACKEND_DISK
+            key.mv_size   = strlen(ioc);
+            key.mv_data   = (void*) ioc;
+            rv = mdb_get(txn, ss_conf->email_dbi, &key, &value);
+            if (rv != MDB_NOTFOUND) {
+                iptr = (ss_ioc_entry_t*) value.mv_data;
+            }
+#endif
             break;
         }
         case SS_IOC_TYPE_MD5: {
@@ -612,21 +909,115 @@ ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type) {
     }
     
     out:
+#ifdef SS_IOC_BACKEND_DISK
+    if (txn) mdb_txn_abort(txn);
+#endif
+    return iptr;
+}
+
+ss_ioc_entry_t* ss_ioc_ip_match(ip_addr_t* ip) {
+    ss_ioc_entry_t* iptr = NULL;
+#ifdef SS_IOC_BACKEND_DISK
+    int   rv;
+    MDB_txn* txn = NULL;
+    MDB_val  key, value;
+    
+    rv = mdb_txn_begin(ss_conf->mdb_env, NULL, MDB_RDONLY, &txn);
+    if (rv) {
+        fprintf(stderr, "could not begin ioc ip match mdb transaction: %s\n", mdb_strerror(rv));
+        return NULL;
+    }
+#endif
+
+    switch (ip->family) {
+        case SS_AF_INET4: {
+#ifdef SS_IOC_BACKEND_RAM
+            HASH_FIND_INT(ss_conf->ip4_table, ip->ip4_addr, iptr);
+            if (iptr) goto out;
+#elif SS_IOC_BACKEND_DISK
+            key.mv_size   = sizeof(uint32_t);
+            key.mv_data   = (uint32_t*) &ip->ip4_addr;
+            rv = mdb_get(txn, ss_conf->ip4_dbi, &key, &value);
+            if (rv != MDB_NOTFOUND) {
+                iptr = (ss_ioc_entry_t*) value.mv_data;
+                goto out;
+            }
+#endif
+            break;
+        }
+        case SS_AF_INET6: {
+#ifdef SS_IOC_BACKEND_RAM
+            HASH_FIND(hh, ss_conf->ip6_table, ip->ip6_addr, sizeof(ip->ip6_addr), iptr);
+            if (iptr) goto out;
+#elif SS_IOC_BACKEND_DISK
+            key.mv_size   = sizeof(ip->ip6_addr);
+            key.mv_data   = &ip->ip6_addr;
+            rv = mdb_get(txn, ss_conf->ip6_dbi, &key, &value);
+            if (rv != MDB_NOTFOUND) {
+                iptr = (ss_ioc_entry_t*) value.mv_data;
+                goto out;
+            }
+#endif
+            break;
+        }
+        default: {
+        }
+    }
+    
+    out:
+#ifdef SS_IOC_BACKEND_DISK
+    if (txn) mdb_txn_abort(txn);
+#endif
     return iptr;
 }
 
 ss_ioc_entry_t* ss_ioc_xaddr_match(struct xaddr* addr) {
     ss_ioc_entry_t* iptr = NULL;
     uint32_t ip;
+#ifdef SS_IOC_BACKEND_DISK
+    int   rv;
+    MDB_txn* txn = NULL;
+    MDB_val  key, value;
+    
+    rv = mdb_txn_begin(ss_conf->mdb_env, NULL, MDB_RDONLY, &txn);
+    if (rv) {
+        fprintf(stderr, "could not begin ioc xaddr match mdb transaction: %s\n", mdb_strerror(rv));
+        goto out;
+    }
+#endif
     
     if      (addr->af == SS_AF_INET4) {
         ip = *(uint32_t*) &addr->v4.s_addr;
+#ifdef SS_IOC_BACKEND_RAM
         HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
+#elif SS_IOC_BACKEND_DISK
+        key.mv_size   = sizeof(uint32_t);
+        key.mv_data   = &ip;
+        rv = mdb_get(txn, ss_conf->ip4_dbi, &key, &value);
+        if (rv != MDB_NOTFOUND) {
+            iptr = (ss_ioc_entry_t*) value.mv_data;
+            goto out;
+        }
+#endif
     }
     else if (addr->af == SS_AF_INET6) {
+#ifdef SS_IOC_BACKEND_RAM
         HASH_FIND(hh, ss_conf->ip6_table, addr->v6.s6_addr, sizeof(addr->v6.s6_addr), iptr);
+#elif SS_IOC_BACKEND_DISK
+        key.mv_size   = sizeof(addr->v6.s6_addr);
+        key.mv_data   = addr->v6.s6_addr;
+        rv = mdb_get(txn, ss_conf->ip6_dbi, &key, &value);
+        if (rv != MDB_NOTFOUND) {
+            iptr = (ss_ioc_entry_t*) value.mv_data;
+            goto out;
+        }
+#endif
     }
-    
+
+    out:    
+#ifdef SS_IOC_BACKEND_DISK
+    if (txn) mdb_txn_abort(txn);
+#endif
     return iptr;
 }
 

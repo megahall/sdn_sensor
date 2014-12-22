@@ -78,6 +78,7 @@ int ss_ioc_chain_optimize(void);
 ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md);
 ss_ioc_entry_t* ss_ioc_dns_match(ss_metadata_t* md);
 ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type);
+ss_ioc_entry_t* ss_ioc_ip_match(ip_addr_t* ip);
 ss_ioc_entry_t* ss_ioc_xaddr_match(struct xaddr* addr);
 ss_ioc_entry_t* ss_ioc_netflow_match(struct store_flow_complete* flow);
 
