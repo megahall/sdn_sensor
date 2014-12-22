@@ -258,7 +258,7 @@ u_int16_t netflow_swp_hton16(u_int16_t v);
 u_int64_t netflow_swp_fake64(u_int64_t v);
 u_int32_t netflow_swp_fake32(u_int32_t v);
 u_int16_t netflow_swp_fake16(u_int16_t v);
-uint8_t* ss_metadata_prepare_netflow(const char* source, nn_queue_t* nn_queue, struct store_flow_complete* flow, ss_ioc_entry_t* ioc_entry);
+uint8_t* ss_metadata_prepare_netflow(const char* source, const char* rule, nn_queue_t* nn_queue, struct store_flow_complete* flow, ss_ioc_entry_t* ioc_entry);
 void netflow_format_flow(struct store_flow_complete* flow, char* buf, size_t len, int utc_flag, u_int32_t display_mask, int hostorder);
 u_int64_t netflow_ntohll(u_int64_t v);
 u_int64_t netflow_htonll(u_int64_t v);
