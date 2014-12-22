@@ -21,7 +21,7 @@ while getopts ":dv" optopt; do
     esac
 done
 
-script_directory="$(dirname $(readlink -f ${BASH_SOURCE[0]}))"
+script_directory="$(dirname $(readlink -f ${BASH_SOURCE}))"
 source "${script_directory}/../sdn_sensor_rc"
 
 cd "${build_directory}"
