@@ -26,7 +26,7 @@ $parser->space_before(1);
 $parser->space_after(1);
 $parser->utf8(1);
 
-my $rv;
+my $rv = 0;
 
 my $nn_socket = nn_socket(AF_SP, NN_PULL);
 die "nn_socket failed: $!" if $nn_socket < 0;
@@ -36,7 +36,7 @@ nn_setsockopt($nn_socket, NN_SOL_SOCKET, NN_IPV4ONLY, 0) or die "nn_setsockopt f
 my $ip_list   = qx(hostname --all-ip-addresses);
 my @ip_list   = split(" ", $ip_list);
 unshift(@ip_list, "127.0.0.1");
-my @port_list = ( "10001", "10002", "10003", "10004", "10005" );
+my @port_list = ( "10001", "10002", "10003", "10004", "10005", "31337" );
 my @bind_list = ();
 
 foreach my $ip (@ip_list) {
@@ -52,6 +52,13 @@ foreach my $ip (@ip_list) {
 
 my $verbose = 0;
 
+my $is_running = 1;
+
+sub handle_sigint {
+    my ($sig_name) = @_;
+    $is_running = 0;
+}
+
 sub handle_sigusr1 {
     my ($sig_name) = @_;
     
@@ -64,6 +71,7 @@ sub handle_sigusr1 {
     }
 }
 
+$SIG{'INT'}  = \&handle_sigint;
 $SIG{'USR1'} = \&handle_sigusr1;
 
 my $options = {};
@@ -81,17 +89,19 @@ my $buffer = "";
 my $message;
 my $source;
 
-while (1) {
+$start = time();
+my $first_cycle = 1;
+
+while ($is_running) {
     $rv = nn_recv($nn_socket, $buffer, 131072, 0);
-    last if ($rv == -1);
-    $start = time() unless $start;
-    
+    last if ! defined($rv) or ($rv == -1);
+    if ($first_cycle) { $start = time(); $first_cycle = 0; }
     $length = length($buffer);
     $total_length += $length;
     ++$message_id;
     $message = $parser->decode($buffer);
     $source = $message->{'source'} || "";
-    print "received callback id $message_id size $length: " . $buffer . "\n" unless $source eq 'pcap';
+    #print "received callback id $message_id size $length: " . $buffer . "\n" unless $source eq 'pcap';
 }
 
 my $stop      = time();
