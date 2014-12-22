@@ -166,11 +166,12 @@ int ss_nn_queue_send(nn_queue_t* nn_queue, uint8_t* message, uint16_t length) {
     rv = nn_send(nn_queue->conn, message, length, NN_DONTWAIT);
     
     if (rv >= 0) {
-        nn_queue->tx_messages += 1;
-        nn_queue->tx_bytes    += rv;
+        // XXX: note: tx_messages is used as seq_num
+        // incremented in different code from this
+        __sync_add_and_fetch(&nn_queue->tx_bytes, rv);
     }
     else {
-        nn_queue->tx_discards += 1;
+        __sync_add_and_fetch(&nn_queue->tx_discards, 1);
     }
     
     return rv;
