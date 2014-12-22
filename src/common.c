@@ -55,6 +55,20 @@ int ss_metadata_prepare(ss_frame_t* fbuf) {
     return 0;
 }
 
+ss_direction_t ss_direction_load(const char* direction) {
+    if (!strcasecmp(direction, "rx")) return SS_FRAME_RX;
+    if (!strcasecmp(direction, "tx")) return SS_FRAME_TX;
+    return -1;
+}
+
+const char* ss_direction_dump(ss_direction_t direction) {
+    switch (direction) {
+        case SS_FRAME_RX: return "RX";
+        case SS_FRAME_TX: return "TX";
+        default:          return "UNKNOWN";
+    }
+}
+
 /* PCAP CHAIN */
 
 int ss_pcap_chain_destroy() {
