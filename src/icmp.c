@@ -217,6 +217,8 @@ int ss_frame_handle_icmp4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     RTE_LOG(INFO, STACK, "icmp4 type %hhu\n", icmp_type);
     switch (icmp_type) {
         case ICMP_ECHO: {
+            RTE_LOG(DEBUG, STACK, "rx icmp echo packet\n");
+            SS_CHECK_SELF(rx_buf, 0);
             rv = ss_frame_handle_echo4(rx_buf, tx_buf);
             break;
         }
