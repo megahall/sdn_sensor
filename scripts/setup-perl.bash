@@ -22,7 +22,7 @@ libwww-perl \
 libdigest-hmac-perl libdigest-sha-perl \
 libperl6-slurp-perl \
 libtest-fatal-perl libtest-sharedfork-perl libtest-tcp-perl \
-libgd-perl libgd-graph-perl
+libgd-perl libgd-graph-perl libyaml-libyaml-perl
 
 cat "${script_directory}/ackrc" > "/home/vagrant/.ackrc"
 chown vagrant.vagrant "/home/vagrant/.ackrc"
