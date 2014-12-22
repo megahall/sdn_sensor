@@ -9,6 +9,9 @@
 #include <json-c/json.h>
 #include <json-c/json_object_private.h>
 
+#define MDB_MAXKEYSIZE 1023
+#include <lmdb.h>
+
 #include "common.h"
 #include "ioc.h"
 #include "re_utils.h"
@@ -51,6 +54,13 @@ struct ss_conf_s {
     ss_ioc_entry_t* domain_table;
     ss_ioc_entry_t* url_table;
     ss_ioc_entry_t* email_table;
+    
+    MDB_env* mdb_env;
+    MDB_dbi  ip4_dbi;
+    MDB_dbi  ip6_dbi;
+    MDB_dbi  domain_dbi;
+    MDB_dbi  url_dbi;
+    MDB_dbi  email_dbi;
 } __rte_cache_aligned;
 
 typedef struct ss_conf_s ss_conf_t;
@@ -62,6 +72,7 @@ char* ss_conf_path_get(void);
 char* ss_conf_file_read(char* conf_path);
 int ss_conf_network_parse(json_object* items);
 int ss_conf_dpdk_parse(json_object* items);
+int ss_conf_mdb_init(void);
 ss_conf_t* ss_conf_file_parse(char* conf_path);
 
 /* END PROTOTYPES */
