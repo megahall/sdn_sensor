@@ -268,10 +268,10 @@ uint8_t* ss_metadata_prepare_frame(const char* source, const char* rule, nn_queu
     return NULL;
 }
 
-uint8_t* ss_metadata_prepare_syslog(const char* source, nn_queue_t* nn_queue, ss_frame_t* fbuf, ss_ioc_entry_t* iptr) {
+uint8_t* ss_metadata_prepare_syslog(const char* source, const char* rule, nn_queue_t* nn_queue, ss_frame_t* fbuf, ss_ioc_entry_t* iptr) {
     int          irv;
     uint8_t*     rv       = NULL;
-    json_object* jmessage = NULL;
+    json_object* item     = NULL;
     json_object* jobject  = NULL;
     uint8_t*     jstring  = NULL;
     
@@ -286,33 +286,44 @@ uint8_t* ss_metadata_prepare_syslog(const char* source, nn_queue_t* nn_queue, ss
         goto error_out;
     }
     
-    irv = ss_metadata_prepare_ip(source, nn_queue, jobject, fbuf);
+    item = json_object_new_string(source);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "source", item);
+    item = json_object_new_string(rule);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "rule", item);
+    item = json_object_new_int(__sync_add_and_fetch(&nn_queue->tx_messages, 1));
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "seq_num", item);
+
+    irv = ss_metadata_prepare_ip(source, rule, nn_queue, jobject, fbuf);
     if (irv) goto error_out;
     
     if (iptr) {
-        irv = ss_metadata_prepare_ioc(source, nn_queue, iptr, jobject);
+        irv = ss_metadata_prepare_ioc(source, rule, nn_queue, iptr, jobject);
         if (irv) goto error_out;
     }
     
     // XXX: for now assume the message is C char*
-    jmessage = json_object_new_string((char*) fbuf->l4_offset);
-    if (jmessage == NULL) goto error_out;
-    json_object_object_add(jobject, "message", jmessage);
+    item = json_object_new_string((char*) fbuf->l4_offset);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "message", item);
     
     // XXX: NOTE: String pointer is internal to JSON object.
     jstring = (uint8_t*) json_object_to_json_string_ext(jobject, JSON_C_TO_STRING_SPACED);
     rv = (uint8_t*) je_strdup((char*)jstring);
     if (!rv) goto error_out;
     
+    item = NULL;
     json_object_put(jobject); jobject = NULL;
     
     return rv;
     
     error_out:
     fprintf(stderr, "could not create syslog metadata\n");
-    if (rv) { je_free(rv); rv = NULL; }
-    if (jmessage) { json_object_put(jmessage); jmessage = NULL; }
-    if (jobject)  { json_object_put(jobject);  jobject  = NULL; }
+    if (rv)      { je_free(rv); rv = NULL; }
+    if (item)    { json_object_put(item);    item  = NULL; }
+    if (jobject) { json_object_put(jobject); jobject  = NULL; }
     
     return NULL;
 }
