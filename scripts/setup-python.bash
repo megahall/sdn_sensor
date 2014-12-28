@@ -6,7 +6,7 @@ script_directory="$(dirname $(readlink -f $BASH_SOURCE))"
 source "${script_directory}/../sdn_sensor_rc"
 cd "${script_directory}"
 
-sudo aptitude install \
+sudo aptitude -y install \
 python-setuptools \
 python-pip \
 python-virtualenv \
