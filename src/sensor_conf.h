@@ -68,6 +68,8 @@ typedef struct ss_conf_s ss_conf_t;
 
 int ss_conf_destroy(void);
 char* ss_conf_path_get(void);
+uint64_t ss_conf_tsc_read(void);
+uint64_t ss_conf_tsc_hz_get(void);
 char* ss_conf_file_read(char* conf_path);
 int ss_conf_network_parse(json_object* items);
 int ss_conf_dpdk_parse(json_object* items);
