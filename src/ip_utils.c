@@ -294,12 +294,13 @@ int ss_inet_pton6(const char* src, uint8_t* dst) {
 
 /* char*
  * ss_inet_ntop(af, src, dst, size)
- *      convert a network format address to presentation format.
+ *      convert a structured network format address to presentation format.
  * return:
  *      pointer to presentation format address (`dst'), or NULL (see errno).
  * author:
  *      Paul Vixie, 1996.
  */
+// XXX: combine duplicate logic with ss_inet_ntop_raw
 const char* ss_inet_ntop(const ip_addr_t* src, char* dst, unsigned int size) {
     switch (src->family) {
         case SS_AF_INET4: {
@@ -307,6 +308,27 @@ const char* ss_inet_ntop(const ip_addr_t* src, char* dst, unsigned int size) {
         }
         case SS_AF_INET6: {
             return (ss_inet_ntop6((uint8_t*) &src->ip6_addr, dst, size));
+        }
+        default: {
+            errno = EAFNOSUPPORT;
+            return (NULL);
+        }
+    }
+}
+
+/* char*
+ * ss_inet_ntop(af, src, dst, size)
+ *      convert a raw network format address to presentation format.
+ * return:
+ *      pointer to presentation format address (`dst'), or NULL (see errno).
+ */
+const char* ss_inet_ntop_raw(const uint8_t family, const uint8_t* src, char* dst, unsigned int size) {
+    switch (family) {
+        case SS_AF_INET4: {
+            return (ss_inet_ntop4(src, dst, size));
+        }
+        case SS_AF_INET6: {
+            return (ss_inet_ntop6(src, dst, size));
         }
         default: {
             errno = EAFNOSUPPORT;
