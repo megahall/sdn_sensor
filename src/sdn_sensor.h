@@ -15,7 +15,7 @@
 
 /* DEFINES */
 
-#define MBUF_SIZE (ETHER_MAX_LEN + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_SIZE (ETHER_MAX_LEN + sizeof(rte_mbuf_t) + RTE_PKTMBUF_HEADROOM)
 #define MBUF_COUNT 6144
 
 #define SOCKET_COUNT 2
@@ -66,7 +66,7 @@ extern struct ether_addr port_eth_addrs[];
 
 struct mbuf_table_entry {
     unsigned int length;
-    struct rte_mbuf* mbufs[MAX_PKT_BURST];
+    rte_mbuf_t* mbufs[MAX_PKT_BURST];
 };
 
 typedef struct mbuf_table_entry mbuf_table_entry_t;
@@ -82,7 +82,7 @@ typedef struct ss_port_statistics ss_port_statistics_t;
 /* BEGIN PROTOTYPES */
 
 int ss_send_burst(uint8_t port_id, unsigned int lcore_id);
-int ss_send_packet(struct rte_mbuf* mbuf, uint8_t port_id, unsigned int lcore_id);
+int ss_send_packet(rte_mbuf_t* mbuf, uint8_t port_id, unsigned int lcore_id);
 void ss_main_loop(void);
 int ss_launch_one_lcore(void* dummy);
 void fatal_signal_handler(int signal);
