@@ -22,7 +22,7 @@
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 
-void ss_frame_handle(struct rte_mbuf* mbuf, unsigned int lcore_id, unsigned int port_id) {
+void ss_frame_handle(rte_mbuf_t* mbuf, unsigned int lcore_id, unsigned int port_id) {
     int rv;
     ss_frame_t rx_buf;
     ss_frame_t tx_buf;
