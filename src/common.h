@@ -15,12 +15,14 @@
 #include <netinet/udp.h>
 
 #include <rte_ether.h>
+#include <rte_hash.h>
 #include <rte_log.h>
 #include <rte_lpm.h>
 #include <rte_lpm6.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
+#include <rte_spinlock.h>
 
 #include <uthash.h>
 
@@ -68,13 +70,21 @@
 
 #define IPPROTO_ICMPV4 IPPROTO_ICMP
 
-#define L4_PORT_DNS          53
-#define L4_PORT_SYSLOG      514
-#define L4_PORT_SYSLOG_TLS  601
-#define L4_PORT_SFLOW      6343
-#define L4_PORT_NETFLOW_1  2055
-#define L4_PORT_NETFLOW_2  9995
-#define L4_PORT_NETFLOW_3  9996
+#define L4_PORT_DNS           53
+#define L4_PORT_SYSLOG       514
+#define L4_PORT_SYSLOG_TLS   601
+#define L4_PORT_SFLOW       6343
+#define L4_PORT_NETFLOW_1   2055
+#define L4_PORT_NETFLOW_2   9995
+#define L4_PORT_NETFLOW_3   9996
+
+#define L4_TCP_HASH_SIZE   16384
+#define L4_TCP_BUCKET_SIZE    16
+#define L4_TCP_WINDOW_SIZE  4096
+#define L4_TCP_BUFFER_SIZE (L4_TCP_WINDOW_SIZE * 2)
+
+#define L4_TCP4 4
+#define L4_TCP6 6
 
 /* TYPEDEFS */
 
@@ -83,6 +93,7 @@ typedef struct rte_mempool rte_mempool_t;
 
 typedef struct rte_lpm     rte_lpm4_t;
 typedef struct rte_lpm6    rte_lpm6_t;
+typedef struct rte_hash    rte_hash_t;
 
 typedef struct ether_addr  eth_addr_t;
 typedef struct ether_hdr   eth_hdr_t;
@@ -217,6 +228,48 @@ struct ss_frame_s {
 } __rte_cache_aligned;
 
 typedef struct ss_frame_s ss_frame_t;
+
+/* TCP SUPPORT */
+
+struct ss_flow_key_s {
+    uint8_t  sip[IPV6_ALEN];
+    uint8_t  dip[IPV6_ALEN];
+    uint16_t sport;
+    uint16_t dport;
+    uint8_t  protocol;
+} __attribute__((packed));
+
+typedef struct ss_flow_key_s ss_flow_key_t;
+
+enum ss_tcp_state_e {
+    SS_TCP_CLOSED   = 0,
+    SS_TCP_LISTEN   = 1,
+    SS_TCP_SYN_TX   = 2,
+    SS_TCP_SYN_RX   = 3,
+    SS_TCP_SYN_OPEN = 4,
+    SS_TCP_UNKNOWN  = -1,
+};
+
+typedef enum ss_tcp_state_e ss_tcp_state_t;
+
+// RFC 793, RFC 1122
+struct ss_tcp_socket_s {
+    ss_flow_key_t  key;
+    uint32_t id;
+    rte_spinlock_t lock;
+
+    ss_tcp_state_t state;
+
+    uint32_t ticks_last;
+    uint16_t rx_buf_offset;
+    uint16_t mss;
+    uint64_t rx_failures;
+    uint8_t  rx_data[L4_TCP_WINDOW_SIZE * 2];
+} __rte_cache_aligned;
+
+typedef struct ss_tcp_socket_s ss_tcp_socket_t;
+
+#define TH_PSH TH_PUSH
 
 /* PCAP CHAIN */
 
