@@ -94,11 +94,11 @@ struct ss_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 /* TX burst of packets on a port */
 int ss_send_burst(uint8_t port_id, unsigned int lcore_id) {
     unsigned int count;
-    struct rte_mbuf** mbufs;
+    rte_mbuf_t** mbufs;
     unsigned int rv;
     
     count = mbuf_table[port_id][lcore_id].length;
-    mbufs = (struct rte_mbuf**) mbuf_table[port_id][lcore_id].mbufs;
+    mbufs = (rte_mbuf_t**) mbuf_table[port_id][lcore_id].mbufs;
 
     rv = rte_eth_tx_burst(port_id, (uint16_t) lcore_id, mbufs, (uint16_t) count);
     port_statistics[port_id].tx += rv;
@@ -113,7 +113,7 @@ int ss_send_burst(uint8_t port_id, unsigned int lcore_id) {
 }
 
 /* Queue and prepare packets for TX in a burst */
-int ss_send_packet(struct rte_mbuf* mbuf, uint8_t port_id, unsigned int lcore_id) {
+int ss_send_packet(rte_mbuf_t* mbuf, uint8_t port_id, unsigned int lcore_id) {
     mbuf_table_entry_t* mbuf_entry;
     unsigned int length;
 
@@ -134,8 +134,8 @@ int ss_send_packet(struct rte_mbuf* mbuf, uint8_t port_id, unsigned int lcore_id
 
 /* main processing loop */
 void ss_main_loop(void) {
-    struct rte_mbuf* mbufs[MAX_PKT_BURST];
-    struct rte_mbuf* mbuf;
+    rte_mbuf_t* mbufs[MAX_PKT_BURST];
+    rte_mbuf_t* mbuf;
     unsigned int lcore_id, socket_id;
     uint64_t prev_tsc, diff_tsc, cur_tsc, timer_tsc;
     unsigned int i, port_id, rx_count;
