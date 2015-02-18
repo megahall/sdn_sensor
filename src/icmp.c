@@ -41,6 +41,7 @@ int ss_frame_prepare_icmp6(ss_frame_t* tx_buf, uint8_t* pl_ptr, uint32_t pl_len)
     icmp_len  = rte_bswap32(pl_len);
     zeros_nxt = rte_bswap32((uint32_t) tx_buf->ip6->ip6_nxt);
 
+    /* XXX: switch to ss_phdr_append */
     pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, sizeof(tx_buf->ip6->ip6_src));
     rte_memcpy(pptr, &tx_buf->ip6->ip6_src, sizeof(tx_buf->ip6->ip6_src));
     pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, sizeof(tx_buf->ip6->ip6_dst));
@@ -65,7 +66,7 @@ int ss_frame_prepare_icmp6(ss_frame_t* tx_buf, uint8_t* pl_ptr, uint32_t pl_len)
 
     error_out:
     if (tx_buf->mbuf) {
-        RTE_LOG(ERR, STACK, "could not process ndp frame\n");
+        RTE_LOG(ERR, STACK, "could not process icmp6 frame\n");
         tx_buf->active = 0;
         rte_pktmbuf_free(tx_buf->mbuf);
         tx_buf->mbuf = NULL;
