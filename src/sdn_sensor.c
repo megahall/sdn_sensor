@@ -32,6 +32,7 @@
 #include "re_utils.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
+#include "tcp.h"
 
 /* GLOBAL VARIABLES */
 
@@ -320,6 +321,11 @@ int main(int argc, char* argv[]) {
         if (ss_pool[i] == NULL) {
             rte_exit(EXIT_FAILURE, "could not create mbuf_pool %s\n", pool_name);
         }
+    }
+
+    rv = ss_tcp_init();
+    if (rv) {
+        rte_exit(EXIT_FAILURE, "could not initialize tcp protocol\n");
     }
     
     if (rte_eal_pci_probe() < 0) {
