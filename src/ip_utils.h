@@ -58,6 +58,7 @@ int ss_inet_pton(int af, const char* src, ip_addr_t* dst);
 int ss_inet_pton4(const char* src, uint8_t* dst);
 int ss_inet_pton6(const char* src, uint8_t* dst);
 const char* ss_inet_ntop(const ip_addr_t* src, char* dst, unsigned int size);
+const char* ss_inet_ntop_raw(const uint8_t family, const uint8_t* src, char* dst, unsigned int size);
 const char* ss_inet_ntop4(const uint8_t* src, char* dst, unsigned int size);
 const char* ss_inet_ntop6(const uint8_t* src, char* dst, unsigned int size);
 
