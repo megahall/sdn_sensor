@@ -9,7 +9,7 @@ Available under the MIT License.
 
 ## Summary, aka tl;dr ##
 
-The sdn_sensor is a user-mode security-aware TCP/IP network stack, which 
+The `sdn_sensor` is a user-mode security-aware TCP/IP network stack, which 
 performs threat intelligence analysis of raw traffic, DNS packets, NetFlow / 
 IPFIX, sFlow, and TCP and UDP Syslog protocols.
 
@@ -18,7 +18,7 @@ aggregation, deduplication, summarization, charting, reporting, and logging,
 as part of a high performance analytics stack, which is capable of handling 
 300,000 or more events per second, even in a laptop system.
 
-The sdn_sensor is intended to help the security community bridge the gap 
+The `sdn_sensor` is intended to help the security community bridge the gap 
 between network hardware which can handle 10-100 gigabits/sec and 1,000,000 
 connections per second, and modern SIM (security information management) 
 collectors and correlation systems, which usually only handle 100,000 logs per 
@@ -45,15 +45,15 @@ In particular the user should set `{ipv4,ipv6}_{address,gateway}`, `log_level`
    and log messages from the sensor will appear on the console.
 9. `scripts/nn-receiver.pl` will show the sensor logs. They are JSON-format
    messages routed through `nanomsg`, which is a native C, Berkeley Socket 
-   like MQ library based upon, and simplified from, ZeroMQ. nanomsg has many 
+   like MQ library based upon, and simplified from, ZeroMQ. `nanomsg` has many 
    language bindings, including a Java language binding, which is used by
-   the included analytics stack to receive messages from the sdn_sensor core.
+   the included analytics stack to receive messages from the `sdn_sensor` core.
 10. `scripts/sloccount.bash` will show the lines of code and US-dollar value 
    and time / schedule needed to develop all of the code.
 
 ## Design Philosophy ##
 
-The sdn_sensor is designed around the assumption that every large network 
+The `sdn_sensor` is designed around the assumption that every large network 
 already contains malicious traffic, compromised systems, malware, and APTs 
 (Advanced Persistent Threats). Usually these arrive via diverse sources, such 
 as email, mobile devices, BYOD (bring your own device), open / share network 
@@ -70,7 +70,7 @@ seems somewhat pointless to try to filter the traffic for specific exploits or
 signatures, or to assume firewall or IPS rules will actually prevent much of 
 anything.
 
-Instead, the sdn_sensor is based on the idea that it makes more sense to try 
+Instead, the `sdn_sensor` is based on the idea that it makes more sense to try 
 to detect the activity that is surely already happening rather than prevent 
 the apparently unpreventable. To accomplish this, several knowledge sources 
 and technologies are combined in a single codebase:
@@ -87,7 +87,7 @@ and technologies are combined in a single codebase:
   of event haystacks to find the needles of valuable data, originally used in 
   HFT (high-frequency trading in financial markets)
 
-The sdn_sensor leverages the talents and achievements of these communities:
+The `sdn_sensor` leverages the talents and achievements of these communities:
 
 * the intelligence community,
 * the information security community,
@@ -95,13 +95,13 @@ The sdn_sensor leverages the talents and achievements of these communities:
 * the financial markets community,
 
 By integrating the amazing things these communities have created, the 
-sdn_sensor can successfully detect malicious activities already in progress, 
+`sdn_sensor` can successfully detect malicious activities already in progress, 
 and allow monitoring, incident response, and remediation as issues arise, even 
 in the face of the numerous technical challenges.
 
 ## Technical Details ##
 
-IOC matching in the sdn_sensor is performed against the following areas:
+IOC matching in the `sdn_sensor` is performed against the following areas:
 
 * packet headers from IPv4, IPv6, TCP, and UDP,
 * DNS question and answer contents,
@@ -121,7 +121,7 @@ In addition to these, it is possible to perform matching with:
 2) Don't bother with 80-character lines, just make it readable.
 
 3) The "standard name prefix" for functions / globals is "ss_" (short for 
-sdn_sensor).
+`sdn_sensor`).
 
 4) Lots of compiler warnings are on by default. The clang scan-build tool will 
 find even more bugs.
