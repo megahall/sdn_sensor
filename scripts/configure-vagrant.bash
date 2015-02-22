@@ -15,7 +15,7 @@ export RTE_TOOLS="${RTE_SDK}/tools"
 export RTE_NIC_BIND="${RTE_TOOLS}/dpdk_nic_bind.py"
 
 export CORE_MASK=$("${script_directory}/find-dpdk-settings.pl" -c)
-export PCI_ID=$("${script_directory}/find-dpdk-settings.pl" -p | awk '/^eth1 / { print $2; }')
+export PCI_ID=$("${script_directory}/find-dpdk-settings.pl" -p | awk '/^eth2 / { print $2; }')
 
 echo "CORE_MASK ${CORE_MASK}"
 echo "PCI_ID ${PCI_ID}"
