@@ -78,9 +78,10 @@
 #define L4_PORT_NETFLOW_2   9995
 #define L4_PORT_NETFLOW_3   9996
 
-#define L4_TCP_HASH_SIZE   16384
-#define L4_TCP_BUCKET_SIZE    16
-#define L4_TCP_WINDOW_SIZE  4096
+#define L4_TCP_HASH_SIZE     16384
+#define L4_TCP_BUCKET_SIZE       4
+#define L4_TCP_WINDOW_SIZE    4096
+#define L4_TCP_HEADER_OFFSET     5
 #define L4_TCP_BUFFER_SIZE (L4_TCP_WINDOW_SIZE * 2)
 
 #define L4_TCP4 4
@@ -246,7 +247,7 @@ enum ss_tcp_state_e {
     SS_TCP_LISTEN   = 1,
     SS_TCP_SYN_TX   = 2,
     SS_TCP_SYN_RX   = 3,
-    SS_TCP_SYN_OPEN = 4,
+    SS_TCP_OPEN     = 4,
     SS_TCP_UNKNOWN  = -1,
 };
 
@@ -260,7 +261,8 @@ struct ss_tcp_socket_s {
 
     ss_tcp_state_t state;
 
-    uint32_t ticks_last;
+    uint32_t rx_ticks;
+    uint32_t tx_ticks;
     uint16_t rx_buf_offset;
     uint16_t mss;
     uint64_t rx_failures;
