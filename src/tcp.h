@@ -6,7 +6,7 @@
 /* BEGIN PROTOTYPES */
 
 int ss_tcp_init(void);
-int ss_flow_key_dump(ss_flow_key_t* key);
+int ss_flow_key_dump(const char* message, ss_flow_key_t* key);
 const char* ss_tcp_flags_dump(uint8_t tcp_flags);
 int ss_tcp_socket_init(ss_flow_key_t* key, ss_tcp_socket_t* socket);
 ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf);
