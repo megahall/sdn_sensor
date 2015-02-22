@@ -188,9 +188,9 @@ char* ss_conf_file_read(char* conf_path) {
     conf_content[size - 1] = '\0';
     
     error_out:
-    if (free_conf_path && conf_path) { je_free(conf_path);    conf_path    = NULL; }
-    if (conf_file)                   { fclose(conf_file);     conf_file    = NULL; }
-    if (!is_ok && conf_content)      { je_free(conf_content); conf_content = NULL; }
+    if (free_conf_path)         { je_free(conf_path);    conf_path    = NULL; }
+    if (conf_file)              { fclose(conf_file);     conf_file    = NULL; }
+    if (!is_ok && conf_content) { je_free(conf_content); conf_content = NULL; }
     
     return conf_content;
 }
