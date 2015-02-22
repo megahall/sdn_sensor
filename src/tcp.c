@@ -512,6 +512,8 @@ uint8_t* ss_phdr_append(rte_mbuf_t* pmbuf, void* data, uint32_t length) {
 }
 
 int ss_tcp_prepare_checksum(ss_frame_t* tx_buf) {
+    if (!tx_buf || !tx_buf->mbuf) goto error_out;
+
     rte_mbuf_t* pmbuf = NULL;
     uint8_t* pptr;
     uint16_t checksum;
