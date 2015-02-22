@@ -282,13 +282,13 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
      */
 
     handle_flags:    
-    if      (tcp_flags == TH_RST) {
+    if      (tcp_flags & TH_RST) {
         RTE_LOG(INFO, STACK, "rx tcp rst packet\n");
-        // just delete connection
+        // just delete the connection
         return ss_tcp_handle_close(socket, rx_buf, tx_buf);
     }
-    else if (tcp_flags == TH_FIN) {
-        // send FIN ACK and delete connection
+    else if (tcp_flags & TH_FIN) {
+        // send RST (as if SO_LINGER is 0) and delete the connection
         RTE_LOG(INFO, STACK, "rx tcp fin packet\n");
         return ss_tcp_handle_close(socket, rx_buf, tx_buf);
     }
@@ -296,7 +296,7 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         RTE_LOG(INFO, STACK, "rx tcp syn packet\n");
         return ss_tcp_handle_open(socket, rx_buf, tx_buf);
     }
-    else if (tcp_flags == TH_ACK || tcp_flags == 0) {
+    else if (tcp_flags & TH_ACK || tcp_flags == 0) {
         RTE_LOG(INFO, STACK, "rx tcp ack packet\n");
         // if they send us an ack, we can just ignore it?
         return ss_tcp_handle_update(socket, rx_buf, tx_buf);
