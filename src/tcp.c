@@ -227,7 +227,7 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     key.sport                   = rx_buf->tcp->source;
     key.dport                   = rx_buf->tcp->dest;
     key.protocol                = rx_buf->data.eth_type == ETHER_TYPE_IPV4 ? L4_TCP4 : L4_TCP6;
-    uint32_t alen               = key.protocol == L4_TCP4? IPV4_ALEN: IPV6_ALEN;
+    uint32_t alen               = key.protocol == L4_TCP4? IPV4_ALEN : IPV6_ALEN;
     if (key.protocol == L4_TCP4) {
         rte_memcpy(key.sip, &rx_buf->ip4->saddr, alen);
         rte_memcpy(key.dip, &rx_buf->ip4->daddr, alen);
