@@ -176,9 +176,9 @@ ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf) {
 int ss_tcp_socket_delete(ss_flow_key_t* key) {
     rte_rwlock_read_lock(&tcp_hash_lock);
     uint32_t socket_id = rte_hash_del_key(tcp_hash, key);
+    ss_tcp_socket_t* socket = ((int32_t) socket_id) < 0 ? NULL : tcp_sockets[socket_id];
     rte_rwlock_read_unlock(&tcp_hash_lock);
 
-    ss_tcp_socket_t* socket = ((int32_t) socket_id) < 0 ? NULL : tcp_sockets[socket_id];
     if (!socket) return -1;
     
     socket->state = SS_TCP_CLOSED;
