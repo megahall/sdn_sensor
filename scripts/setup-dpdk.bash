@@ -30,6 +30,7 @@ fi
 
 make -j "${thread_count}"
 make -j "${thread_count}" -C examples "RTE_SDK=${RTE_SDK}" "RTE_TARGET=build" "RTE_SDK_BIN=${RTE_SDK}/build"
+make -j "${thread_count}" -C app/test "RTE_SDK=${RTE_SDK}" "RTE_TARGET=build" "RTE_SDK_BIN=${RTE_SDK}/build"
 
 sudo mkdir -p /lib/modules/$(uname -r)/kernel/drivers/uio
 sudo cp build/build/lib/librte_eal/linuxapp/igb_uio/igb_uio.ko /lib/modules/$(uname -r)/kernel/drivers/uio/igb_uio.ko
