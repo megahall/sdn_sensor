@@ -16,19 +16,20 @@ RTE_SDK ?= $(SDN_SENSOR_BASE)/external/dpdk
 # -O2 -Os
 #
 WARNINGS = \
--Wall -Wextra \
--Wshadow -Wtrigraphs -Wunreachable-code -Wno-unused-label \
--Wwrite-strings -Wstrict-aliasing \
--Wstrict-overflow -Warray-bounds \
--Wpointer-arith -Wvolatile-register-var \
--Wno-unused-parameter
+-Wall -Wextra -Weverything \
+-Wno-language-extension-token -Wno-disabled-macro-expansion \
+-Wno-cast-align -Wno-bad-function-cast -Wno-padded -Wno-packed \
+-Wno-unused-parameter -Wno-unused-label -Wno-switch-enum -Wno-extra-semi \
+-Wno-gcc-compat -Wno-documentation-unknown-command
 
 SS_VERSION := $(shell echo `date "+%Y%m%d-%H%M%S"`-`git rev-parse --short HEAD`)
 
-FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -pthread -march=native -std=gnu11 -ferror-limit=5
+FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -pthread -m64 -march=native -msse4 -std=gnu11 -ferror-limit=5
+DEFINES        = -D__SSE3__ -D__SSSE3__ -D__SSE4_1__ -D__SSE4_2__ -DSS_VERSION="\"$(SS_VERSION)\"" -DSS_IOC_BACKEND_RAM
 INCLUDE_FILES  = -include $(RTE_SDK)/build/include/rte_config.h
-INCLUDE_PATHS  = -I$(RTE_SDK)/build/include -I$(SDN_SENSOR_BASE)/external/spcdns/src -I/usr/local/jemalloc/include -I/usr/local/lmdb/include
-CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) -DSS_VERSION="\"$(SS_VERSION)\"" -DSS_IOC_BACKEND_RAM
+INCLUDE_PATHS  = -isystem$(RTE_SDK)/build/include -I$(SDN_SENSOR_BASE)/external/spcdns/src -isystem/usr/local/jemalloc/include -I/usr/local/lmdb/include
+CPROTO_PATHS   = $(subst -isystem,-I,$(INCLUDE_PATHS))
+CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) $(DEFINES)
 
 # XXX: work around bugs in iwyu utility
 IWYU_PATHS = -I/usr/local/include -I/usr/lib/llvm-3.4/lib/clang/3.4/include -I/usr/lib/gcc/x86_64-linux-gnu/4.8/include -I/usr/include/x86_64-linux-gnu -I/usr/include
@@ -101,7 +102,7 @@ clean:
 	@rm -f sdn_sensor *.d *.o *.h.bak
 
 cproto:
-	$(PWD)/../scripts/update-header-file.pl $(INCLUDE_PATHS) -- $(HEADERS)
+	$(PWD)/../scripts/update-header-file.pl $(DEFINES) $(CPROTO_PATHS) -- $(HEADERS)
 
 iwyu: $(HEADERS) $(SOURCES)
 	@echo 'Checking includes in sdn_sensor...'
