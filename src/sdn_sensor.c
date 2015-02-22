@@ -174,7 +174,7 @@ void ss_main_loop(void) {
             if (unlikely(timer_tsc >= (uint64_t) ss_conf->timer_cycles)) {
                 /* do this only on master core */
                 if (lcore_id == rte_get_master_lcore()) {
-                    double elapsed = timer_tsc / rte_get_tsc_hz();
+                    double elapsed = timer_tsc / (double) rte_get_tsc_hz();
                     RTE_LOG(NOTICE, SS, "call ss_port_stats_print after %011.6f secs.\n", elapsed);
                     ss_port_stats_print(port_statistics, rte_eth_dev_count());
                     /* reset the timer */
