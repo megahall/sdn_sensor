@@ -5,7 +5,7 @@
 
 /* BEGIN PROTOTYPES */
 
-uint16_t ss_in_cksum(uint16_t* data, int len);
+uint16_t ss_in_cksum(uint16_t* data, size_t len);
 
 /* END PROTOTYPES */
 

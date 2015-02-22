@@ -44,7 +44,7 @@ int ss_cidr_dump(FILE* fd, const char* label, ip_addr_t* ip_addr) {
 }
 
 int ss_cidr_parse(const char* input, ip_addr_t* ip_addr) {
-    unsigned int input_len = 0;
+    size_t input_len = 0;
     int rv = -1;
     char ip_str[SS_INET6_ADDRSTRLEN+4+1]; /* '+4' is for prefix (if any) */
     char* prefix_start;
@@ -75,7 +75,7 @@ int ss_cidr_parse(const char* input, ip_addr_t* ip_addr) {
         if (errno || (*prefix_end != '\0') || prefix < 0) {
             return -1;
         }
-        ip_addr->prefix = prefix;
+        ip_addr->prefix = (uint8_t) prefix;
     }
     
     /* convert the IP addr */
@@ -155,7 +155,7 @@ int ss_inet_pton4(const char* src, uint8_t* dst) {
         const char* pch;
 
         if ((pch = strchr(digits, ch)) != NULL) {
-            unsigned int new = *tp * 10 + (pch - digits);
+            long new = *tp * 10 + (pch - digits);
 
             if (new > 255)
                 return (0);
@@ -275,7 +275,7 @@ int ss_inet_pton6(const char* src, uint8_t* dst) {
          * Since some memmove()'s erroneously fail to handle
          * overlapping regions, we'll do the shift by hand.
          */
-        const int n = tp - colonp;
+        const long n = tp - colonp;
         int i;
 
         for (i = 1; i <= n; i++) {
@@ -384,7 +384,7 @@ const char* ss_inet_ntop6(const uint8_t* src, char* dst, unsigned int size) {
      */
     memset(words, '\0', sizeof words);
     for (i = 0; i < IPV6_ALEN; i += 2) {
-        words[i / 2] = (src[i] << 8) | src[i + 1];
+        words[i / 2] = (u_int) ((src[i] << 8) | src[i + 1]);
     }
     best.base = -1;
     cur.base = -1;

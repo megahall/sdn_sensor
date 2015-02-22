@@ -38,12 +38,14 @@
 #define DEFAULT_MAX_TEMPLATE_LEN    1024
 #define DEFAULT_MAX_SOURCES        64
 
+extern struct peers netflow_peers;
+
 /* BEGIN PROTOTYPES */
 
 struct flow_packet* flow_packet_alloc(void);
 void flow_packet_dealloc(struct flow_packet* f);
-const char* data_ntoa(const u_int8_t* p, int len);
-void dump_packet(const char* tag, const u_int8_t* p, int len);
+const char* data_ntoa(const u_int8_t* p, u_int len);
+void dump_packet(const char* tag, const u_int8_t* p, u_int len);
 int process_flow(struct store_flow_complete* flow);
 void process_netflow_v1(struct flow_packet* fp, struct peer_state* peer);
 void process_netflow_v5(struct flow_packet* fp, struct peer_state* peer);

@@ -32,8 +32,8 @@
 int ss_metadata_prepare(ss_frame_t* fbuf) {
     ss_metadata_t* m = &fbuf->data;
     
-    m->port_id     = -1;
-    m->direction   = -1;
+    m->port_id     = ~0;
+    m->direction   = ~0;
     m->self        = 0;
     m->length      = 0;
     memset(m->smac, 0, sizeof(m->smac));
@@ -41,11 +41,11 @@ int ss_metadata_prepare(ss_frame_t* fbuf) {
     m->eth_type    = 0x0000;
     memset(m->sip, 0, sizeof(m->sip));
     memset(m->dip, 0, sizeof(m->dip));
-    m->ip_protocol = -1;
+    m->ip_protocol = ~0;
     m->ttl         = 0;
-    m->l4_length   = -1;
-    m->icmp_type   = -1;
-    m->icmp_code   = -1;
+    m->l4_length   = ~0;
+    m->icmp_type   = ~0;
+    m->icmp_code   = ~0;
     m->tcp_flags   = 0;
     m->sport       = 0;
     m->dport       = 0;
@@ -58,7 +58,7 @@ int ss_metadata_prepare(ss_frame_t* fbuf) {
 ss_direction_t ss_direction_load(const char* direction) {
     if (!strcasecmp(direction, "rx")) return SS_FRAME_RX;
     if (!strcasecmp(direction, "tx")) return SS_FRAME_TX;
-    return -1;
+    return (ss_direction_t) -1;
 }
 
 const char* ss_direction_dump(ss_direction_t direction) {
@@ -390,7 +390,7 @@ int ss_cidr_entry_destroy(ss_cidr_entry_t* cidr_entry) {
     if (!cidr_entry) return 0;
     
     ss_nn_queue_destroy(&cidr_entry->nn_queue);
-    cidr_entry->matches = -1;
+    cidr_entry->matches = ~0;
     if (cidr_entry->name) { je_free(cidr_entry->name); cidr_entry->name = NULL; }
     je_free(cidr_entry);
     

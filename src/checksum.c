@@ -1,10 +1,13 @@
+#include <stddef.h>
 #include <stdint.h>
 
-uint16_t ss_in_cksum(uint16_t* data, int len) {
-    register int sum     = 0;
-    uint16_t answer      = 0;
-    register uint16_t* w = data;
-    register int nleft   = len;
+#include "checksum.h"
+
+uint16_t ss_in_cksum(uint16_t* data, size_t len) {
+    register int sum      = 0;
+    uint16_t answer       = 0;
+    register uint16_t* w  = data;
+    register size_t nleft = len;
 
     /*
      * Our algorithm is simple, using a 32 bit accumulator (sum), we add
@@ -25,6 +28,6 @@ uint16_t ss_in_cksum(uint16_t* data, int len) {
     /* add back carry outs from top 16 bits to low 16 bits */
     sum = (sum >> 16) + (sum & 0xffff); /* add hi 16 to low 16 */
     sum += (sum >> 16);                 /* add carry */
-    answer = ~sum;                      /* truncate to 16 bits */
+    answer = (uint16_t) ~sum;           /* truncate to 16 bits */
     return answer;
 }

@@ -29,10 +29,10 @@ int ss_extract_eth(ss_frame_t* fbuf) {
     ss_pcap_entry_t* ptmp;
     ss_ioc_entry_t* iptr;
     uint8_t* metadata;
-    int mlength;
+    uint64_t mlength;
     ss_pcap_match_t match;
     
-    rv = ss_pcap_match_prepare(&match, rte_pktmbuf_mtod(fbuf->mbuf, uint8_t*), rte_pktmbuf_pkt_len(fbuf->mbuf));
+    rv = ss_pcap_match_prepare(&match, rte_pktmbuf_mtod(fbuf->mbuf, uint8_t*), (uint16_t) rte_pktmbuf_pkt_len(fbuf->mbuf));
     if (rv) {
         RTE_LOG(ERR, EXTRACTOR, "pcap match prepare, rv %d\n", rv);
         goto error_out;
@@ -49,7 +49,7 @@ int ss_extract_eth(ss_frame_t* fbuf) {
             // XXX: for now assume the output is C char*
             mlength = strlen((char*) metadata);
             //printf("metadata: %s\n", metadata);
-            rv = ss_nn_queue_send(&pptr->nn_queue, metadata, mlength);
+            rv = ss_nn_queue_send(&pptr->nn_queue, metadata, (uint16_t) mlength);
         }
         else if (rv == 0) {
             // no match
@@ -72,7 +72,7 @@ int ss_extract_eth(ss_frame_t* fbuf) {
         // XXX: for now assume the output is C char*
         mlength = strlen((char*) metadata);
         //printf("metadata: %s\n", metadata);
-        rv = ss_nn_queue_send(nn_queue, metadata, mlength);
+        rv = ss_nn_queue_send(nn_queue, metadata, (uint16_t) mlength);
     }
     
     return 0;
@@ -88,7 +88,7 @@ int ss_extract_dns(ss_frame_t* fbuf) {
     ss_ioc_entry_t* iptr;
     int rv;
     uint8_t* metadata;
-    int mlength;
+    uint64_t mlength;
     
     dns_decoded_t   dns_info[DNS_DECODEBUF_4K];
     dns_query_t*    dns_query;
@@ -115,9 +115,9 @@ int ss_extract_dns(ss_frame_t* fbuf) {
     RTE_LOG(INFO, EXTRACTOR, "rx dns query for name [%s] type [%s] class [%s]\n",
         dns_question->name, dns_type_text(dns_question->type), dns_class_text(dns_question->class));
     strlcpy((char*) &fbuf->data.dns_name, dns_question->name, SS_DNS_NAME_MAX);
-    int ancount = dns_query->ancount;
+    size_t ancount = dns_query->ancount;
     if (ancount > SS_DNS_RESULT_MAX) ancount = SS_DNS_RESULT_MAX;
-    for (int i = 0; i < ancount; ++i) {
+    for (size_t i = 0; i < ancount; ++i) {
         dns_answer = &dns_query->answers[i];
         rv = ss_extract_dns_atype(&fbuf->data.dns_answers[i], dns_answer);
         if (rv) {
@@ -131,7 +131,7 @@ int ss_extract_dns(ss_frame_t* fbuf) {
         if (dptr->dns[0] && strcasestr(dns_question->name, dptr->dns)) {
             is_match = 1; goto done;
         }
-        for (int i = 0; i < ancount; ++i) {
+        for (size_t i = 0; i < ancount; ++i) {
             ss_answer = &fbuf->data.dns_answers[i];
             switch (ss_answer->type) {
                 case SS_TYPE_NAME: {
@@ -160,7 +160,7 @@ int ss_extract_dns(ss_frame_t* fbuf) {
         // XXX: for now assume the output is C string
         mlength = strlen((char*) metadata);
         //printf("metadata: %s\n", metadata);
-        rv = ss_nn_queue_send(&dptr->nn_queue, metadata, mlength);
+        rv = ss_nn_queue_send(&dptr->nn_queue, metadata, (uint16_t) mlength);
     }
 
     iptr = ss_ioc_dns_match(&fbuf->data);
@@ -173,7 +173,7 @@ int ss_extract_dns(ss_frame_t* fbuf) {
         // XXX: for now assume the output is C char*
         mlength = strlen((char*) metadata);
         //printf("metadata: %s\n", metadata);
-        rv = ss_nn_queue_send(nn_queue, metadata, mlength);
+        rv = ss_nn_queue_send(nn_queue, metadata, (uint16_t) mlength);
     }
     
     return 0;
@@ -234,7 +234,7 @@ int ss_extract_dns_atype(ss_answer_t* result, dns_answer_t* aptr) {
 int ss_extract_syslog(ss_frame_t* fbuf) {
     uint8_t* match_string;
     uint8_t* metadata = NULL;
-    int mlength = 0;
+    uint64_t mlength = 0;
     int rv = 0;
     ss_re_match_t re_match;
     
@@ -274,7 +274,7 @@ int ss_extract_syslog(ss_frame_t* fbuf) {
     if (metadata) {
         // XXX: for now assume the output is C char*
         mlength = strlen((char*) metadata);
-        rv = ss_nn_queue_send(&re_match.re_entry->nn_queue, metadata, mlength);
+        rv = ss_nn_queue_send(&re_match.re_entry->nn_queue, metadata, (uint16_t) mlength);
     }
     else {
         RTE_LOG(ERR, EXTRACTOR, "unexpected state matching against syslog rule %s\n", re_match.re_entry->name);

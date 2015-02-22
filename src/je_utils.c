@@ -4,6 +4,8 @@
 
 #include <rte_memcpy.h>
 
+#include "je_utils.h"
+
 char* je_strdup(const char* s) {
     size_t len = strlen(s) + 1;
     char*  new = je_malloc(len);

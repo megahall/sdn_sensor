@@ -174,7 +174,7 @@ struct ss_answer_s {
 typedef struct ss_answer_s ss_answer_t;
 
 struct ss_metadata_s {
-    uint32_t    port_id;
+    uint8_t     port_id;
     uint8_t     direction;
     uint8_t     self;
     uint16_t    length;
@@ -256,8 +256,8 @@ typedef enum ss_tcp_state_e ss_tcp_state_t;
 // RFC 793, RFC 1122
 struct ss_tcp_socket_s {
     ss_flow_key_t  key;
-    uint32_t id;
     rte_spinlock_t lock;
+    int32_t id;
 
     ss_tcp_state_t state;
 

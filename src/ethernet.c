@@ -22,7 +22,7 @@
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 
-void ss_frame_handle(rte_mbuf_t* mbuf, unsigned int lcore_id, unsigned int port_id) {
+void ss_frame_handle(rte_mbuf_t* mbuf, unsigned int lcore_id, uint8_t port_id) {
     int rv;
     ss_frame_t rx_buf;
     ss_frame_t tx_buf;
@@ -34,7 +34,7 @@ void ss_frame_handle(rte_mbuf_t* mbuf, unsigned int lcore_id, unsigned int port_
     rx_buf.mbuf           = mbuf;
     rx_buf.data.port_id   = port_id;
     rx_buf.data.direction = SS_FRAME_RX;
-    rx_buf.data.length    = rte_pktmbuf_pkt_len(mbuf);
+    rx_buf.data.length    = (uint16_t) rte_pktmbuf_pkt_len(mbuf);
     
     if (rx_buf.data.length < sizeof(eth_hdr_t)) {
         RTE_LOG(ERR, STACK, "received runt Ethernet frame of length %u:\n", rx_buf.data.length);
@@ -133,7 +133,7 @@ void ss_frame_handle(rte_mbuf_t* mbuf, unsigned int lcore_id, unsigned int port_
     }
 }
 
-int ss_frame_prepare_eth(ss_frame_t* tx_buf, int port_id, eth_addr_t* d_addr, uint16_t type) {
+int ss_frame_prepare_eth(ss_frame_t* tx_buf, uint8_t port_id, eth_addr_t* d_addr, uint16_t type) {
     tx_buf->data.port_id = port_id;
 
     tx_buf->mbuf = rte_pktmbuf_alloc(ss_pool[rte_socket_id()]);

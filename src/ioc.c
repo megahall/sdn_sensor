@@ -286,7 +286,7 @@ ss_ioc_entry_t* ss_ioc_entry_create(ss_ioc_file_t* ioc_file, char* ioc_str) {
     
     field = strsep(&sepptr, SS_IOC_FIELD_DELIMITERS);
     errno = 0;
-    ioc->id          = strtoll(field, NULL, 10);
+    ioc->id          = strtoull(field, NULL, 10);
     if (errno) {
         fprintf(stderr, "ioc id: %s: id was corrupt: %s\n",
             field, strerror(errno));
@@ -328,9 +328,9 @@ ss_ioc_entry_t* ss_ioc_entry_create(ss_ioc_file_t* ioc_file, char* ioc_str) {
 }
 
 int ss_ioc_entry_destroy(ss_ioc_entry_t* ioc_entry) {
-    ioc_entry->id      = -1;
-    ioc_entry->file_id = -1;
-    ioc_entry->type    = -1;
+    ioc_entry->id      = ~0;
+    ioc_entry->file_id = ~0;
+    ioc_entry->type    = ~0;
     memset(&ioc_entry->threat_type, 0, sizeof(ioc_entry->threat_type));
     memset(&ioc_entry->ip, 0, sizeof(ioc_entry->ip));
     memset(&ioc_entry->dns, 0, sizeof(ioc_entry->dns));
@@ -366,7 +366,7 @@ ss_ioc_type_t ss_ioc_type_load(const char* ioc_type) {
     if (!strcasecmp(ioc_type, "email"))  return SS_IOC_TYPE_EMAIL;
     if (!strcasecmp(ioc_type, "md5"))    return SS_IOC_TYPE_MD5;
     if (!strcasecmp(ioc_type, "sha256")) return SS_IOC_TYPE_SHA256;
-    return -1;
+    return (ss_ioc_type_t) -1;
 }
 
 const char* ss_ioc_type_dump(ss_ioc_type_t ioc_type) {
@@ -419,9 +419,9 @@ int ss_ioc_chain_remove_id(uint64_t id) {
 int ss_ioc_chain_optimize() {
     ss_ioc_entry_t* iptr;
     ss_ioc_entry_t* itmp;
-    char* header;
-    char  tvalue[SS_DNS_NAME_MAX];
-    int   offset;
+    char*  header;
+    char   tvalue[SS_DNS_NAME_MAX];
+    size_t offset;
 #ifdef SS_IOC_BACKEND_RAM
     ss_ioc_entry_t* hiptr;
 #elif SS_IOC_BACKEND_DISK
@@ -603,7 +603,7 @@ int ss_ioc_chain_optimize() {
                 // move forward to first byte after first '@'
                 domain += 1;
                 // NOTE: convert names to canonical form (trailing '.')
-                strlcpy(tvalue, domain, sizeof(tvalue) - 2);
+                offset = strlcpy(tvalue, domain, sizeof(tvalue) - 2);
                 if (tvalue[offset] != '.') {
                     tvalue[offset] = '.';
                     tvalue[offset + 1] = '\0';
@@ -851,7 +851,7 @@ ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type) {
         }
         case SS_IOC_TYPE_DOMAIN: {
             // NOTE: convert names to canonical form (trailing '.')
-            rv = strlcpy(tdns, ioc, sizeof(tdns) - 2);
+            rv = (int) strlcpy(tdns, ioc, sizeof(tdns) - 2);
             if (tdns[rv] != '.') {
                 tdns[rv]         = '.';
                 tdns[rv + 1]     = '\0';

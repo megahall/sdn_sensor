@@ -167,9 +167,9 @@ int ss_metadata_prepare_ioc(const char* source, const char* rule, nn_queue_t* nn
         goto error_out;
     }
     
-    file_id     = json_object_new_int(iptr->file_id);
+    file_id     = json_object_new_int64((int64_t)iptr->file_id);
     if (file_id == NULL) goto error_out;
-    ioc_id      = json_object_new_int(iptr->id);
+    ioc_id      = json_object_new_int64((int64_t)iptr->id);
     if (ioc_id == NULL) goto error_out;
     type        = json_object_new_string(ss_ioc_type_dump(iptr->type));
     if (type == NULL) goto error_out;
@@ -234,7 +234,7 @@ uint8_t* ss_metadata_prepare_frame(const char* source, const char* rule, nn_queu
         if (item == NULL) goto error_out;
         json_object_object_add(jobject, "rule", item);
     }
-    item = json_object_new_int(__sync_add_and_fetch(&nn_queue->tx_messages, 1));
+    item = json_object_new_int64((int64_t)__sync_add_and_fetch(&nn_queue->tx_messages, 1));
     if (item == NULL) goto error_out;
     json_object_object_add(jobject, "seq_num", item);
     
@@ -292,7 +292,7 @@ uint8_t* ss_metadata_prepare_syslog(const char* source, const char* rule, nn_que
     item = json_object_new_string(rule);
     if (item == NULL) goto error_out;
     json_object_object_add(jobject, "rule", item);
-    item = json_object_new_int(__sync_add_and_fetch(&nn_queue->tx_messages, 1));
+    item = json_object_new_int64((int64_t)__sync_add_and_fetch(&nn_queue->tx_messages, 1));
     if (item == NULL) goto error_out;
     json_object_object_add(jobject, "seq_num", item);
 

@@ -46,27 +46,27 @@ struct xaddr {
 /* BEGIN PROTOTYPES */
 
 int addr_unicast_masklen(int af);
-int addr_masklen_valid(int af, u_int masklen);
+int addr_masklen_valid(int af, int masklen);
 int addr_xaddr_to_sa(const struct xaddr* xa, struct sockaddr* sa, socklen_t* len, u_int16_t port);
 int addr_sa_to_xaddr(struct sockaddr* sa, socklen_t slen, struct xaddr* xa);
 int addr_frame_to_xaddr(ss_frame_t* fbuf, struct xaddr* xa);
 int addr_invert(struct xaddr* n);
-int addr_netmask(int af, u_int l, struct xaddr* n);
-int addr_hostmask(int af, u_int l, struct xaddr* n);
+int addr_netmask(int af, int l, struct xaddr* n);
+int addr_hostmask(int af, int l, struct xaddr* n);
 int addr_and(struct xaddr* dst, const struct xaddr* a, const struct xaddr* b);
 int addr_or(struct xaddr* dst, const struct xaddr* a, const struct xaddr* b);
 int addr_cmp(const struct xaddr* a, const struct xaddr* b);
 int addr_is_all0s(const struct xaddr* a);
-int addr_host_is_all0s(const struct xaddr* a, u_int masklen);
-int addr_host_is_all1s(const struct xaddr* a, u_int masklen);
-int addr_host_to_all0s(struct xaddr* a, u_int masklen);
-int addr_host_to_all1s(struct xaddr* a, u_int masklen);
+int addr_host_is_all0s(const struct xaddr* a, int masklen);
+int addr_host_is_all1s(const struct xaddr* a, int masklen);
+int addr_host_to_all0s(struct xaddr* a, int masklen);
+int addr_host_to_all1s(struct xaddr* a, int masklen);
 int addr_pton(const char* p, struct xaddr* n);
 int addr_sa_pton(const char* h, const char* s, struct sockaddr* sa, socklen_t slen);
-int addr_ntop(const struct xaddr* n, char* p, size_t len);
-int addr_sa_ntop(const struct sockaddr* sa, socklen_t slen, char* h, size_t hlen, char* p, size_t plen);
-int addr_pton_cidr(const char* p, struct xaddr* n, u_int* l);
-int addr_netmatch(const struct xaddr* host, const struct xaddr* net, u_int masklen);
+int addr_ntop(const struct xaddr* n, char* p, socklen_t len);
+int addr_sa_ntop(const struct sockaddr* sa, socklen_t slen, char* h, socklen_t hlen, char* p, socklen_t plen);
+int addr_pton_cidr(const char* p, struct xaddr* n, int* l);
+int addr_netmatch(const struct xaddr* host, const struct xaddr* net, int masklen);
 const char* addr_ntop_buf(const struct xaddr* a);
 
 /* END PROTOTYPES */

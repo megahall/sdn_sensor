@@ -6,6 +6,7 @@
 #include <json-c/json_object_private.h>
 
 #include "je_utils.h"
+#include "json.h"
 
 const char* ss_json_string_view(json_object* items, const char* key) {
     json_object* item;

@@ -45,7 +45,7 @@ struct ether_addr port_eth_addrs[RTE_MAX_ETHPORTS];
 
 //const char* icmp_payload = "mhallmhallmhallmhallmhallmhallmhallmhall!!!!!!!!";
 
-mbuf_table_entry_t mbuf_table[RTE_MAX_ETHPORTS][RTE_MAX_LCORE];
+static mbuf_table_entry_t mbuf_table[RTE_MAX_ETHPORTS][RTE_MAX_LCORE];
 
 static unsigned int port_count = 0;
 
@@ -90,7 +90,7 @@ static const struct rte_eth_txconf tx_conf = {
     .txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | ETH_TXQ_FLAGS_NOOFFLOADS,
 };
 
-struct ss_port_statistics port_statistics[RTE_MAX_ETHPORTS];
+static struct ss_port_statistics port_statistics[RTE_MAX_ETHPORTS];
 
 /* TX burst of packets on a port */
 int ss_send_burst(uint8_t port_id, unsigned int lcore_id) {
@@ -134,19 +134,20 @@ int ss_send_packet(rte_mbuf_t* mbuf, uint8_t port_id, unsigned int lcore_id) {
 }
 
 /* main processing loop */
-void ss_main_loop(void) {
+void ss_main_loop(void) __attribute__ ((noreturn)) {
     rte_mbuf_t* mbufs[MAX_PKT_BURST];
     rte_mbuf_t* mbuf;
-    unsigned int lcore_id, socket_id;
+    uint16_t lcore_id, socket_id;
     uint64_t prev_tsc, diff_tsc, cur_tsc, timer_tsc;
-    unsigned int i, port_id, rx_count;
+    unsigned int rx_count;
+    uint8_t i, port_id;
     const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
 
     prev_tsc = 0;
     timer_tsc = 0;
 
-    lcore_id   = rte_lcore_id();
-    socket_id  = rte_socket_id();
+    lcore_id   = (uint16_t) rte_lcore_id();
+    socket_id  = (uint16_t) rte_socket_id();
 
     RTE_LOG(INFO, SS, "entering main loop on lcore %u\n", lcore_id);
 
@@ -203,14 +204,14 @@ void ss_main_loop(void) {
     }
 }
 
-int ss_launch_one_lcore(__attribute__((unused)) void *dummy) {
+int ss_launch_one_lcore(__attribute__((unused)) void *dummy) __attribute__ ((noreturn)) {
     ss_main_loop();
-    return 0;
+    //return 0;
 }
 
 void fatal_signal_handler(int signal) {
     fprintf(stderr, "received fatal signal %d...\n", signal);
-    for (unsigned int port = 0; port < port_count; ++port) {
+    for (uint8_t port = 0; port < port_count; ++port) {
         fprintf(stderr, "closing dpdk port_id %d...\n", port);
         rte_eth_dev_close(port);
         fprintf(stderr, "closed dpdk port_id %d.\n", port);
@@ -241,8 +242,7 @@ int main(int argc, char* argv[]) {
     int rv;
     int c;
     uint8_t port_id, last_port;
-    unsigned int lcore_count;
-    unsigned int lcore_id;
+    uint16_t lcore_count, lcore_id;
     char* conf_path = NULL;
     char pool_name[32];
     
@@ -301,7 +301,7 @@ int main(int argc, char* argv[]) {
     }
 
     /* init EAL */
-    rv = rte_eal_init(ss_conf->eal_vector.we_wordc, ss_conf->eal_vector.we_wordv);
+    rv = rte_eal_init((int) ss_conf->eal_vector.we_wordc, ss_conf->eal_vector.we_wordv);
     if (rv < 0) {
         rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
     }
@@ -317,7 +317,7 @@ int main(int argc, char* argv[]) {
                        sizeof(struct rte_pktmbuf_pool_private),
                        rte_pktmbuf_pool_init, NULL,
                        rte_pktmbuf_init, NULL,
-                       rte_socket_id(), 0);
+                       (int) rte_socket_id(), 0);
         if (ss_pool[i] == NULL) {
             rte_exit(EXIT_FAILURE, "could not create mbuf_pool %s\n", pool_name);
         }
@@ -332,7 +332,7 @@ int main(int argc, char* argv[]) {
         rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
     }
     
-    lcore_count = rte_lcore_count();
+    lcore_count = (uint16_t) rte_lcore_count();
     port_count = rte_eth_dev_count();
     RTE_LOG(NOTICE, SS, "port_count %d\n", port_count);
     if (port_count == 0) {
@@ -372,13 +372,14 @@ int main(int argc, char* argv[]) {
             int eth_socket_id = rte_eth_dev_socket_id(port_id);
             // XXX: work around non-NUMA socket ID bug
             if (eth_socket_id == -1) eth_socket_id = 0;
+            u_int u_eth_socket_id = (u_int) eth_socket_id;
             
             /* init one RX queue */
             fflush(stderr);
             rv = rte_eth_rx_queue_setup(
                 port_id, lcore_id /*queue_id*/, ss_conf->rxd_count,
-                eth_socket_id, &rx_conf,
-                ss_pool[eth_socket_id]);
+                u_eth_socket_id, &rx_conf,
+                ss_pool[u_eth_socket_id]);
             if (rv < 0) {
                 rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup: error: port: %u lcore: %d error: %d\n", port_id, lcore_id, rv);
             }
@@ -387,7 +388,7 @@ int main(int argc, char* argv[]) {
             fflush(stderr);
             rv = rte_eth_tx_queue_setup(
                 port_id, lcore_id /*queue_id*/, ss_conf->txd_count,
-                eth_socket_id, &tx_conf);
+                u_eth_socket_id, &tx_conf);
             if (rv < 0) {
                 rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: error: port: %u lcore: %d error: %d\n", port_id, lcore_id, rv);
             }

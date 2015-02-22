@@ -98,22 +98,22 @@ const char* ss_tcp_flags_dump(uint8_t tcp_flags) {
     char* flags = tcp_flags_strings[rte_lcore_id()];
     int offset = 0;
     if      (tcp_flags & TH_URG) {
-        offset += snprintf(flags + offset, sizeof(flags) - offset, "%s ", "URG");
+        offset += snprintf(flags + offset, sizeof(flags) - (u_long) offset, "%s ", "URG");
     }    
     else if (tcp_flags & TH_ACK) {
-        offset += snprintf(flags + offset, sizeof(flags) - offset, "%s ", "ACK");
+        offset += snprintf(flags + offset, sizeof(flags) - (u_long) offset, "%s ", "ACK");
     }    
     else if (tcp_flags & TH_PSH) {
-        offset += snprintf(flags + offset, sizeof(flags) - offset, "%s ", "PSH");
+        offset += snprintf(flags + offset, sizeof(flags) - (u_long) offset, "%s ", "PSH");
     }    
     else if (tcp_flags & TH_RST) {
-        offset += snprintf(flags + offset, sizeof(flags) - offset, "%s ", "RST");
+        offset += snprintf(flags + offset, sizeof(flags) - (u_long) offset, "%s ", "RST");
     }    
     else if (tcp_flags & TH_SYN) {
-        offset += snprintf(flags + offset, sizeof(flags) - offset, "%s ", "SYN");
+        offset += snprintf(flags + offset, sizeof(flags) - (u_long) offset, "%s ", "SYN");
     }    
     else if (tcp_flags & TH_FIN) {
-        offset += snprintf(flags + offset, sizeof(flags) - offset, "%s ", "FIN");
+        offset += snprintf(flags + offset, sizeof(flags) - (u_long) offset, "%s ", "FIN");
     }
     return flags;
 }
@@ -148,9 +148,9 @@ ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf) {
     }
     
     rte_rwlock_write_lock(&tcp_hash_lock);
-    uint32_t socket_id = rte_hash_add_key(tcp_hash, key);
+    int32_t socket_id = rte_hash_add_key(tcp_hash, key);
     socket->id = socket_id;
-    if (((int32_t) socket_id) >= 0) {
+    if (socket_id >= 0) {
         tcp_sockets[socket->id] = socket;
     }
     else {
@@ -397,8 +397,8 @@ int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t
         return -1;
     }
     
-    uint16_t tcp_length_total = rte_pktmbuf_pkt_len(rx_buf->mbuf) - ((uint8_t*) rx_buf->tcp - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*));
-    uint16_t tcp_length_data  = tcp_length_total - sizeof(tcp_hdr_t);
+    uint16_t tcp_length_total = (uint16_t) (rte_pktmbuf_pkt_len(rx_buf->mbuf) - ((uint8_t*) rx_buf->tcp - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*)));
+    uint16_t tcp_length_data  = (uint16_t) (tcp_length_total - sizeof(tcp_hdr_t));
 
     // XXX: Make the client "happy", and just ACK everything.
     // This is lossy, but back-pressure on syslog messages is pointless.
@@ -505,7 +505,7 @@ int ss_frame_prepare_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     return -1;
 }
 
-uint8_t* ss_phdr_append(rte_mbuf_t* pmbuf, void* data, uint32_t length) {
+uint8_t* ss_phdr_append(rte_mbuf_t* pmbuf, void* data, uint16_t length) {
     uint8_t* pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, length);
     rte_memcpy(pptr, data, length);
     return pptr;
@@ -520,10 +520,10 @@ int ss_tcp_prepare_checksum(ss_frame_t* tx_buf) {
     
     uint8_t  zeros         = 0x00;
     uint8_t  protocol      = IPPROTO_TCP;
-    uint16_t tcp_length_le = rte_pktmbuf_pkt_len(tx_buf->mbuf) - ((uint8_t*) tx_buf->tcp - rte_pktmbuf_mtod(tx_buf->mbuf, uint8_t*));
+    uint16_t tcp_length_le = (uint16_t) (rte_pktmbuf_pkt_len(tx_buf->mbuf) - ((uint8_t*) tx_buf->tcp - rte_pktmbuf_mtod(tx_buf->mbuf, uint8_t*)));
     uint16_t tcp_length_pl = tcp_length_le - sizeof(tcp_hdr_t);
     uint16_t tcp_length    = rte_bswap16(tcp_length_le);
-    uint8_t  doff_rsvd     = tx_buf->tcp->doff << 4 | 0x0;
+    uint8_t  doff_rsvd     = (uint8_t) (tx_buf->tcp->doff << 4 | 0x0);
     uint16_t check_zeros   = rte_bswap16(0x0000);
     
     uint8_t* pl_ptr        = ((uint8_t*) tx_buf->tcp) + sizeof(tcp_hdr_t); // XXX: better way?

@@ -65,13 +65,13 @@ const char* ss_pcre_strerror(int pcre_errno) {
 ss_re_backend_t ss_re_backend_load(const char* backend_type) {
     if (!strcasecmp(backend_type, "pcre")) return SS_RE_BACKEND_PCRE;
     if (!strcasecmp(backend_type, "re2"))  return SS_RE_BACKEND_RE2;
-    return -1;
+    return (ss_re_backend_t) -1;
 }
 
 ss_re_type_t ss_re_type_load(const char* re_type) {
     if (!strcasecmp(re_type, "complete"))  return SS_RE_TYPE_COMPLETE;
     if (!strcasecmp(re_type, "substring")) return SS_RE_TYPE_SUBSTRING;
-    return -1;
+    return (ss_re_type_t) -1;
 }
 
 /* RE CHAIN */
@@ -210,7 +210,7 @@ int ss_re_entry_destroy(ss_re_entry_t* re_entry) {
     
     ss_nn_queue_destroy(&re_entry->nn_queue);
     
-    re_entry->matches  = -1;
+    re_entry->matches  = ~0;
     re_entry->inverted = -1;
     re_entry->backend  = SS_RE_BACKEND_EMPTY;
     re_entry->type     = SS_RE_TYPE_EMPTY;
@@ -431,7 +431,7 @@ int ss_re_entry_prepare_re2(json_object* re_json, ss_re_entry_t* re_entry) {
     re_flag = ss_json_boolean_get(re_json, "verbose", 1);
     cre2_opt_set_log_errors(re2_options, 1);
     
-    re_entry->re2_re = cre2_new(re_string, strlen(re_string), re2_options);
+    re_entry->re2_re = cre2_new(re_string, (int) strlen(re_string), re2_options);
     if (re_entry->re2_re == NULL) {
         fprintf(stderr, "could not allocate re_entry re2_re\n");
         goto error_out;
@@ -501,7 +501,7 @@ int ss_re_chain_match_re2_substring(ss_re_match_t* re_match, ss_re_entry_t* re_e
     match[0].length = 0;
     
     do {
-        start_point = (char*) match[0].data + match[0].length - (char*) l4_offset;
+        start_point = (int) ((char*) match[0].data + match[0].length - (char*) l4_offset);
         match_flag = cre2_match(re_entry->re2_re,
             (char*) l4_offset, l4_length,
             start_point, l4_length,

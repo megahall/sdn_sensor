@@ -105,7 +105,7 @@ uint64_t ss_conf_tsc_read() {
 
 uint64_t ss_conf_tsc_hz_get() {
     int rv;
-    uint64_t ns;
+    double ns;
     uint64_t end;
     struct timespec sleeptime = { .tv_nsec = SS_NS_PER_HALF_SEC }; /* 1/2 second */
     struct timespec t_start, t_end;
@@ -122,16 +122,16 @@ uint64_t ss_conf_tsc_hz_get() {
     
     end  = ss_conf_tsc_read();
     ns   = ((t_end.tv_sec - t_start.tv_sec) * SS_NS_PER_SEC);
-    ns  +=  (t_end.tv_nsec - t_start.tv_nsec);
+    ns  += (t_end.tv_nsec - t_start.tv_nsec);
     
-    double secs = (double) ns / SS_NS_PER_SEC;
+    double secs = ns / SS_NS_PER_SEC;
     ss_conf_tsc_hz = (uint64_t) ((end - start) / secs);
-    return 0;
+    return ss_conf_tsc_hz;
     
     error_out:
     fprintf(stderr, "could not initialize ss_conf_tsc_hz\n");
-    ss_conf_tsc_hz = -1;
-    return -1;
+    ss_conf_tsc_hz = (uint64_t) ~0;
+    return (uint64_t) ~0;
 }
 
 char* ss_conf_file_read(char* conf_path) {
@@ -160,8 +160,8 @@ char* ss_conf_file_read(char* conf_path) {
         goto error_out;
     }
     
-    size_t size = ftell(conf_file);
-    if (size == (unsigned long) -1) {
+    long size = ftell(conf_file);
+    if (size == -1) {
         is_ok = 0;
         fprintf(stderr, "error: could not get size of configuration file\n");
         goto error_out;
@@ -170,15 +170,15 @@ char* ss_conf_file_read(char* conf_path) {
     rewind(conf_file);
     
     /* make room for terminating NUL */
-    conf_content = je_calloc(1, size + 1);
+    conf_content = je_calloc(1, (size_t) (size + 1));
     if (conf_content == NULL) {
         is_ok = 0;
         fprintf(stderr, "error: could not allocate configuration file buffer\n");
         goto error_out;
     }
     
-    srv = fread(conf_content, 1, size, conf_file);
-    if (srv != size) {
+    srv = fread(conf_content, 1, (size_t) size, conf_file);
+    if (srv != (size_t) size) {
         is_ok = 0;
         fprintf(stderr, "error: could not load configuration file\n");
         goto error_out;
@@ -196,7 +196,7 @@ char* ss_conf_file_read(char* conf_path) {
 }
 
 int ss_conf_network_parse(json_object* items) {
-    int rv;
+    int64_t rv;
     json_object* item = NULL;
     
     item = json_object_object_get(items, "promiscuous_mode");
@@ -213,7 +213,7 @@ int ss_conf_network_parse(json_object* items) {
             fprintf(stderr, "mtu is not int\n");
             return -1;
         }
-        ss_conf->mtu = json_object_get_int(item);
+        ss_conf->mtu = (uint16_t) json_object_get_int(item);
     }
     item = json_object_object_get(items, "ipv4_address");
     if (item) {
@@ -275,7 +275,7 @@ int ss_conf_network_parse(json_object* items) {
 }
 
 int ss_conf_dpdk_parse(json_object* items) {
-    int rv;
+    int64_t rv;
     json_object* item = NULL;
     
     item = json_object_object_get(items, "eal_options");
@@ -293,7 +293,7 @@ int ss_conf_dpdk_parse(json_object* items) {
         }
         fprintf(stderr, "]\n");
         if (rv) {
-            fprintf(stderr, "could not parse eal options: %d\n", rv);
+            fprintf(stderr, "could not parse eal options: %ld\n", rv);
             return -1;
         }
     }
@@ -305,7 +305,7 @@ int ss_conf_dpdk_parse(json_object* items) {
             fprintf(stderr, "port_mask is not integer\n");
             return -1;
         }
-        ss_conf->port_mask = json_object_get_int(item);
+        ss_conf->port_mask = (uint32_t) json_object_get_int(item);
     }
     else {
         ss_conf->port_mask = 0xFFFFFFFF;
@@ -317,7 +317,7 @@ int ss_conf_dpdk_parse(json_object* items) {
             fprintf(stderr, "rxd_count is not integer\n");
             return -1;
         }
-        ss_conf->rxd_count = json_object_get_int(item);
+        ss_conf->rxd_count = (uint16_t) json_object_get_int(item);
     }
     else {
         ss_conf->rxd_count = 128 /* RTE_TEST_RX_DESC_DEFAULT */;
@@ -329,7 +329,7 @@ int ss_conf_dpdk_parse(json_object* items) {
             fprintf(stderr, "txd_count is not integer\n");
             return -1;
         }
-        ss_conf->txd_count = json_object_get_int(item);
+        ss_conf->txd_count = (uint16_t) json_object_get_int(item);
     }
     else {
         ss_conf->txd_count = 512 /* RTE_TEST_TX_DESC_DEFAULT */;
@@ -347,7 +347,7 @@ int ss_conf_dpdk_parse(json_object* items) {
         ss_conf->rss_enabled = 1;
     }
     
-    rv = ss_conf_tsc_hz_get();
+    rv = (int64_t) ss_conf_tsc_hz_get();
     if (rv) return -1;
 
     item = json_object_object_get(items, "timer_msec");
@@ -356,7 +356,7 @@ int ss_conf_dpdk_parse(json_object* items) {
             fprintf(stderr, "timer_msec is not integer\n");
             return -1;
         }
-        ss_conf->timer_cycles = json_object_get_int(item) * ss_conf_tsc_hz / 1000;
+        ss_conf->timer_cycles = ((u_long) json_object_get_int(item)) * ss_conf_tsc_hz / 1000;
         if (ss_conf->timer_cycles / ss_conf_tsc_hz > MAX_TIMER_PERIOD) {
             fprintf(stderr, "timer_msec larger than %d\n", MAX_TIMER_PERIOD);
             return -1;

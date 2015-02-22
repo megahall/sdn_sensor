@@ -106,8 +106,8 @@ int ss_nn_queue_destroy(nn_queue_t* nn_queue) {
     if (!nn_queue) return 0;
     if (nn_queue->conn >= 0) { nn_close(nn_queue->conn); nn_queue->conn = -1; }
     nn_queue->remote_id = -1;
-    nn_queue->format    = -1;
-    nn_queue->content   = -1;
+    nn_queue->format    = (nn_queue_format_t) -1;
+    nn_queue->content   = (nn_content_type_t) -1;
     nn_queue->type      = -1;
     memset(nn_queue->url, 0, sizeof(nn_queue->url));
     return 0;
@@ -168,7 +168,7 @@ int ss_nn_queue_send(nn_queue_t* nn_queue, uint8_t* message, uint16_t length) {
     if (rv >= 0) {
         // XXX: note: tx_messages is used as seq_num
         // incremented in different code from this
-        __sync_add_and_fetch(&nn_queue->tx_bytes, rv);
+        __sync_add_and_fetch(&nn_queue->tx_bytes, (uint64_t) rv);
     }
     else {
         __sync_add_and_fetch(&nn_queue->tx_discards, 1);

@@ -46,16 +46,16 @@ int addr_unicast_masklen(int af)
     }
 }
 
-int addr_masklen_valid(int af, u_int masklen)
+int addr_masklen_valid(int af, int masklen)
 {
     if ((int) masklen < 0)
         return (-1);
 
     switch (af) {
     case AF_INET:
-        return (masklen <= 32 ? 0 : -1);
+        return (masklen >= 0 && masklen <= 32 ? 0 : -1);
     case AF_INET6:
-        return (masklen <= 128 ? 0 : -1);
+        return (masklen >= 0 && masklen <= 128 ? 0 : -1);
     default:
         return (-1);
     }
@@ -174,7 +174,7 @@ int addr_invert(struct xaddr* n)
     }
 }
 
-int addr_netmask(int af, u_int l, struct xaddr* n)
+int addr_netmask(int af, int l, struct xaddr* n)
 {
     int i;
 
@@ -200,7 +200,7 @@ int addr_netmask(int af, u_int l, struct xaddr* n)
     }
 }
 
-int addr_hostmask(int af, u_int l, struct xaddr* n)
+int addr_hostmask(int af, int l, struct xaddr* n)
 {
     if (addr_netmask(af, l, n) == -1 || addr_invert(n) == -1)
         return (-1);
@@ -299,7 +299,7 @@ int addr_is_all0s(const struct xaddr* a)
     }
 }
 
-int addr_host_is_all0s(const struct xaddr* a, u_int masklen)
+int addr_host_is_all0s(const struct xaddr* a, int masklen)
 {
     struct xaddr tmp_addr, tmp_mask, tmp_result;
 
@@ -311,7 +311,7 @@ int addr_host_is_all0s(const struct xaddr* a, u_int masklen)
     return (addr_is_all0s(&tmp_result));
 }
 
-int addr_host_is_all1s(const struct xaddr* a, u_int masklen)
+int addr_host_is_all1s(const struct xaddr* a, int masklen)
 {
     struct xaddr tmp_addr, tmp_mask, tmp_result;
 
@@ -325,7 +325,7 @@ int addr_host_is_all1s(const struct xaddr* a, u_int masklen)
     return (addr_is_all0s(&tmp_result));
 }
 
-int addr_host_to_all0s(struct xaddr* a, u_int masklen)
+int addr_host_to_all0s(struct xaddr* a, int masklen)
 {
     struct xaddr tmp_mask;
 
@@ -336,7 +336,7 @@ int addr_host_to_all0s(struct xaddr* a, u_int masklen)
     return (0);
 }
 
-int addr_host_to_all1s(struct xaddr* a, u_int masklen)
+int addr_host_to_all1s(struct xaddr* a, int masklen)
 {
     struct xaddr tmp_mask;
 
@@ -402,7 +402,7 @@ int addr_sa_pton(const char* h, const char* s, struct sockaddr* sa, socklen_t sl
     return (0);
 }
 
-int addr_ntop(const struct xaddr* n, char* p, size_t len)
+int addr_ntop(const struct xaddr* n, char* p, socklen_t len)
 {
     struct sockaddr_storage ss;
     socklen_t slen = sizeof(ss);
@@ -418,7 +418,7 @@ int addr_ntop(const struct xaddr* n, char* p, size_t len)
     return (0);
 }
 
-int addr_sa_ntop(const struct sockaddr* sa, socklen_t slen, char* h, size_t hlen, char* p, size_t plen)
+int addr_sa_ntop(const struct sockaddr* sa, socklen_t slen, char* h, socklen_t hlen, char* p, socklen_t plen)
 {
     if (sa == NULL)
         return (-1);
@@ -428,10 +428,10 @@ int addr_sa_ntop(const struct sockaddr* sa, socklen_t slen, char* h, size_t hlen
     return (0);
 }
 
-int addr_pton_cidr(const char* p, struct xaddr* n, u_int* l)
+int addr_pton_cidr(const char* p, struct xaddr* n, int* l)
 {
     struct xaddr tmp;
-    long unsigned int masklen = -1;
+    int masklen = -1;
     char addrbuf[64];
     char* mp;
     char* cp;
@@ -444,7 +444,7 @@ int addr_pton_cidr(const char* p, struct xaddr* n, u_int* l)
     if ((mp = strchr(addrbuf, '/')) != NULL) {
         *mp = '\0';
         mp++;
-        masklen = strtoul(mp, &cp, 10);
+        masklen = (int) strtol(mp, &cp, 10);
         if (*mp == '\0' || *cp != '\0' || masklen > 128)
             return (-1);
     }
@@ -465,7 +465,7 @@ int addr_pton_cidr(const char* p, struct xaddr* n, u_int* l)
     return (0);
 }
 
-int addr_netmatch(const struct xaddr* host, const struct xaddr* net, u_int masklen)
+int addr_netmatch(const struct xaddr* host, const struct xaddr* net, int masklen)
 {
     struct xaddr tmp_mask, tmp_result;
 

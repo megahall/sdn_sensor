@@ -57,7 +57,7 @@
 #define DEBUG_NF10 1
 
 /* Prototype this (can't make it static because it only #ifdef DEBUG) */
-void dump_packet(const char *tag, const u_int8_t *p, int len);
+void dump_packet(const char *tag, const u_int8_t *p, u_int len);
 
 /* XXX: mhall: global so netflow_peer.c can use the peers_lock */
 struct peers netflow_peers;
@@ -87,7 +87,7 @@ void flow_packet_dealloc(struct flow_packet* f)
 }
 
 /* Format data to a hex string */
-const char* data_ntoa(const u_int8_t* p, int len)
+const char* data_ntoa(const u_int8_t* p, u_int len)
 {
     static char buf[2048];
     char tmp[3];
@@ -105,7 +105,7 @@ const char* data_ntoa(const u_int8_t* p, int len)
 
 /* Dump a packet */
 void
-dump_packet(const char* tag, const u_int8_t* p, int len)
+dump_packet(const char* tag, const u_int8_t* p, u_int len)
 {
     if (tag == NULL)
         logit(LOG_INFO, "packet len %d: %s", len, data_ntoa(p, len));
@@ -123,7 +123,7 @@ dump_packet(const char* tag, const u_int8_t* p, int len)
 int process_flow(struct store_flow_complete* flow) {
     ss_ioc_entry_t* iptr;
     uint8_t* metadata = NULL;
-    int mlength = 0;
+    size_t mlength = 0;
     int rv = 0;
     
     /* Another sanity check */
@@ -155,7 +155,7 @@ int process_flow(struct store_flow_complete* flow) {
         // XXX: for now assume the output is C char*
         mlength = strlen((char*) metadata);
         //printf("metadata: %s\n", metadata);
-        rv = ss_nn_queue_send(nn_queue, metadata, mlength);
+        rv = ss_nn_queue_send(nn_queue, metadata, (uint16_t) mlength);
     }
     
     return rv;

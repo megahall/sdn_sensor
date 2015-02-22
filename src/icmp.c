@@ -15,6 +15,7 @@
 #include "checksum.h"
 #include "common.h"
 #include "ethernet.h"
+#include "icmp.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 
@@ -26,7 +27,7 @@
 // ICMPv6 Length (32 bits)
 // Zeros         (24 bits)
 // Next Header   ( 8 bits)
-int ss_frame_prepare_icmp6(ss_frame_t* tx_buf, uint8_t* pl_ptr, uint32_t pl_len) {
+int ss_frame_prepare_icmp6(ss_frame_t* tx_buf, uint8_t* pl_ptr, uint16_t pl_len) {
     rte_mbuf_t* pmbuf = NULL;
     uint8_t* pptr;
     uint32_t icmp_len;
@@ -119,7 +120,7 @@ int ss_frame_handle_echo4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     }
     rte_memcpy(dptr, (uint8_t*) rx_buf->icmp4 + sizeof(icmp4_hdr_t), rx_buf->ip4->tot_len - sizeof(ip4_hdr_t) - sizeof(icmp4_hdr_t));
 
-    checksum = ss_in_cksum((uint16_t*) tx_buf->icmp4, rte_pktmbuf_pkt_len(tx_buf->mbuf) - ((uint8_t*) tx_buf->icmp4 - rte_pktmbuf_mtod(tx_buf->mbuf, uint8_t*)));
+    checksum = ss_in_cksum((uint16_t*) tx_buf->icmp4, (uint16_t) (rte_pktmbuf_pkt_len(tx_buf->mbuf) - ((uint8_t*) tx_buf->icmp4 - rte_pktmbuf_mtod(tx_buf->mbuf, uint8_t*))));
     tx_buf->icmp4->checksum          = checksum;
 
     tx_buf->ip4->tot_len             = rte_bswap16(rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t)); // XXX: better way?
@@ -178,7 +179,7 @@ int ss_frame_handle_echo6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         goto error_out;
     }
     rte_memcpy(dptr, (uint8_t*) rx_buf->icmp6 + sizeof(icmp6_hdr_t), rx_dlen);
-    tx_plen                          = rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t) - sizeof(ip6_hdr_t); // XXX: better way?
+    tx_plen                          = (uint16_t) (rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t) - sizeof(ip6_hdr_t)); // XXX: better way?
     tx_buf->ip6->ip6_plen            = rte_bswap16(tx_plen);
 
     rv = ss_frame_prepare_icmp6(tx_buf, (uint8_t*) tx_buf->icmp6, tx_plen);
@@ -212,7 +213,7 @@ int ss_frame_handle_icmp4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     uint8_t icmp_type = rx_buf->icmp4->type;
     uint8_t icmp_code = rx_buf->icmp4->code;
     rx_buf->l4_offset      = ((uint8_t*) rx_buf->icmp4) + sizeof(icmp4_hdr_t);
-    rx_buf->data.l4_length = rte_pktmbuf_pkt_len(rx_buf->mbuf) - (rx_buf->l4_offset - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*));
+    rx_buf->data.l4_length = (uint16_t) (rte_pktmbuf_pkt_len(rx_buf->mbuf) - (rx_buf->l4_offset - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*)));
     rx_buf->data.icmp_type = icmp_type;
     rx_buf->data.icmp_code = icmp_code;
     RTE_LOG(INFO, STACK, "icmp4 type %hhu\n", icmp_type);
@@ -243,7 +244,7 @@ int ss_frame_handle_icmp6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     uint8_t icmp_type = rx_buf->icmp6->icmp6_type;
     uint8_t icmp_code = rx_buf->icmp6->icmp6_code;
     rx_buf->l4_offset      = ((uint8_t*) rx_buf->icmp6) + sizeof(icmp6_hdr_t);
-    rx_buf->data.l4_length = rte_pktmbuf_pkt_len(rx_buf->mbuf) - (rx_buf->l4_offset - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*));
+    rx_buf->data.l4_length = (uint16_t) (rte_pktmbuf_pkt_len(rx_buf->mbuf) - (rx_buf->l4_offset - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*)));
     rx_buf->data.icmp_type = icmp_type;
     rx_buf->data.icmp_code = icmp_code;
     RTE_LOG(INFO, STACK, "icmp6 type %hhu\n", icmp_type);

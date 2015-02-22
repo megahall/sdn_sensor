@@ -24,6 +24,7 @@
 
 #include "netflow_common.h"
 #include "netflow.h"
+#include "netflow_log.h"
 
 static int logstarted = 0;
 static int logstderr = 0;
@@ -67,7 +68,7 @@ void logitm(int level, const char* fmt, ...)
 }
 
 /* logitm and exit (like err(3)) */
-void logerr(const char* fmt, ...)
+void logerr(const char* fmt, ...) __attribute__((noreturn))
 {
     va_list args;
     char buf[1024];
@@ -81,7 +82,7 @@ void logerr(const char* fmt, ...)
 }
 
 /* logit() and exit() (like errx(3)) */
-void logerrx(const char* fmt, ...)
+void logerrx(const char* fmt, ...) __attribute__((noreturn))
 {
     va_list args;
 
