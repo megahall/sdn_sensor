@@ -131,11 +131,14 @@ int ss_tcp_socket_init(ss_flow_key_t* key, ss_tcp_socket_t* socket) {
 }
 
 ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf) {
+    int is_error = 0;
+    
     // XXX: should these be allocated from jemalloc or RTE alloc?
-    ss_tcp_socket_t* socket = je_calloc(1, sizeof(ss_flow_key_t));
-    if (socket == NULL) goto error_out;
+    ss_tcp_socket_t* socket = je_calloc(1, sizeof(ss_tcp_socket_t));
+    if (socket == NULL) { is_error = 1; goto error_out; }
     
     ss_tcp_socket_init(key, socket);
+
     rte_spinlock_lock(&socket->lock);
     if (rx_buf->tcp->th_flags == TH_SYN) {
         socket->state = SS_TCP_SYN_RX;
@@ -143,28 +146,31 @@ ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf) {
     else {
         socket->state = SS_TCP_UNKNOWN;
     }
-    rte_spinlock_unlock(&socket->lock);
     
     rte_rwlock_write_lock(&tcp_hash_lock);
-    rte_spinlock_lock(&socket->lock);
-    socket->id = rte_hash_add_key(tcp_hash, &key);
-    rte_spinlock_unlock(&socket->lock);
+    uint32_t socket_id = rte_hash_add_key(tcp_hash, key);
+    socket->id = socket_id;
+    if (((int32_t) socket_id) >= 0) {
+        tcp_sockets[socket->id] = socket;
+    }
+    else {
+        is_error = 1;
+    }
     rte_rwlock_write_unlock(&tcp_hash_lock);
-    if (((int32_t) socket->id) < 0) goto error_out;
-    
-    tcp_sockets[socket->id] = socket;
 
-    rte_spinlock_lock(&socket->lock);
-    RTE_LOG(INFO, STACK, "new tcp socket: sport: %hu dport: %hu id: %u\n",
-        rte_bswap16(key->sport), rte_bswap16(key->dport), socket->id);
+    RTE_LOG(INFO, STACK, "new tcp socket: sport: %hu dport: %hu id: %u is_error: %d\n",
+        rte_bswap16(key->sport), rte_bswap16(key->dport), socket->id, is_error);
+
     rte_spinlock_unlock(&socket->lock);
+    
+    error_out:
+    if (unlikely(is_error)) {
+        if (socket) { je_free(socket); socket = NULL; }
+        RTE_LOG(ERR, STACK, "failed to allocate tcp socket\n");
+        return NULL;
+    }
 
     return socket;
-
-    error_out:
-    if (socket) { je_free(socket); socket = NULL; }
-    RTE_LOG(ERR, STACK, "failed to allocate tcp socket\n");
-    return NULL;
 }
 
 int ss_tcp_socket_delete(ss_flow_key_t* key) {
