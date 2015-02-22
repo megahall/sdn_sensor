@@ -94,7 +94,7 @@ The `sdn_sensor` leverages the talents and achievements of these communities:
 * the intelligence community,
 * the information security community,
 * the network hardware community,
-* the financial markets community,
+* the financial markets community.
 
 By integrating the amazing things these communities have created, the 
 `sdn_sensor` can successfully detect malicious activities already in progress, 
