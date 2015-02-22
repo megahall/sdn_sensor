@@ -59,7 +59,8 @@
 /* Prototype this (can't make it static because it only #ifdef DEBUG) */
 void dump_packet(const char *tag, const u_int8_t *p, int len);
 
-static struct peers peers;
+/* XXX: mhall: global so netflow_peer.c can use the peers_lock */
+struct peers netflow_peers;
 
 /* Input queue management */
 
@@ -191,7 +192,7 @@ void process_netflow_v1(struct flow_packet* fp, struct peer_state* peer)
     }
 
     logit(LOG_DEBUG, "Valid netflow v.1 packet %d flows", nflows);
-    update_peer(&peers, peer, nflows, 1);
+    update_peer(peer, nflows, 1);
 
     for (i = 0; i < nflows; i++) {
         offset = NF1_PACKET_SIZE(i);
@@ -280,7 +281,7 @@ void process_netflow_v5(struct flow_packet* fp, struct peer_state* peer)
     }
 
     logit(LOG_DEBUG, "Valid netflow v.5 packet %d flows", nflows);
-    update_peer(&peers, peer, nflows, 5);
+    update_peer(peer, nflows, 5);
 
     for (i = 0; i < nflows; i++) {
         offset = NF5_PACKET_SIZE(i);
@@ -376,7 +377,7 @@ void process_netflow_v7(struct flow_packet* fp, struct peer_state* peer)
     }
 
     logit(LOG_DEBUG, "Valid netflow v.7 packet %d flows", nflows);
-    update_peer(&peers, peer, nflows, 7);
+    update_peer(peer, nflows, 7);
 
     for (i = 0; i < nflows; i++) {
         offset = NF7_PACKET_SIZE(i);
@@ -647,14 +648,14 @@ int process_netflow_v9_template(u_int8_t* pkt, size_t len, struct peer_state* pe
                 i, recs[i].type, recs[i].len);
 #endif
             total_size += recs[i].len;
-            if (total_size > peers.max_template_len) {
+            if (total_size > netflow_peers.max_template_len) {
                 je_free(recs);
                 peer->ninvalid++;
                 logit(LOG_WARNING, "netflow v.9 flowset "
                     "template 0x%08x/0x%04x from %s too large "
                     "len %d > max %d", source_id, template_id,
                     addr_ntop_buf(&peer->from), total_size,
-                    peers.max_template_len);
+                    netflow_peers.max_template_len);
                 /* XXX ratelimit */
                 return (-1);
             }
@@ -674,7 +675,7 @@ int process_netflow_v9_template(u_int8_t* pkt, size_t len, struct peer_state* pe
     
         template = peer_nf9_find_template(peer, source_id, template_id);
         if (template == NULL) {
-            template = peer_nf9_new_template(peer, &peers, source_id, template_id);
+            template = peer_nf9_new_template(peer, source_id, template_id);
         }
     
         if (template->records != NULL)
@@ -863,7 +864,7 @@ void process_netflow_v9(struct flow_packet* fp, struct peer_state* peer)
 
     /* Don't update peer unless we actually receive data from it */
     if (total_flows > 0)
-        update_peer(&peers, peer, total_flows, 9);
+        update_peer(peer, total_flows, 9);
 }
 
 int nf10_rec_to_flow(struct peer_nf10_record* rec, struct store_flow_complete* flow,
@@ -1071,14 +1072,14 @@ int process_netflow_v10_template(u_int8_t* pkt, size_t len, struct peer_state* p
                     i, recs[i].type, recs[i].len);
             }
             total_size += recs[i].len;
-            if (total_size > peers.max_template_len) {
+            if (total_size > netflow_peers.max_template_len) {
                 je_free(recs);
                 peer->ninvalid++;
                 logit(LOG_WARNING, "netflow v.10 flowset "
                     "template 0x%08x/0x%04x from %s too large "
                     "len %d > max %d", source_id, template_id,
                     addr_ntop_buf(&peer->from), total_size,
-                    peers.max_template_len);
+                    netflow_peers.max_template_len);
                 /* XXX ratelimit */
                 return (-1);
             }
@@ -1098,7 +1099,7 @@ int process_netflow_v10_template(u_int8_t* pkt, size_t len, struct peer_state* p
 
         template = peer_nf10_find_template(peer, source_id, template_id);
         if (template == NULL) {
-            template = peer_nf10_new_template(peer, &peers, source_id, template_id);
+            template = peer_nf10_new_template(peer, source_id, template_id);
         }
 
         if (template->records != NULL)
@@ -1286,14 +1287,14 @@ void process_netflow_v10(struct flow_packet* fp, struct peer_state* peer)
 
     /* Don't update peer unless we actually receive data from it */
     if (total_flows > 0)
-        update_peer(&peers, peer, total_flows, 10);
+        update_peer(peer, total_flows, 10);
 }
 
 int process_packet(struct flow_packet* fp) {
     struct peer_state* peer;
     struct NF_HEADER_COMMON* hdr = (struct NF_HEADER_COMMON*)fp->packet;
 
-    if ((peer = find_peer(&peers, &fp->flow_source)) == NULL) {
+    if ((peer = find_peer(&fp->flow_source)) == NULL) {
         logit(LOG_WARNING, "flow source %s was expired between "
             "between flow packet reception and processing", 
             addr_ntop_buf(&fp->flow_source));
@@ -1328,7 +1329,7 @@ int process_packet(struct flow_packet* fp) {
 
 int netflow_frame_handle(ss_frame_t* fbuf) {
     if (DEBUG) {
-        dump_peers(&peers);
+        dump_peers();
     }
     
     struct peer_state* peer;
@@ -1349,8 +1350,8 @@ int netflow_frame_handle(ss_frame_t* fbuf) {
         return (1);
     }
 
-    if ((peer = find_peer(&peers, &fp->flow_source)) == NULL)
-        peer = new_peer(&peers, &fp->flow_source);
+    if ((peer = find_peer(&fp->flow_source)) == NULL)
+        peer = new_peer(&fp->flow_source);
     if (peer == NULL) {
         logit(LOG_DEBUG, "packet from unauthorised agent %s",
             addr_ntop_buf(&fp->flow_source));
@@ -1380,13 +1381,14 @@ int netflow_frame_handle(ss_frame_t* fbuf) {
 
 int netflow_init(int argc, char **argv) {
     tzset();
-    bzero(&peers, sizeof(peers));
-    peers.max_peers = DEFAULT_MAX_PEERS;
-    peers.max_templates = DEFAULT_MAX_TEMPLATES;
-    peers.max_sources = DEFAULT_MAX_SOURCES;
-    peers.max_template_len = DEFAULT_MAX_TEMPLATE_LEN;
-    SPLAY_INIT(&peers.peer_tree);
-    TAILQ_INIT(&peers.peer_list);
+    bzero(&netflow_peers, sizeof(netflow_peers));
+    rte_spinlock_recursive_init(&netflow_peers.peers_lock);
+    netflow_peers.max_peers = DEFAULT_MAX_PEERS;
+    netflow_peers.max_templates = DEFAULT_MAX_TEMPLATES;
+    netflow_peers.max_sources = DEFAULT_MAX_SOURCES;
+    netflow_peers.max_template_len = DEFAULT_MAX_TEMPLATE_LEN;
+    SPLAY_INIT(&netflow_peers.peer_tree);
+    TAILQ_INIT(&netflow_peers.peer_list);
 
     return (0);
 }

@@ -28,6 +28,7 @@
 
 #include <bsd/sys/queue.h>
 #include <bsd/sys/tree.h>
+#include <rte_spinlock.h>
 
 #include "netflow_common.h"
 #include "netflow_addr.h"
@@ -134,6 +135,7 @@ TAILQ_HEAD(peer_list, peer_state);
 
 /* Peer stateholding structure */
 struct peers {
+    rte_spinlock_recursive_t peers_lock;
     struct peer_tree peer_tree;
     struct peer_list peer_list;
     u_int max_peers, max_templates, max_sources, max_template_len;
@@ -149,8 +151,8 @@ struct peer_nf9_source* peer_nf9_lookup_source(struct peer_state* peer, u_int32_
 struct peer_nf9_template* peer_nf9_lookup_template(struct peer_nf9_source* nf9src, u_int16_t template_id);
 struct peer_nf9_template* peer_nf9_find_template(struct peer_state* peer, u_int32_t source_id, u_int16_t template_id);
 void peer_nf9_template_update(struct peer_state* peer, u_int32_t source_id, u_int16_t template_id);
-struct peer_nf9_source* peer_nf9_new_source(struct peer_state* peer, struct peers* peers, u_int32_t source_id);
-struct peer_nf9_template* peer_nf9_new_template(struct peer_state* peer, struct peers* peers, u_int32_t source_id, u_int16_t template_id);
+struct peer_nf9_source* peer_nf9_new_source(struct peer_state* peer, u_int32_t source_id);
+struct peer_nf9_template* peer_nf9_new_template(struct peer_state* peer, u_int32_t source_id, u_int16_t template_id);
 void peer_nf10_template_delete(struct peer_nf10_source* nf10src, struct peer_nf10_template* template);
 void peer_nf10_source_delete(struct peer_state* peer, struct peer_nf10_source* nf10src);
 void peer_nf10_delete(struct peer_state* peer);
@@ -158,18 +160,18 @@ struct peer_nf10_source* peer_nf10_lookup_source(struct peer_state* peer, u_int3
 struct peer_nf10_template* peer_nf10_lookup_template(struct peer_nf10_source* nf10src, u_int16_t template_id);
 struct peer_nf10_template* peer_nf10_find_template(struct peer_state* peer, u_int32_t source_id, u_int16_t template_id);
 void peer_nf10_template_update(struct peer_state* peer, u_int32_t source_id, u_int16_t template_id);
-struct peer_nf10_source* peer_nf10_new_source(struct peer_state* peer, struct peers* peers, u_int32_t source_id);
-struct peer_nf10_template* peer_nf10_new_template(struct peer_state* peer, struct peers* peers, u_int32_t source_id, u_int16_t template_id);
+struct peer_nf10_source* peer_nf10_new_source(struct peer_state* peer, u_int32_t source_id);
+struct peer_nf10_template* peer_nf10_new_template(struct peer_state* peer, u_int32_t source_id, u_int16_t template_id);
 int peer_compare(struct peer_state* a, struct peer_state* b);
 struct peer_state* peer_tree_SPLAY_INSERT(struct peer_tree* head, struct peer_state* elm);
 struct peer_state* peer_tree_SPLAY_REMOVE(struct peer_tree* head, struct peer_state* elm);
 void peer_tree_SPLAY(struct peer_tree* head, struct peer_state* elm);
 void peer_tree_SPLAY_MINMAX(struct peer_tree* head, int __comp);
-void delete_peer(struct peers* peers, struct peer_state* peer);
-struct peer_state* new_peer(struct peers* peers, struct xaddr* addr);
-void update_peer(struct peers* peers, struct peer_state* peer, u_int nflows, u_int netflow_version);
-struct peer_state* find_peer(struct peers* peers, struct xaddr* addr);
-void dump_peers(struct peers* peers);
+void delete_peer(struct peer_state* peer);
+struct peer_state* new_peer(struct xaddr* addr);
+void update_peer(struct peer_state* peer, u_int nflows, u_int netflow_version);
+struct peer_state* find_peer(struct xaddr* addr);
+void dump_peers(void);
 
 /* END PROTOTYPES */
 
