@@ -133,17 +133,19 @@ right away but don't lie to the person who comes after you.
 
 7) Use a lot of log messages as this is young software with bugs.
 
-8) Use well known best-in-class dependency libraries. Follow the principle of 
+8) put `filename: one-line description` on every git commit message.
+
+9) Use well known best-in-class dependency libraries. Follow the principle of 
 least surprise as much as possible. Try to make git submodules for the 
 dependencies so it's easy to track and update them.
 
-9) Allocate all memory using DPDK or `libjemalloc`. Don't use the `libc` 
+10) Allocate all memory using DPDK or `libjemalloc`. Don't use the `libc` 
 allocator, because it is way too slow and buggy. Remember many `string.h` 
 functions call libc alloc secretly. This will cause segfaults if pointers get 
 mixed between `libjemalloc` and `libc`. To avoid this reimplement any broken 
 functions in `je_utils.c`.
 
-10) Use the `make cproto` command to auto-update the function prototypes, it 
+11) Use the `make cproto` command to auto-update the function prototypes, it 
 makes life easy. Use `scripts/create-header-file.pl` to make new blank header 
 files in the right format to work with `make cproto`.
 
