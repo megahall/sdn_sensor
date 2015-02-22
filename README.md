@@ -14,7 +14,7 @@ performs threat intelligence analysis of raw traffic, DNS packets, NetFlow /
 IPFIX, sFlow, and TCP and UDP Syslog protocols.
 
 All traffic inspection results are processed using event correlation, 
-aggregation, deduplication, summarization, charting, reporting, and logging, 
+aggregation, de-duplication, summarization, charting, reporting, and logging, 
 as part of a high performance analytics stack, which is capable of handling 
 300,000 or more events per second, even in a laptop system.
 
@@ -32,13 +32,13 @@ Get vagrant: [Vagrant Downloads (https://www.vagrantup.com/downloads.html) .
 2. `vagrant ssh`
 3. `cd /vagrant`
 4. Edit `conf/sdn_sensor_vagrant.example`. The Vagrant provisioning will copy 
-it to `sdn_sensor_vagrant.json` and subsitute some per-VM values into place. 
+it to `sdn_sensor_vagrant.json` and substitute some per-VM values into place. 
 In particular the user should set `{ipv4,ipv6}_{address,gateway}`, `log_level` 
 (if debugging), `ioc_files / path`.
 5. Add some of your own threat intelligence to the `ioc_file`. The ioc_file 
    CSV fields are:
 
-        id (64-bit integer),type (ip, domail, url, email), threat_type / itype (free-form string), ip (optional), dns, ioc_value
+        id (64-bit integer),type (ip, domain, url, email), threat_type / itype (free-form string), ip (optional), dns, ioc_value
 6. `cd src`
 7. `make clean; make`
 8. `sudo ../scripts/sdn_sensor.bash`. (Use `-d` to load it in gdb.) Init
@@ -54,10 +54,10 @@ In particular the user should set `{ipv4,ipv6}_{address,gateway}`, `log_level`
 ## Design Philosophy ##
 
 The `sdn_sensor` is designed around the assumption that every large network 
-already contains malicious traffic, compromised systems, malware, and APTs 
+already contains malicious traffic, compromised systems, malware, and APT's 
 (Advanced Persistent Threats). Usually these arrive via diverse sources, such 
 as email, mobile devices, BYOD (bring your own device), open / share network 
-resources (such as SANs, file sharing, etc.), user error, software defects, 
+resources (such as SAN's, file sharing, etc.), user error, software defects, 
 etc.
 
 Even the US SEC (United States Securities and Exchange Commission) has adopted 
@@ -75,12 +75,12 @@ to detect the activity that is surely already happening rather than prevent
 the apparently unpreventable. To accomplish this, several knowledge sources 
 and technologies are combined in a single codebase:
 
-* Threat Intelligence IOCs (Indicators of Compromise), such as known malicious 
-  IPs, DNS Domains, URLs, Email Addresses, and File Hashes,
+* Threat Intelligence IOC's (Indicators of Compromise), such as known malicious 
+  IP's, DNS Domains, URL's, Email Addresses, and File Hashes,
 * SDN-based (software defined networking) user-space packet processing, which 
   allows many gigabits per second of traffic or management metadata to be 
   inspected at line rate, based on Intel DPDK (Data Plane Development Kit),
-* high-bandwidth low-latency message queueing, used for years in stock markets 
+* high-bandwidth low-latency message queuing, used for years in stock markets 
   and other major world financial transaction processing systems,
 * low-latency in-memory streaming database, ESP (event stream processing), and 
   CEP (complex event processing) engines, designed to dig through huge volumes 
@@ -112,7 +112,7 @@ IOC matching in the `sdn_sensor` is performed against the following areas:
 In addition to these, it is possible to perform matching with:
 * libpcap filter expressions,
 * CIDR blocks in IPv4 or IPv6,
-* DNS names or IPs inside DNS questions and answers.
+* DNS names or IP's inside DNS questions and answers.
 
 ## Coding Standards ##
 
@@ -143,7 +143,7 @@ In addition to these, it is possible to perform matching with:
 10. Allocate all memory using DPDK or `libjemalloc`. Don't use the `libc` 
     allocator, because it is way too slow and buggy. Remember many `string.h` 
     functions call libc alloc secretly. This will cause segfaults if pointers get 
-    mixed between `libjemalloc` and `libc`. To avoid this reimplement any broken 
+    mixed between `libjemalloc` and `libc`. To avoid this re-implement any broken 
     string functions in `je_utils.c`.
 
 11. Use the `make cproto` command to auto-update the function prototypes, it 
@@ -158,7 +158,7 @@ In addition to these, it is possible to perform matching with:
 and write any arbitrary addresses in system memory whatsoever without any 
 restrictions.
 
-Fundamentally DPDK allows Bus Mater and DMA (direct memory access) by the NIC 
+Fundamentally DPDK allows Bus Master and DMA (direct memory access) by the NIC 
 (network interface card) by design. This means that PCIe (PCI Express) bus on 
 the motherboard permits almost unlimited read and write access to all of 
 system memory, user-space or kernel-space, or any other region(s) present.
@@ -170,7 +170,7 @@ any sensitive or trusted machines.
 
 With virtualization it is safer, as it should only be able to take over the 
 VM, and not the hypervisor. However if you use native PCI Passthrough, or 
-other raw or low level VF (Virtual Functions) on the NICs, or special DPDK 
+other raw or low level VF (Virtual Functions) on the NIC's, or special DPDK 
 Ethernet drivers, anything could happen. Think carefully.
 
 ### Coverity Scan Static Analysis Results ###
