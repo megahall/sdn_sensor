@@ -116,39 +116,39 @@ In addition to these, it is possible to perform matching with:
 
 ## Coding Standards ##
 
-1) Use 4 spaces for all indent levels.
+1. Use 4 spaces for all indent levels.
 
-2) Don't bother with 80-character lines, just make it readable.
+2. Don't bother with 80-character lines, just make it readable.
 
-3) The "standard name prefix" for functions / globals is "ss_" (short for 
-`sdn_sensor`).
+3. The "standard name prefix" for functions / globals is "ss_" (short for 
+   `sdn_sensor`).
 
-4) Lots of compiler warnings are on by default. The clang scan-build tool will 
-find even more bugs.
+4. Lots of compiler warnings are on by default. The clang scan-build tool will 
+   find even more bugs.
 
-5) Don't use messy or complicated code that is hard to debug.
+5. Don't use messy or complicated code that is hard to debug.
 
-6) Mark any questionable, hacked, known-buggy or otherwise suspect code with 
-XXX so other people can find it and fix it. It doesn't have to be perfect 
-right away but don't lie to the person who comes after you.
+6. Mark any questionable, hacked, known-buggy or otherwise suspect code with 
+   `XXX` so other people can find it and fix it. It doesn't have to be perfect 
+   right away but don't lie to the person who comes after you.
 
-7) Use a lot of log messages as this is young software with bugs.
+7. Use a lot of log messages as this is young software with bugs.
 
-8) put `filename: one-line description` on every git commit message.
+8. Put `filename: one-line description` on every git commit message.
 
-9) Use well known best-in-class dependency libraries. Follow the principle of 
-least surprise as much as possible. Try to make git submodules for the 
-dependencies so it's easy to track and update them.
+9. Use well known best-in-class dependency libraries. Follow the principle of 
+   least surprise as much as possible. Try to make git submodules for the 
+   dependencies so it's easy to track and update them.
 
-10) Allocate all memory using DPDK or `libjemalloc`. Don't use the `libc` 
-allocator, because it is way too slow and buggy. Remember many `string.h` 
-functions call libc alloc secretly. This will cause segfaults if pointers get 
-mixed between `libjemalloc` and `libc`. To avoid this reimplement any broken 
-functions in `je_utils.c`.
+10. Allocate all memory using DPDK or `libjemalloc`. Don't use the `libc` 
+    allocator, because it is way too slow and buggy. Remember many `string.h` 
+    functions call libc alloc secretly. This will cause segfaults if pointers get 
+    mixed between `libjemalloc` and `libc`. To avoid this reimplement any broken 
+    string functions in `je_utils.c`.
 
-11) Use the `make cproto` command to auto-update the function prototypes, it 
-makes life easy. Use `scripts/create-header-file.pl` to make new blank header 
-files in the right format to work with `make cproto`.
+11. Use the `make cproto` command to auto-update the function prototypes, it 
+    makes life easy. Use `scripts/create-header-file.pl` to make new blank header 
+    files in the right format to work with `make cproto`.
 
 ## SECURITY NOTICES ##
 
