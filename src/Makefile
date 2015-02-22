@@ -6,6 +6,12 @@ ifeq ($(CC),gcc)
 endif
 CC     ?= clang
 
+ifeq ($(V),1)
+    Q =
+else
+    Q = @
+endif
+
 MAKEFILE_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 SDN_SENSOR_BASE ?= $(shell dirname $(MAKEFILE_DIR))
 RTE_SDK ?= $(SDN_SENSOR_BASE)/external/dpdk
@@ -83,7 +89,7 @@ DEPENDS = $(patsubst %.c,%.d,$(wildcard *.c))
 
 sdn_sensor: $(OBJECTS)
 	@echo 'Linking sdn_sensor...'
-	$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) $(STATIC_LINK) -ljemalloc -lunwind -ldl -lm -lpthread -lrt -lstdc++
+	$(Q)$(CC) $(LDFLAGS) -o $@ $(OBJECTS) $(DPDK_LINK) $(STATIC_LINK) -ljemalloc -lunwind -ldl -lm -lpthread -lrt -lstdc++
 
 #$(OBJECTS): $(DEPENDS)
 
@@ -94,6 +100,10 @@ sdn_sensor: $(OBJECTS)
 	$(CC) -MM $(CFLAGS) $< > $@.$$$$; \
 	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
 	rm -f $@.$$$$
+
+%.o: %.c
+	@echo "CC $<"
+	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 -include $(DEPENDS)
 
