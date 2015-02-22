@@ -152,9 +152,9 @@ In addition to these, it is possible to perform matching with:
 
 ## SECURITY NOTICES ##
 
-*THIS IS ALPHA CODE, WITH BASIC QA TESTING ONLY!!!*
+**THIS IS ALPHA CODE, WITH BASIC QA TESTING ONLY!!!**
 
-*WARNING*: DPDK more or less directly or indirectly allows the code to read 
+**WARNING**: DPDK more or less directly or indirectly allows the code to read 
 and write any arbitrary addresses in system memory whatsoever without any 
 restrictions.
 
