@@ -26,7 +26,8 @@ enum ss_ioc_type_e {
     SS_IOC_TYPE_URL    = 3,
     SS_IOC_TYPE_EMAIL  = 4,
     SS_IOC_TYPE_MD5    = 5,
-    SS_IOC_TYPE_SHA256 = 6,
+    SS_IOC_TYPE_SHA1   = 6,
+    SS_IOC_TYPE_SHA256 = 7,
     SS_IOC_TYPE_MAX,
 };
 
