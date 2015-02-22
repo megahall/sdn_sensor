@@ -321,13 +321,14 @@ int ss_tcp_handle_close(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t*
         return -1;
     }
     
-    // FIN ACK should be set. Client closed socket now.
-    // Send back current seq_num + 1.
-    tx_buf->tcp->seq      = rte_bswap32(rte_bswap32(rx_buf->tcp->seq) + 1);
-    // Send back current ack_num + 1.
-    tx_buf->tcp->ack_seq  = rte_bswap32(rte_bswap32(rx_buf->tcp->ack) + 1);
+    // Client closed socket now.
+    // RST should be set for hard close from server.
+    // SYN flag is set. Client is opening connection.
+    // Send back initial seq_num + 1.
+    tx_buf->tcp->seq      = rx_buf->tcp->ack_seq;
+    tx_buf->tcp->ack_seq  = 0;
     tx_buf->tcp->doff     = 5;
-    tx_buf->tcp->th_flags = TH_FIN | TH_ACK;
+    tx_buf->tcp->th_flags = TH_RST;
     tx_buf->tcp->window   = rte_bswap16(L4_TCP_WINDOW_SIZE);
     tx_buf->tcp->check    = rte_bswap16(0x0000);
     tx_buf->tcp->urg_ptr  = rte_bswap16(0x0000);
