@@ -47,6 +47,11 @@
 #include "netflow_packet.h"
 #include "netflow_peer.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wconversion"
+#pragma clang diagnostic ignored "-Wshorten-64-to-32"
+#pragma clang diagnostic ignored "-Wsign-compare"
+
 /* Dump unknown packet types */
 #define DEBUG 1
 
@@ -1392,3 +1397,5 @@ int netflow_init(int argc, char **argv) {
 
     return (0);
 }
+
+#pragma clang diagnostic pop

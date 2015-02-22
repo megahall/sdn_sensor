@@ -328,9 +328,9 @@ ss_ioc_entry_t* ss_ioc_entry_create(ss_ioc_file_t* ioc_file, char* ioc_str) {
 }
 
 int ss_ioc_entry_destroy(ss_ioc_entry_t* ioc_entry) {
-    ioc_entry->id      = ~0;
-    ioc_entry->file_id = ~0;
-    ioc_entry->type    = ~0;
+    ioc_entry->id      = (uint64_t) ~0;
+    ioc_entry->file_id = (uint64_t) ~0;
+    ioc_entry->type    = (ss_ioc_type_t) ~0;
     memset(&ioc_entry->threat_type, 0, sizeof(ioc_entry->threat_type));
     memset(&ioc_entry->ip, 0, sizeof(ioc_entry->ip));
     memset(&ioc_entry->dns, 0, sizeof(ioc_entry->dns));

@@ -349,9 +349,9 @@ const char* ss_inet_ntop_raw(const uint8_t family, const uint8_t* src, char* dst
  * author:
  *      Paul Vixie, 1996.
  */
-const char* ss_inet_ntop4(const uint8_t* src, char* dst, unsigned int size) {
+const char* ss_inet_ntop4(const uint8_t* src, char* dst, size_t size) {
     static const char fmt[] = "%u.%u.%u.%u";
-    char tmp[sizeof "255.255.255.255"];
+    char tmp[sizeof("255.255.255.255")];
 
     if (sprintf(tmp, fmt, src[0], src[1], src[2], src[3]) >= (int) size) {
         errno = ENOSPC;
@@ -367,12 +367,13 @@ const char* ss_inet_ntop4(const uint8_t* src, char* dst, unsigned int size) {
  * author:
  *      Paul Vixie, 1996.
  */
-const char* ss_inet_ntop6(const uint8_t* src, char* dst, unsigned int size) {
+const char* ss_inet_ntop6(const uint8_t* src, char* dst, size_t size) {
     /*
      * Note that int32_t and int16_t need only be "at least" large enough
      * to contain a value of the specified size.
      */
-    char tmp[sizeof "ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255"], *tp;
+    char tmp[sizeof("ffff:ffff:ffff:ffff:ffff:ffff:255.255.255.255")];
+    char* tp;
     struct { int base, len; } best, cur;
     u_int words[IPV6_ALEN / SS_INT16_SIZE];
     int i;
@@ -382,7 +383,7 @@ const char* ss_inet_ntop6(const uint8_t* src, char* dst, unsigned int size) {
      *      Copy the input (bytewise) array into a wordwise array.
      *      Find the longest run of 0x00's in src[] for :: shorthanding.
      */
-    memset(words, '\0', sizeof words);
+    memset(words, '\0', sizeof(words));
     for (i = 0; i < IPV6_ALEN; i += 2) {
         words[i / 2] = (u_int) ((src[i] << 8) | src[i + 1]);
     }
@@ -435,7 +436,7 @@ const char* ss_inet_ntop6(const uint8_t* src, char* dst, unsigned int size) {
         /* Is this address an encapsulated IPv4? */
         if (i == 6 && best.base == 0 &&
             (best.len == 6 || (best.len == 5 && words[5] == 0xffff))) {
-            if (!ss_inet_ntop4(src+12, tp, sizeof tmp - (tp - tmp))) {
+            if (!ss_inet_ntop4(src+12, tp, sizeof(tmp) - (u_long)(tp - tmp))) {
                 return (NULL);
             }
             tp += strlen(tp);

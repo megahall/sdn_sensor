@@ -32,8 +32,8 @@
 int ss_metadata_prepare(ss_frame_t* fbuf) {
     ss_metadata_t* m = &fbuf->data;
     
-    m->port_id     = ~0;
-    m->direction   = ~0;
+    m->port_id     = (uint8_t) ~0;
+    m->direction   = (uint8_t) ~0;
     m->self        = 0;
     m->length      = 0;
     memset(m->smac, 0, sizeof(m->smac));
@@ -41,11 +41,11 @@ int ss_metadata_prepare(ss_frame_t* fbuf) {
     m->eth_type    = 0x0000;
     memset(m->sip, 0, sizeof(m->sip));
     memset(m->dip, 0, sizeof(m->dip));
-    m->ip_protocol = ~0;
+    m->ip_protocol = (uint8_t) ~0;
     m->ttl         = 0;
-    m->l4_length   = ~0;
-    m->icmp_type   = ~0;
-    m->icmp_code   = ~0;
+    m->l4_length   = (uint16_t) ~0;
+    m->icmp_type   = (uint8_t) ~0;
+    m->icmp_code   = (uint8_t) ~0;
     m->tcp_flags   = 0;
     m->sport       = 0;
     m->dport       = 0;
@@ -390,7 +390,7 @@ int ss_cidr_entry_destroy(ss_cidr_entry_t* cidr_entry) {
     if (!cidr_entry) return 0;
     
     ss_nn_queue_destroy(&cidr_entry->nn_queue);
-    cidr_entry->matches = ~0;
+    cidr_entry->matches = (uint64_t) ~0;
     if (cidr_entry->name) { je_free(cidr_entry->name); cidr_entry->name = NULL; }
     je_free(cidr_entry);
     

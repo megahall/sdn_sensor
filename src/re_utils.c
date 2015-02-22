@@ -210,7 +210,7 @@ int ss_re_entry_destroy(ss_re_entry_t* re_entry) {
     
     ss_nn_queue_destroy(&re_entry->nn_queue);
     
-    re_entry->matches  = ~0;
+    re_entry->matches  = (uint64_t) ~0;
     re_entry->inverted = -1;
     re_entry->backend  = SS_RE_BACKEND_EMPTY;
     re_entry->type     = SS_RE_TYPE_EMPTY;

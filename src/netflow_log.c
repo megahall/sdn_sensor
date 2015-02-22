@@ -26,6 +26,9 @@
 #include "netflow.h"
 #include "netflow_log.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+
 static int logstarted = 0;
 static int logstderr = 0;
 static int logdebug = 0;
@@ -92,3 +95,5 @@ void logerrx(const char* fmt, ...) __attribute__((noreturn))
 
     exit(1);
 }
+
+#pragma clang diagnostic pop
