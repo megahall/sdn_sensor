@@ -119,14 +119,14 @@ const char* ss_tcp_flags_dump(uint8_t tcp_flags) {
 }
 
 int ss_tcp_socket_init(ss_flow_key_t* key, ss_tcp_socket_t* socket) {
-    rte_memcpy(&socket->key, &key, sizeof(*key));
+    rte_memcpy(&socket->key, key, sizeof(ss_flow_key_t));
     rte_spinlock_init(&socket->lock);
     socket->state = SS_TCP_CLOSED;
-    socket->ticks_last = rte_rdtsc();
+    socket->rx_ticks = rte_rdtsc();
+    socket->tx_ticks = rte_rdtsc();
     socket->rx_buf_offset = 0;
     socket->mss = 0;
     socket->rx_failures = 0;
-    memset(&socket->rx_data, 0, sizeof(socket->rx_data));
     return 0;
 }
 
