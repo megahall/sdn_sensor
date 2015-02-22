@@ -9,8 +9,8 @@
 #include <rte_byteorder.h>
 #include <rte_cycles.h>
 #include <rte_hash.h>
+#include <rte_hash_crc.h>
 #include <rte_hexdump.h>
-#include <rte_jhash.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_mbuf.h>
@@ -28,11 +28,11 @@
 
 // XXX: how can I place a TCP hash on each socket?
 static struct rte_hash_parameters tcp_hash_params = {
-    .name               = "tcp_hash_id_0",
+    .name               = "tcp_hash_socket_0",
     .entries            = L4_TCP_HASH_SIZE,
     .bucket_entries     = L4_TCP_BUCKET_SIZE,
     .key_len            = sizeof(ss_flow_key_t),
-    .hash_func          = rte_jhash,
+    .hash_func          = rte_hash_crc,
     .hash_func_init_val = 0,
     .socket_id          = 0,
 };
