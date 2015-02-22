@@ -54,7 +54,7 @@ int ss_tcp_init() {
     return 0;
 }
 
-int ss_flow_key_dump(ss_flow_key_t* key) {
+int ss_flow_key_dump(const char* message, ss_flow_key_t* key) {
 /*
     struct ss_flow_key_s {
     uint8_t  sip[IPV6_ALEN];
@@ -67,8 +67,8 @@ int ss_flow_key_dump(ss_flow_key_t* key) {
     const char* protocol;
     char sip[SS_ADDR_STR_MAX];
     char dip[SS_ADDR_STR_MAX];
-    uint16_t sport = rte_bswap16(sport);
-    uint16_t dport = rte_bswap16(dport);
+    uint16_t sport = rte_bswap16(key->sport);
+    uint16_t dport = rte_bswap16(key->dport);
     
     memset(sip, 0, sizeof(sip));
     memset(dip, 0, sizeof(dip));
@@ -88,8 +88,8 @@ int ss_flow_key_dump(ss_flow_key_t* key) {
     ss_inet_ntop_raw(family, key->sip, sip, sizeof(sip));
     ss_inet_ntop_raw(family, key->dip, dip, sizeof(dip));
     
-    RTE_LOG(INFO, STACK, "flow key: %s: %s:%hu --> %s:%hu\n",
-        protocol, sip, sport, dip, dport);
+    RTE_LOG(INFO, STACK, "%s: flow key: %s: %s:%hu --> %s:%hu\n",
+        message, protocol, sip, sport, dip, dport);
     
     return 0;
 }
