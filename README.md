@@ -37,6 +37,7 @@ In particular the user should set `{ipv4,ipv6}_{address,gateway}`, `log_level`
 (if debugging), `ioc_files / path`.
 5. Add some of your own threat intelligence to the `ioc_file`. The ioc_file 
    CSV fields are:
+
         id (64-bit integer),type (ip, domail, url, email), threat_type / itype (free-form string), ip (optional), dns, ioc_value
 6. `cd src`
 7. `make clean; make`
