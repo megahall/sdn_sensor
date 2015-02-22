@@ -397,16 +397,18 @@ int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t
         return -1;
     }
     
-    // Send back current seq_num + 1.
-    tx_buf->tcp->seq        = rte_bswap32(rte_bswap32(rx_buf->tcp->seq) + 1);
-    // ACK flag should be set. Client opened socket now.    
-    // XXX: Make the client happy, just ACK everything sent to us.
-    tx_buf->tcp->ack_seq    = rx_buf->tcp->seq;
-    tx_buf->tcp->doff       = 5;
-    tx_buf->tcp->th_flags   = TH_SYN | TH_ACK;
-    tx_buf->tcp->window     = rte_bswap16(L4_TCP_WINDOW_SIZE);
-    tx_buf->tcp->check      = rte_bswap16(0x0000);
-    tx_buf->tcp->urg_ptr    = rte_bswap16(0x0000);
+    uint16_t tcp_length_total = rte_pktmbuf_pkt_len(rx_buf->mbuf) - ((uint8_t*) rx_buf->tcp - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*));
+    uint16_t tcp_length_data  = tcp_length_total - sizeof(tcp_hdr_t);
+
+    // XXX: Make the client "happy", and just ACK everything.
+    // This is lossy, but back-pressure on syslog messages is pointless.
+    tx_buf->tcp->doff     = 5;
+    tx_buf->tcp->seq      = rx_buf->tcp->ack_seq;
+    tx_buf->tcp->ack_seq  = rte_bswap32(rte_bswap32(rx_buf->tcp->seq) + tcp_length_data);
+    tx_buf->tcp->th_flags = TH_ACK;
+    tx_buf->tcp->window   = rte_bswap16(L4_TCP_WINDOW_SIZE);
+    tx_buf->tcp->check    = rte_bswap16(0x0000);
+    tx_buf->tcp->urg_ptr  = rte_bswap16(0x0000);
 
     rv = ss_tcp_prepare_checksum(tx_buf);
     if (rv) {
@@ -414,15 +416,9 @@ int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t
         return -1;
     }
 
-    tx_buf->ip4->tot_len    = rte_bswap16(rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t)); // XXX: better way?
+    tx_buf->ip4->tot_len  = rte_bswap16(rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t)); // XXX: better way?
     checksum = ss_in_cksum((uint16_t*) tx_buf->ip4, sizeof(ip4_hdr_t));
-    tx_buf->ip4->check      = checksum;
-    
-    rte_spinlock_lock(&socket->lock);
-    if (socket->state == SS_TCP_SYN_TX) {
-        socket->state = SS_TCP_SYN_OPEN;
-    }
-    rte_spinlock_unlock(&socket->lock);
+    tx_buf->ip4->check    = checksum;
     
     return 0;
 }
