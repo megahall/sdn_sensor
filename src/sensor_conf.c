@@ -348,7 +348,7 @@ int ss_conf_dpdk_parse(json_object* items) {
     }
     
     rv = (int64_t) ss_conf_tsc_hz_get();
-    if (rv) return -1;
+    if (rv == ~0) return -1;
 
     item = json_object_object_get(items, "timer_msec");
     if (item) {
@@ -574,7 +574,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
     
     rv = ss_conf_dpdk_parse(items);
     if (rv) {
-        fprintf(stderr, "could not parse network configuration\n");
+        fprintf(stderr, "could not parse dpdk configuration\n");
         is_ok = 0; goto error_out;
     }
     
