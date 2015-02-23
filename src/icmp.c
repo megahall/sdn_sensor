@@ -16,6 +16,7 @@
 #include "common.h"
 #include "ethernet.h"
 #include "icmp.h"
+#include "l4_utils.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 
@@ -43,17 +44,18 @@ int ss_frame_prepare_icmp6(ss_frame_t* tx_buf, uint8_t* pl_ptr, uint16_t pl_len)
     zeros_nxt = rte_bswap32((uint32_t) tx_buf->ip6->ip6_nxt);
 
     /* XXX: switch to ss_phdr_append */
-    pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, sizeof(tx_buf->ip6->ip6_src));
-    rte_memcpy(pptr, &tx_buf->ip6->ip6_src, sizeof(tx_buf->ip6->ip6_src));
-    pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, sizeof(tx_buf->ip6->ip6_dst));
-    rte_memcpy(pptr, &tx_buf->ip6->ip6_dst, sizeof(tx_buf->ip6->ip6_dst));
-    pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, 4);
-    rte_memcpy(pptr, &icmp_len, sizeof(icmp_len));
-    pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, 4);
-    rte_memcpy(pptr, &zeros_nxt, sizeof(zeros_nxt));
-    pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, pl_len);
+    pptr = ss_phdr_append(pmbuf, &tx_buf->ip6->ip6_src, sizeof(tx_buf->ip6->ip6_src));
+    if (pptr == NULL) goto error_out;
+    pptr = ss_phdr_append(pmbuf, &tx_buf->ip6->ip6_dst, sizeof(tx_buf->ip6->ip6_dst));
+    if (pptr == NULL) goto error_out;
+    pptr = ss_phdr_append(pmbuf, &icmp_len, sizeof(icmp_len));
+    if (pptr == NULL) goto error_out;
+    pptr = ss_phdr_append(pmbuf, &zeros_nxt, sizeof(zeros_nxt));
+    if (pptr == NULL) goto error_out;
+    pptr = ss_phdr_append(pmbuf, pl_ptr, pl_len);
+    if (pptr == NULL) goto error_out;
+
     RTE_LOG(DEBUG, STACK, "icmp6 tx size %u\n", pl_len);
-    rte_memcpy(pptr, pl_ptr, pl_len);
     if (rte_get_log_level() >= RTE_LOG_DEBUG) {
         printf("icmp6 pseudo-header:\n");
         rte_pktmbuf_dump(stderr, pmbuf, rte_pktmbuf_pkt_len(pmbuf));
@@ -68,6 +70,7 @@ int ss_frame_prepare_icmp6(ss_frame_t* tx_buf, uint8_t* pl_ptr, uint16_t pl_len)
     error_out:
     if (tx_buf->mbuf) {
         RTE_LOG(ERR, STACK, "could not process icmp6 frame\n");
+        rte_pktmbuf_free(pmbuf);
         tx_buf->active = 0;
         rte_pktmbuf_free(tx_buf->mbuf);
         tx_buf->mbuf = NULL;
@@ -85,23 +88,8 @@ int ss_frame_handle_echo4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         RTE_LOG(ERR, STACK, "could not prepare ethernet mbuf\n");
         goto error_out;
     }
-
-    tx_buf->ip4 = (ip4_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(ip4_hdr_t));
-    if (tx_buf->ip4 == NULL) {
-        RTE_LOG(ERR, STACK, "could not allocate mbuf ipv4 header\n");
-        goto error_out;
-    }
-    tx_buf->ip4->version             = 0x4;
-    tx_buf->ip4->ihl                 = 20 / 4;
-    tx_buf->ip4->tos                 = 0x0;
-    //tx_buf->ip4->tot_len             = ????;
-    tx_buf->ip4->id                  = rte_bswap16(0x0000);
-    tx_buf->ip4->frag_off            = 0;
-    tx_buf->ip4->ttl                 = 0xff; // XXX: use constant
-    tx_buf->ip4->protocol            = IPPROTO_ICMPV4;
-    tx_buf->ip4->check               = rte_bswap16(0x0000);
-    tx_buf->ip4->saddr               = ss_conf->ip4_address.ip4_addr.addr; // bswap ?????
-    tx_buf->ip4->daddr               = rx_buf->ip4->saddr;
+    
+    ss_frame_prepare_ip4(rx_buf, tx_buf);
 
     tx_buf->icmp4 = (icmp4_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(icmp4_hdr_t));
     if (tx_buf->icmp4 == NULL) {
@@ -150,17 +138,8 @@ int ss_frame_handle_echo6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         RTE_LOG(ERR, STACK, "could not prepare ethernet mbuf\n");
         goto error_out;
     }
-
-    tx_buf->ip6 = (ip6_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(ip6_hdr_t));
-    if (tx_buf->ip6 == NULL) {
-        RTE_LOG(ERR, STACK, "could not allocate mbuf ipv6 header\n");
-        goto error_out;
-    }
-    tx_buf->ip6->ip6_flow = rte_bswap32(0x60000000);
-    tx_buf->ip6->ip6_hlim = 0x0ff; // XXX: use constant
-    tx_buf->ip6->ip6_nxt  = IPPROTO_ICMPV6;
-    rte_memcpy(&tx_buf->ip6->ip6_dst, &rx_buf->ip6->ip6_src, sizeof(tx_buf->ip6->ip6_dst));
-    rte_memcpy(&tx_buf->ip6->ip6_src, &ss_conf->ip6_address.ip6_addr, sizeof(tx_buf->ip6->ip6_src));
+    
+    ss_frame_prepare_ip6(tx_buf, rx_buf);
 
     tx_buf->icmp6 = (icmp6_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(icmp6_hdr_t));
     if (tx_buf->icmp6 == NULL) {
@@ -212,8 +191,7 @@ int ss_frame_handle_icmp4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
 
     uint8_t icmp_type = rx_buf->icmp4->type;
     uint8_t icmp_code = rx_buf->icmp4->code;
-    rx_buf->l4_offset      = ((uint8_t*) rx_buf->icmp4) + sizeof(icmp4_hdr_t);
-    rx_buf->data.l4_length = (uint16_t) (rte_pktmbuf_pkt_len(rx_buf->mbuf) - (rx_buf->l4_offset - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*)));
+    ss_frame_layer_off_len_get(rx_buf, rx_buf->icmp4, sizeof(icmp4_hdr_t), &rx_buf->l4_offset, &rx_buf->data.l4_length);
     rx_buf->data.icmp_type = icmp_type;
     rx_buf->data.icmp_code = icmp_code;
     RTE_LOG(INFO, STACK, "icmp4 type %hhu\n", icmp_type);
@@ -243,8 +221,7 @@ int ss_frame_handle_icmp6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     // XXX: add the PMTUD request
     uint8_t icmp_type = rx_buf->icmp6->icmp6_type;
     uint8_t icmp_code = rx_buf->icmp6->icmp6_code;
-    rx_buf->l4_offset      = ((uint8_t*) rx_buf->icmp6) + sizeof(icmp6_hdr_t);
-    rx_buf->data.l4_length = (uint16_t) (rte_pktmbuf_pkt_len(rx_buf->mbuf) - (rx_buf->l4_offset - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*)));
+    ss_frame_layer_off_len_get(rx_buf, rx_buf->icmp6, sizeof(icmp6_hdr_t), &rx_buf->l4_offset, &rx_buf->data.l4_length);
     rx_buf->data.icmp_type = icmp_type;
     rx_buf->data.icmp_code = icmp_code;
     RTE_LOG(INFO, STACK, "icmp6 type %hhu\n", icmp_type);
