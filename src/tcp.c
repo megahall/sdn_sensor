@@ -460,18 +460,15 @@ int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t
         return -1;
     }
     
-    uint16_t tcp_length_total = (uint16_t) (rte_pktmbuf_pkt_len(rx_buf->mbuf) - ((uint8_t*) rx_buf->tcp - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*)));
-    uint16_t tcp_length_data  = (uint16_t) (tcp_length_total - sizeof(tcp_hdr_t));
-
     // XXX: Make the client "happy", and just ACK everything.
     // This is lossy, but back-pressure on syslog messages is pointless.
-    tx_buf->tcp->doff     = 5;
-    tx_buf->tcp->seq      = rx_buf->tcp->ack_seq;
-    tx_buf->tcp->ack_seq  = rte_bswap32(rte_bswap32(rx_buf->tcp->seq) + tcp_length_data);
-    tx_buf->tcp->th_flags = TH_ACK;
-    tx_buf->tcp->window   = rte_bswap16(L4_TCP_WINDOW_SIZE);
-    tx_buf->tcp->check    = rte_bswap16(0x0000);
-    tx_buf->tcp->urg_ptr  = rte_bswap16(0x0000);
+    tx_buf->tcp->seq       = curr_seq;
+    tx_buf->tcp->ack_seq   = rte_bswap32(curr_ack_seq);
+    tx_buf->tcp->doff      = L4_TCP_HEADER_OFFSET;
+    tx_buf->tcp->th_flags  = TH_ACK;
+    tx_buf->tcp->window    = rte_bswap16(L4_TCP_WINDOW_SIZE);
+    tx_buf->tcp->check     = rte_bswap16(0x0000);
+    tx_buf->tcp->urg_ptr   = rte_bswap16(0x0000);
 
     rv = ss_tcp_prepare_checksum(tx_buf);
     if (rv) {
