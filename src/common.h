@@ -262,17 +262,18 @@ typedef enum ss_tcp_state_e ss_tcp_state_t;
 // RFC 793, RFC 1122
 struct ss_tcp_socket_s {
     ss_flow_key_t  key;
-    int32_t id;
+    uint64_t id;
+    
     rte_spinlock_recursive_t lock;
-
     ss_tcp_state_t state;
 
     uint64_t rx_ticks;
     uint64_t tx_ticks;
-    uint16_t rx_buf_offset;
-    uint16_t mss;
-    uint64_t rx_failures;
-    uint8_t  rx_data[L4_TCP_WINDOW_SIZE * 2];
+    uint32_t last_seq;
+    uint32_t last_ack_seq;
+    
+    uint16_t rx_length;
+    uint8_t  rx_data[L4_TCP_BUFFER_SIZE];
 } __rte_cache_aligned;
 
 typedef struct ss_tcp_socket_s ss_tcp_socket_t;
