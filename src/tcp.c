@@ -475,49 +475,10 @@ int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t
         RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf checksum, error: %d\n", rv);
         return -1;
     }
-
-    tx_buf->ip4->tot_len  = rte_bswap16(rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t)); // XXX: better way?
-    checksum = ss_in_cksum((uint16_t*) tx_buf->ip4, sizeof(ip4_hdr_t));
-    tx_buf->ip4->check    = checksum;
     
-    return 0;
-}
-
-int ss_frame_prepare_ip4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
-    tx_buf->ip4 = (ip4_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(ip4_hdr_t));
-    if (tx_buf->ip4 == NULL) {
-        RTE_LOG(ERR, STACK, "could not allocate mbuf ipv4 header\n");
-        return -1;
-    }
-    tx_buf->ip4->version             = 0x4;
-    tx_buf->ip4->ihl                 = 20 / 4;
-    tx_buf->ip4->tos                 = 0x0;
-    //tx_buf->ip4->tot_len             = ????;
-    tx_buf->ip4->id                  = rte_bswap16(0x0000);
-    tx_buf->ip4->frag_off            = 0;
-    tx_buf->ip4->ttl                 = 0xff; // XXX: use constant
-    tx_buf->ip4->protocol            = IPPROTO_TCP;
-    tx_buf->ip4->check               = rte_bswap16(0x0000);
-    tx_buf->ip4->saddr               = ss_conf->ip4_address.ip4_addr.addr; // bswap ?????
-    tx_buf->ip4->daddr               = rx_buf->ip4->saddr;
-
-    return 0;
-}
-
-int ss_frame_prepare_ip6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
-    tx_buf->ip6 = (ip6_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(ip6_hdr_t));
-    if (tx_buf->ip6 == NULL) {
-        RTE_LOG(ERR, STACK, "could not allocate mbuf ipv6 header\n");
-        return -1;
-    }
-    tx_buf->ip6->ip6_flow = rte_bswap32(0x60000000);
-    tx_buf->ip6->ip6_hlim = 0x0ff; // XXX: use constant
-    tx_buf->ip6->ip6_nxt  = IPPROTO_TCP;
-    // XXX: plen???
-    rte_memcpy(&tx_buf->ip6->ip6_dst, &rx_buf->ip6->ip6_src, sizeof(tx_buf->ip6->ip6_dst));
-    rte_memcpy(&tx_buf->ip6->ip6_src, &ss_conf->ip6_address.ip6_addr, sizeof(tx_buf->ip6->ip6_src));
-
-    return 0;
+    ss_tcp_prepare_tx(tx_buf, socket, SS_TCP_OPEN);
+    
+    return (int) curr_ack_seq;
 }
 
 int ss_frame_prepare_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
