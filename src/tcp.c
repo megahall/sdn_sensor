@@ -434,19 +434,14 @@ int ss_tcp_handle_open(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* 
         RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf checksum, error: %d\n", rv);
         return -1;
     }
-
-    tx_buf->ip4->tot_len  = rte_bswap16(rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t)); // XXX: better way?
-    checksum = ss_in_cksum((uint16_t*) tx_buf->ip4, sizeof(ip4_hdr_t));
-    tx_buf->ip4->check    = checksum;
     
-    ss_tcp_prepare_tx(socket, SS_TCP_SYN_TX);
+    ss_tcp_prepare_tx(tx_buf, socket, SS_TCP_SYN_TX);
     
     return 0;
 }
 
 int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
-    uint16_t checksum;
 
     rv = ss_frame_prepare_tcp(rx_buf, tx_buf);
     if (rv) {
