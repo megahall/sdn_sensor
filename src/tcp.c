@@ -401,9 +401,10 @@ int ss_tcp_handle_open(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* 
     }
     
     // SYN flag is set. Client is opening connection.
-    // Send back initial seq_num + 1.
-    tx_buf->tcp->seq      = rte_bswap32(rte_bswap32(rx_buf->tcp->seq) + 1);
-    // ACK flag is being set. Client sent initial seq_num.
+    // Send back server's initial seq_num.
+    uint32_t rand_seq     = (uint32_t) rte_rand();
+    tx_buf->tcp->seq      = rte_bswap32(rand_seq);
+    // ACK flag is set. Client sent initial seq_num.
     // Send back initial seq_num + 1.
     tx_buf->tcp->ack_seq  = rte_bswap32(rte_bswap32(rx_buf->tcp->seq) + 1);
     tx_buf->tcp->doff     = 5;
