@@ -344,6 +344,7 @@ int ss_re_chain_match_pcre_substring(ss_re_match_t* re_match, ss_re_entry_t* re_
     int             start_point = 0;
     int             have_match  = 0;
     int             match_vector[(0 + 1) * 3];
+    int             match_index = 0;
     uint8_t*        match_string;
     ss_ioc_entry_t* iptr;
     
@@ -368,8 +369,8 @@ int ss_re_chain_match_pcre_substring(ss_re_match_t* re_match, ss_re_entry_t* re_
         if (pcre_get_substring((char*) l4_offset,
                                match_vector, match_count,
                                0, (const char**) &match_string) >= 0) {
-            RTE_LOG(DEBUG, EXTRACTOR, "attempt ioc match against substring %s\n",
-                match_string);
+            RTE_LOG(DEBUG, EXTRACTOR, "attempt ioc match against substring %d: %s\n",
+                match_index, match_string);
             iptr = ss_ioc_syslog_match((char*) match_string, re_entry->ioc_type);
             if (iptr) {
                 RTE_LOG(NOTICE, EXTRACTOR, "successful ioc match for syslog rule %s against substring %s\n",
@@ -378,6 +379,7 @@ int ss_re_chain_match_pcre_substring(ss_re_match_t* re_match, ss_re_entry_t* re_
                 re_match->ioc_entry = iptr;
             }
             pcre_free_substring((char*) match_string);
+            ++match_index;
         }
         
         start_point = match_vector[1];
@@ -492,7 +494,8 @@ int ss_re_chain_match_re2_substring(ss_re_match_t* re_match, ss_re_entry_t* re_e
     int             match_flag;
     int             match_length;
     int             start_point;
-    int             have_match  = 0;
+    int             have_match = 0;
+    int             match_index = 0;
     ss_ioc_entry_t* iptr;
     cre2_string_t   match[1];
     char            substring[SS_IOC_DNS_SIZE + 1];
@@ -516,8 +519,8 @@ int ss_re_chain_match_re2_substring(ss_re_match_t* re_match, ss_re_entry_t* re_e
         rte_memcpy(substring, match[0].data, match_length > SS_IOC_DNS_SIZE? SS_IOC_DNS_SIZE : match_length);
         substring[match_length] = '\0';
         
-        RTE_LOG(DEBUG, EXTRACTOR, "attempt ioc match against substring %s\n",
-            substring);
+        RTE_LOG(DEBUG, EXTRACTOR, "attempt ioc match against substring %d: %s\n",
+            match_index, substring);
         
         iptr = ss_ioc_syslog_match(substring, re_entry->ioc_type);
         if (iptr) {
@@ -527,6 +530,7 @@ int ss_re_chain_match_re2_substring(ss_re_match_t* re_match, ss_re_entry_t* re_e
             re_match->ioc_entry = iptr;
             return 1;
         }
+        ++match_index;
     } while (match_flag > 0 && !have_match);
     
     end_loop:
