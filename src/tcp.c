@@ -101,11 +101,10 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         // XXX: now panic and freak out?
     }
     
-    RTE_LOG(INFO, STACK, "rx tcp packet: sport: %hu dport: %hu seq: %u ack: %u hlen: %hu flags: %s wsize: %hu\n",
-        sport, dport, seq, ack_seq, hdr_length, ss_tcp_flags_dump(tcp_flags), wsize);
+    RTE_LOG(INFO, STACK, "rx tcp packet: sport: %hu dport: %hu seq: %u ack: %u hlen: %hu dlen: %hu flags: %s wsize: %hu\n",
+        sport, dport, seq, ack_seq, hdr_length, rx_buf->data.l4_length, ss_tcp_flags_dump(tcp_flags), wsize);
 
     ss_tcp_socket_t* socket     = ss_tcp_socket_lookup(&key);
-    
     if (socket == NULL) {
         socket = ss_tcp_socket_create(&key, rx_buf);
     }
