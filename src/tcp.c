@@ -526,52 +526,62 @@ int ss_frame_prepare_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     return -1;
 }
 
-uint8_t* ss_phdr_append(rte_mbuf_t* pmbuf, void* data, uint16_t length) {
-    uint8_t* pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, length);
-    rte_memcpy(pptr, data, length);
-    return pptr;
-}
-
 int ss_tcp_prepare_checksum(ss_frame_t* tx_buf) {
+    rte_mbuf_t* pmbuf = NULL;
+
     if (!tx_buf || !tx_buf->mbuf) goto error_out;
 
-    rte_mbuf_t* pmbuf = NULL;
     uint8_t* pptr;
     uint16_t checksum;
     
     uint8_t  zeros         = 0x00;
     uint8_t  protocol      = IPPROTO_TCP;
-    uint16_t tcp_length_le = (uint16_t) (rte_pktmbuf_pkt_len(tx_buf->mbuf) - ((uint8_t*) tx_buf->tcp - rte_pktmbuf_mtod(tx_buf->mbuf, uint8_t*)));
-    uint16_t tcp_length_pl = tcp_length_le - sizeof(tcp_hdr_t);
-    uint16_t tcp_length    = rte_bswap16(tcp_length_le);
+    uint16_t tcp_len_le    = (uint16_t) (rte_pktmbuf_pkt_len(tx_buf->mbuf) - ((uint8_t*) tx_buf->tcp - rte_pktmbuf_mtod(tx_buf->mbuf, uint8_t*)));
+    uint16_t tcp_data_len  = tcp_len_le - sizeof(tcp_hdr_t);
+    uint16_t tcp_len       = rte_bswap16(tcp_len_le);
     uint8_t  doff_rsvd     = (uint8_t) (tx_buf->tcp->doff << 4 | 0x0);
     uint16_t check_zeros   = rte_bswap16(0x0000);
     
-    uint8_t* pl_ptr        = ((uint8_t*) tx_buf->tcp) + sizeof(tcp_hdr_t); // XXX: better way?
+    uint8_t* data_ptr      = ((uint8_t*) tx_buf->tcp) + sizeof(tcp_hdr_t); // XXX: better way?
     
     pmbuf = rte_pktmbuf_alloc(ss_pool[rte_socket_id()]);
     if (pmbuf == NULL) {
-        RTE_LOG(ERR, STACK, "could not allocate mbuf icmp6 pseudo header\n");
+        RTE_LOG(ERR, STACK, "could not allocate mbuf tcp pseudo header\n");
         goto error_out;
     }
     
     pptr = ss_phdr_append(pmbuf, &tx_buf->ip4->saddr,    sizeof(tx_buf->ip4->saddr));
+    if (pptr == NULL) goto error_out;
     pptr = ss_phdr_append(pmbuf, &tx_buf->ip4->daddr,    sizeof(tx_buf->ip4->daddr));
+    if (pptr == NULL) goto error_out;
     pptr = ss_phdr_append(pmbuf, &zeros,                 sizeof(zeros));
+    if (pptr == NULL) goto error_out;
     pptr = ss_phdr_append(pmbuf, &protocol,              sizeof(protocol));
-    pptr = ss_phdr_append(pmbuf, &tcp_length,            sizeof(tcp_length));
+    if (pptr == NULL) goto error_out;
+    pptr = ss_phdr_append(pmbuf, &tcp_len,               sizeof(tcp_len));
+    if (pptr == NULL) goto error_out;
     pptr = ss_phdr_append(pmbuf, &tx_buf->tcp->source,   sizeof(tx_buf->tcp->source));
+    if (pptr == NULL) goto error_out;
     pptr = ss_phdr_append(pmbuf, &tx_buf->tcp->dest,     sizeof(tx_buf->tcp->dest));
+    if (pptr == NULL) goto error_out;
     pptr = ss_phdr_append(pmbuf, &tx_buf->tcp->seq,      sizeof(tx_buf->tcp->seq));
+    if (pptr == NULL) goto error_out;
     pptr = ss_phdr_append(pmbuf, &tx_buf->tcp->ack_seq,  sizeof(tx_buf->tcp->ack_seq));
+    if (pptr == NULL) goto error_out;
     pptr = ss_phdr_append(pmbuf, &doff_rsvd,             sizeof(doff_rsvd));
+    if (pptr == NULL) goto error_out;
     pptr = ss_phdr_append(pmbuf, &tx_buf->tcp->th_flags, sizeof(tx_buf->tcp->th_flags));
+    if (pptr == NULL) goto error_out;
     pptr = ss_phdr_append(pmbuf, &tx_buf->tcp->window,   sizeof(tx_buf->tcp->window));
+    if (pptr == NULL) goto error_out;
     pptr = ss_phdr_append(pmbuf, &check_zeros,           sizeof(check_zeros));
-    pptr = ss_phdr_append(pmbuf, &check_zeros,           sizeof(check_zeros)); // XXX: URG Pointer
-    pptr = ss_phdr_append(pmbuf, pl_ptr,                 tcp_length_pl);
+    if (pptr == NULL) goto error_out;
+    pptr = ss_phdr_append(pmbuf, &tx_buf->tcp->urg_ptr,  sizeof(check_zeros));
+    if (pptr == NULL) goto error_out;
+    pptr = ss_phdr_append(pmbuf, data_ptr,               tcp_data_len);
+    if (pptr == NULL) goto error_out;
 
-    RTE_LOG(DEBUG, STACK, "tcp payload size %u\n", tcp_length_pl);
+    RTE_LOG(DEBUG, STACK, "tcp payload size %u\n", tcp_data_len);
     if (rte_get_log_level() >= RTE_LOG_DEBUG) {
         printf("tcp pseudo-header:\n");
         rte_pktmbuf_dump(stderr, pmbuf, rte_pktmbuf_pkt_len(pmbuf));
@@ -580,12 +590,19 @@ int ss_tcp_prepare_checksum(ss_frame_t* tx_buf) {
     rte_pktmbuf_free(pmbuf);
     tx_buf->tcp->check = checksum;
     RTE_LOG(DEBUG, STACK, "tcp checksum: 0x%04hX\n", checksum);
-
+    
+    uint16_t ip_len = rte_bswap16(rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t));
+    tx_buf->ip4->tot_len = ip_len; // XXX: better way?
+    checksum = ss_in_cksum((uint16_t*) tx_buf->ip4, sizeof(ip4_hdr_t));
+    tx_buf->ip4->check   = checksum;
+    RTE_LOG(DEBUG, STACK, "ip4 checksum: 0x%04hX\n", checksum);
+    
     return 0;
 
     error_out:
     if (tx_buf->mbuf) {
-        RTE_LOG(ERR, STACK, "could not process icmp6 frame\n");
+        RTE_LOG(ERR, STACK, "could not process tcp frame\n");
+        if (pmbuf) rte_pktmbuf_free(pmbuf);
         tx_buf->active = 0;
         rte_pktmbuf_free(tx_buf->mbuf);
         tx_buf->mbuf = NULL;
