@@ -126,25 +126,64 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     if      (tcp_flags & TH_RST) {
         RTE_LOG(INFO, STACK, "rx tcp rst packet\n");
         // just delete the connection
-        return ss_tcp_handle_close(socket, rx_buf, tx_buf);
+        rv = ss_tcp_handle_close(socket, rx_buf, tx_buf);
     }
     else if (tcp_flags & TH_FIN) {
         // send RST (as if SO_LINGER is 0) and delete the connection
         RTE_LOG(INFO, STACK, "rx tcp fin packet\n");
-        return ss_tcp_handle_close(socket, rx_buf, tx_buf);
+        rv = ss_tcp_handle_close(socket, rx_buf, tx_buf);
     }
     else if (tcp_flags == TH_SYN) {
         RTE_LOG(INFO, STACK, "rx tcp syn packet\n");
-        return ss_tcp_handle_open(socket, rx_buf, tx_buf);
+        rv = ss_tcp_handle_open(socket, rx_buf, tx_buf);
     }
     else if (tcp_flags & TH_ACK || tcp_flags == 0) {
         RTE_LOG(INFO, STACK, "rx tcp ack packet\n");
-        // if they send us an ack, we can just ignore it?
-        return ss_tcp_handle_update(socket, rx_buf, tx_buf);
+        rv = ss_tcp_handle_update(socket, rx_buf, tx_buf);
+        curr_seq = (uint32_t) rv;
     }
     else {
         RTE_LOG(ERR, STACK, "unknown tcp flags: %s\n",
             ss_tcp_flags_dump(tcp_flags));
+        rv = -1;
+    }
+    
+    // XXX: add staleness check later
+    /*
+    if (curr_seq < socket->last_ack_seq) {
+        RTE_LOG(INFO, STACK, "rx tcp stale skipped packet\n");
+        goto out;
+    }
+    else*/
+    if (rx_buf->data.l4_length == 0) {
+        RTE_LOG(DEBUG, STACK, "rx tcp control packet\n");
+        goto out;
+    }
+    else {
+        RTE_LOG(DEBUG, STACK, "rx tcp data packet\n");
+    }
+
+    switch (rx_buf->data.dport) {
+        case L4_PORT_DNS: {
+            RTE_LOG(DEBUG, STACK, "rx tcp dns packet\n");
+            break;
+        }
+        case L4_PORT_SYSLOG: {
+            RTE_LOG(DEBUG, STACK, "rx tcp syslog packet\n");
+            ss_tcp_extract_syslog(socket, rx_buf);
+            break;
+        }
+        case L4_PORT_SYSLOG_TCP: {
+            RTE_LOG(DEBUG, STACK, "rx tcp syslog-tls packet\n");
+            ss_tcp_extract_syslog(socket, rx_buf);
+            break;
+        }
+        case L4_PORT_NETFLOW_1:
+        case L4_PORT_NETFLOW_2:
+        case L4_PORT_NETFLOW_3: {
+            RTE_LOG(DEBUG, STACK, "rx tcp NetFlow packet\n");
+            break;
+        }
     }
     
     out:
