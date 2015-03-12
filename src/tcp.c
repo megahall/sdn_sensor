@@ -63,30 +63,32 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     ss_flow_key_t key;
     memset(&key, 0, sizeof(key));
 
-    // l4_length = packet_length - (tcp_data_start - packet_start)
-    uint8_t* l4_offset          = (uint8_t*) rx_buf->tcp + sizeof(tcp_hdr_t);
-    uint16_t l4_length          = (uint16_t) (rte_pktmbuf_pkt_len(rx_buf->mbuf) - (l4_offset - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*)));
+    ss_frame_layer_off_len_get(rx_buf, rx_buf->tcp, sizeof(tcp_hdr_t), &rx_buf->l4_offset, &rx_buf->data.l4_length);
     
-    uint16_t sport              = rte_bswap16(rx_buf->tcp->source);
-    uint16_t dport              = rte_bswap16(rx_buf->tcp->dest);
-    uint32_t seq                = rte_bswap32(rx_buf->tcp->seq);
-    uint32_t ack_seq            = rte_bswap32(rx_buf->tcp->ack_seq);
-    uint16_t hdr_length         = 4 * rx_buf->tcp->doff;
-    uint8_t  tcp_flags          = rx_buf->tcp->th_flags;
-    uint16_t wsize              = rx_buf->tcp->window;
+    uint16_t sport         = rte_bswap16(rx_buf->tcp->source);
+    uint16_t dport         = rte_bswap16(rx_buf->tcp->dest);
+    uint32_t seq           = rte_bswap32(rx_buf->tcp->seq);
+    uint32_t ack_seq       = rte_bswap32(rx_buf->tcp->ack_seq);
+    uint16_t hdr_length    = 4 * rx_buf->tcp->doff;
+    uint8_t  tcp_flags     = rx_buf->tcp->th_flags;
+    uint16_t wsize         = rx_buf->tcp->window;
     
-    rx_buf->l4_offset           = l4_offset;
-    rx_buf->data.l4_length      = l4_length;
-    rx_buf->data.tcp_flags      = tcp_flags;
-    rx_buf->data.sport          = sport;
-    rx_buf->data.dport          = dport;
+    rx_buf->data.tcp_flags = tcp_flags;
+    rx_buf->data.sport     = sport;
+    rx_buf->data.dport     = dport;
+    
+    // tcp_data_len must be based on ip_total_len or padding will be included
+    // adjust L4 data to account for TCP options
+    uint16_t tcp_data_len  = rte_bswap16(rx_buf->ip4->tot_len) - sizeof(ip4_hdr_t) - hdr_length;
+    rx_buf->l4_offset      = (uint8_t*) rx_buf->tcp + hdr_length;
+    rx_buf->data.l4_length = tcp_data_len;
 
     // XXX: eliminate flow_key copy / duplication later
     // XXX: instead store the flow_key in the ss_metadata_t
-    key.sport                   = rx_buf->tcp->source;
-    key.dport                   = rx_buf->tcp->dest;
-    key.protocol                = rx_buf->data.eth_type == ETHER_TYPE_IPV4 ? L4_TCP4 : L4_TCP6;
-    uint32_t alen               = key.protocol == L4_TCP4? IPV4_ALEN : IPV6_ALEN;
+    key.sport              = rx_buf->tcp->source;
+    key.dport              = rx_buf->tcp->dest;
+    key.protocol           = rx_buf->data.eth_type == ETHER_TYPE_IPV4 ? L4_TCP4 : L4_TCP6;
+    uint32_t alen          = key.protocol == L4_TCP4? IPV4_ALEN : IPV6_ALEN;
     if (key.protocol == L4_TCP4) {
         rte_memcpy(key.sip, &rx_buf->ip4->saddr, alen);
         rte_memcpy(key.dip, &rx_buf->ip4->daddr, alen);
