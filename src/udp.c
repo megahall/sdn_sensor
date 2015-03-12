@@ -23,13 +23,9 @@
 int ss_frame_handle_udp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
     
-    uint8_t* l4_offset     = ((uint8_t*) rx_buf->udp) + sizeof(udp_hdr_t);
-    uint16_t l4_length     = (uint16_t) (rte_pktmbuf_pkt_len(rx_buf->mbuf) - (l4_offset - rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*)));
-    
-    rx_buf->data.sport     = rte_bswap16(rx_buf->udp->uh_sport);
-    rx_buf->data.dport     = rte_bswap16(rx_buf->udp->uh_dport);
-    rx_buf->l4_offset      = l4_offset;
-    rx_buf->data.l4_length = l4_length;
+    ss_frame_layer_off_len_get(rx_buf, rx_buf->udp, sizeof(udp_hdr_t), &rx_buf->l4_offset, &rx_buf->data.l4_length);
+    rx_buf->data.sport = rte_bswap16(rx_buf->udp->uh_sport);
+    rx_buf->data.dport = rte_bswap16(rx_buf->udp->uh_dport);
     
     RTE_LOG(INFO, STACK, "rx udp packet: sport: %hu dport: %hu length: %hu\n",
         rx_buf->data.sport, rx_buf->data.dport, rx_buf->data.l4_length);
