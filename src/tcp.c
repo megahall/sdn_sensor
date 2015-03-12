@@ -393,7 +393,6 @@ int ss_tcp_handle_close(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t*
 
 int ss_tcp_handle_open(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
-    uint16_t checksum;
 
     rv = ss_frame_prepare_tcp(rx_buf, tx_buf);
     if (rv) {
