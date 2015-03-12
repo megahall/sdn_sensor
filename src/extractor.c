@@ -231,31 +231,17 @@ int ss_extract_dns_atype(ss_answer_t* result, dns_answer_t* aptr) {
     return -1;
 }
 
-int ss_extract_syslog(ss_frame_t* fbuf) {
-    uint8_t* match_string;
+int ss_extract_syslog(const char* source, ss_frame_t* fbuf, uint8_t* l4_offset, uint16_t l4_length) {
+    int rv;
     uint8_t* metadata = NULL;
     uint64_t mlength = 0;
-    int rv = 0;
     ss_re_match_t re_match;
-    
-    memset(&re_match, 0, sizeof(re_match));
-    
-    // exit if the syslog packet was not sent to us
-    SS_CHECK_SELF(fbuf, rv);
-    
-    // place a zero byte at the end of the log message to form a C string
-    match_string = (uint8_t*) rte_pktmbuf_append(fbuf->mbuf, 1);
-    if (match_string == NULL) {
-        RTE_LOG(ERR, EXTRACTOR, "could not append zero byte to syslog message\n");
-        return -1;
-    }
-    *match_string = 0;
-    
+
     RTE_LOG(INFO, EXTRACTOR, "attempt syslog match port %u frame direction %d payload length %hu content %s\n",
         fbuf->data.port_id, fbuf->data.direction,
-        fbuf->data.l4_length, (char*) fbuf->l4_offset);
+        l4_length, (char*) l4_offset);
         
-    rv = ss_re_chain_match(&re_match, fbuf->l4_offset, fbuf->data.l4_length);
+    rv = ss_re_chain_match(&re_match, l4_offset, l4_length);
     if (rv <= 0 || re_match.re_entry == NULL) {
         RTE_LOG(DEBUG, EXTRACTOR, "no match against syslog rule %s\n", re_match.re_entry->name);
         return 0;
@@ -263,12 +249,12 @@ int ss_extract_syslog(ss_frame_t* fbuf) {
     
     if (re_match.re_entry->type == SS_RE_TYPE_COMPLETE) {
         // include length of null byte
-        metadata = ss_metadata_prepare_syslog("udp_syslog", re_match.re_entry->name, &re_match.re_entry->nn_queue, fbuf, NULL);
+        metadata = ss_metadata_prepare_syslog(source, re_match.re_entry->name, &re_match.re_entry->nn_queue, fbuf, NULL);
     }
     else if (re_match.re_entry->type == SS_RE_TYPE_SUBSTRING) {
-        ss_ioc_entry_dump_dpdk(re_match.ioc_entry);
+        //ss_ioc_entry_dump_dpdk(re_match.ioc_entry);
         // include length of null byte
-        metadata = ss_metadata_prepare_syslog("udp_syslog", re_match.re_entry->name, &re_match.re_entry->nn_queue, fbuf, re_match.ioc_entry);
+        metadata = ss_metadata_prepare_syslog(source, re_match.re_entry->name, &re_match.re_entry->nn_queue, fbuf, re_match.ioc_entry);
     }
     
     if (metadata) {
