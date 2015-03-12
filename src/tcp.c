@@ -264,7 +264,6 @@ ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf) {
     
     ss_tcp_socket_init(key, socket);
 
-    rte_spinlock_recursive_lock(&socket->lock);
     if (rx_buf->tcp->th_flags == TH_SYN) {
         socket->state = SS_TCP_SYN_RX;
     }
