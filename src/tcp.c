@@ -252,9 +252,6 @@ int ss_tcp_socket_init(ss_flow_key_t* key, ss_tcp_socket_t* socket) {
     rte_memcpy(&socket->key, key, sizeof(ss_flow_key_t));
     rte_spinlock_recursive_init(&socket->lock);
     socket->state = SS_TCP_CLOSED;
-    socket->rx_buf_offset = 0;
-    socket->mss = 0;
-    socket->rx_failures = 0;
     return 0;
 }
 
