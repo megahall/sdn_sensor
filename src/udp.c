@@ -39,12 +39,7 @@ int ss_frame_handle_udp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         case L4_PORT_SYSLOG: {
             RTE_LOG(DEBUG, STACK, "rx udp syslog packet\n");
             SS_CHECK_SELF(rx_buf, 0);
-            ss_extract_syslog(rx_buf);
-            break;
-        }
-        case L4_PORT_SYSLOG_TLS: {
-            RTE_LOG(DEBUG, STACK, "rx udp syslog-tls packet\n");
-            SS_CHECK_SELF(rx_buf, 0);
+            ss_udp_extract_syslog(rx_buf);
             break;
         }
         case L4_PORT_SFLOW: {
@@ -62,4 +57,25 @@ int ss_frame_handle_udp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     }
 
     return rv;
+}
+
+int ss_udp_extract_syslog(ss_frame_t* fbuf) {
+    uint8_t* match_string;
+    int rv = 0;
+    ss_re_match_t re_match;
+
+    memset(&re_match, 0, sizeof(re_match));
+
+    // exit if the syslog packet was not sent to us
+    SS_CHECK_SELF(fbuf, rv);
+
+    // place a zero byte at the end of the log message to form a C string
+    match_string = (uint8_t*) rte_pktmbuf_append(fbuf->mbuf, 1);
+    if (match_string == NULL) {
+        RTE_LOG(ERR, EXTRACTOR, "could not append zero byte to syslog message\n");
+        return -1;
+    }
+    *match_string = 0;
+
+    return ss_extract_syslog("udp_syslog", fbuf, fbuf->l4_offset, fbuf->data.l4_length);
 }
