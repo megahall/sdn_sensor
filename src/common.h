@@ -73,19 +73,22 @@
 
 #define IPPROTO_ICMPV4 IPPROTO_ICMP
 
-#define L4_PORT_DNS           53
-#define L4_PORT_SYSLOG       514
-#define L4_PORT_SYSLOG_TLS   601
-#define L4_PORT_SFLOW       6343
-#define L4_PORT_NETFLOW_1   2055
-#define L4_PORT_NETFLOW_2   9995
-#define L4_PORT_NETFLOW_3   9996
+#define L4_PORT_DNS               53
+#define L4_PORT_SYSLOG           514
+#define L4_PORT_SYSLOG_TCP       601
+#define L4_PORT_SFLOW           6343
+#define L4_PORT_NETFLOW_1       2055
+#define L4_PORT_NETFLOW_2       9995
+#define L4_PORT_NETFLOW_3       9996
 
-#define L4_TCP_HASH_SIZE     16384
-#define L4_TCP_BUCKET_SIZE       4
-#define L4_TCP_WINDOW_SIZE    4096
-#define L4_TCP_HEADER_OFFSET     5
-#define L4_TCP_BUFFER_SIZE (L4_TCP_WINDOW_SIZE * 2)
+#define L4_TCP_HASH_SIZE            2048
+#define L4_TCP_BUCKET_SIZE             4
+#define L4_TCP_WINDOW_SHIFT           10 // 1 << 10 == 1024; i.e. 1KB scale multiplier
+#define L4_TCP_WINDOW_SIZE          8192 // 8192KB; allows 20 msec of data at 10 gbps
+#define L4_TCP_HEADER_OFFSET           5
+#define L4_TCP_MSS                  1460
+#define L4_TCP_BUFFER_SIZE          4096
+//#define L4_TCP_BUFFER_SIZE ((L4_TCP_WINDOW_SIZE << L4_TCP_WINDOW_SHIFT) * 2)
 
 #define L4_TCP4 4
 #define L4_TCP6 6
