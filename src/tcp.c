@@ -248,6 +248,7 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
 }
 
 int ss_tcp_socket_init(ss_flow_key_t* key, ss_tcp_socket_t* socket) {
+    memset(socket, 0, sizeof(ss_tcp_socket_t));
     rte_memcpy(&socket->key, key, sizeof(ss_flow_key_t));
     rte_spinlock_recursive_init(&socket->lock);
     socket->state = SS_TCP_CLOSED;
