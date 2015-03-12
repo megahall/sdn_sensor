@@ -354,6 +354,11 @@ int ss_tcp_prepare_tx(ss_frame_t* tx_buf, ss_tcp_socket_t* socket, ss_tcp_state_
     return 0;
 }
 
+uint16_t ss_tcp_rx_mss_get(ss_tcp_socket_t* socket) {
+    uint16_t ip_hdr_max = SS_MAX(sizeof(ip4_hdr_t), sizeof(ip6_hdr_t));
+    return ss_conf->mtu - ip_hdr_max - sizeof(tcp_hdr_t);
+}
+
 int ss_tcp_handle_close(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
     uint16_t checksum;
