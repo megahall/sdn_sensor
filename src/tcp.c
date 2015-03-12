@@ -273,7 +273,7 @@ ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf) {
     
     rte_rwlock_write_lock(&tcp_hash_lock);
     int32_t socket_id = rte_hash_add_key(tcp_hash, key);
-    socket->id = socket_id;
+    socket->id = (uint64_t) socket_id;
     if (socket_id >= 0) {
         tcp_sockets[socket->id] = socket;
     }
