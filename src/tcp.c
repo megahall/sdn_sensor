@@ -108,44 +108,21 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     if (socket == NULL) {
         socket = ss_tcp_socket_create(&key, rx_buf);
     }
-    
-    rte_spinlock_recursive_lock(&socket->lock);
-    socket->rx_ticks = rte_rdtsc();
-    rte_spinlock_recursive_unlock(&socket->lock);
-    
     if (unlikely(socket == NULL)) {
         RTE_LOG(ERR, STACK, "could not find or create tcp socket\n");
         return -1;
     }
     
-    switch (rx_buf->data.dport) {
-        case L4_PORT_DNS: {
-            RTE_LOG(DEBUG, STACK, "rx tcp dns packet\n");
-            break;
-        }
-        case L4_PORT_SYSLOG: {
-            RTE_LOG(DEBUG, STACK, "rx tcp syslog packet\n");
-            break;
-        }
-        case L4_PORT_SYSLOG_TLS: {
-            RTE_LOG(DEBUG, STACK, "rx tcp syslog-tls packet\n");
-            break;
-        }
-        case L4_PORT_NETFLOW_1:
-        case L4_PORT_NETFLOW_2:
-        case L4_PORT_NETFLOW_3: {
-            RTE_LOG(DEBUG, STACK, "rx tcp NetFlow packet\n");
-            break;
-        }
-    }
-    
+    rte_spinlock_recursive_lock(&socket->lock);
+    ss_tcp_prepare_rx(rx_buf, socket);
+    uint32_t curr_seq = 0;
+
     /*    
      * C: SYN
      * S: SYN, ACK
      * C: ACK
      */
 
-    handle_flags:    
     if      (tcp_flags & TH_RST) {
         RTE_LOG(INFO, STACK, "rx tcp rst packet\n");
         // just delete the connection
@@ -169,6 +146,9 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         RTE_LOG(ERR, STACK, "unknown tcp flags: %s\n",
             ss_tcp_flags_dump(tcp_flags));
     }
+    
+    out:
+    rte_spinlock_recursive_unlock(&socket->lock);
 
     return rv;
 }
