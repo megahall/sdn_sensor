@@ -192,68 +192,59 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     return rv;
 }
 
-int ss_flow_key_dump(const char* message, ss_flow_key_t* key) {
-/*
-    struct ss_flow_key_s {
-    uint8_t  sip[IPV6_ALEN];
-    uint8_t  dip[IPV6_ALEN];
-    uint16_t sport;
-    uint16_t dport;
-    uint8_t  protocol;
-*/
-    uint8_t family;
-    const char* protocol;
-    char sip[SS_ADDR_STR_MAX];
-    char dip[SS_ADDR_STR_MAX];
-    uint16_t sport = rte_bswap16(key->sport);
-    uint16_t dport = rte_bswap16(key->dport);
+int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
+    int    rv    = 0;
+    size_t len   = 0;
+    char*  c     = (char*) rx_buf->l4_offset;
+    char*  limit = (char*) (rx_buf->l4_offset + rx_buf->data.l4_length);
+    char*  next  = (char*) rx_buf->l4_offset;
     
-    memset(sip, 0, sizeof(sip));
-    memset(dip, 0, sizeof(dip));
+    if (rte_get_log_level() >= RTE_LOG_INFO) {
+        RTE_LOG(INFO, STACK, "dump tcp syslog segment:\n");
+        rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
+    }
     
-    if (key->protocol == L4_TCP4) {
-        family = SS_AF_INET4;
-        protocol = "L4_TCP4";
+    while (c < limit) {
+        if (*c == '\n') {
+            // append to existing rx_data
+            len = (size_t) SS_MIN((uint8_t*) c - rx_buf->l4_offset, (long) sizeof(socket->rx_data) - socket->rx_length);
+            RTE_LOG(INFO, STACK, "syslog_tcp: copy %zu bytes to rx_data from %hu to %hu due to delimiter\n", len, socket->rx_length, (uint16_t) (socket->rx_length + len));
+            rte_memcpy((uint8_t*) (socket->rx_data + socket->rx_length), (uint8_t*) rx_buf->l4_offset, len);
+            socket->rx_length    += len;
+            socket->rx_data[len]  = '\0';
+
+            // process full message, XXX: check return value
+            rv = ss_extract_syslog("tcp_syslog", rx_buf, socket->rx_data, socket->rx_length);
+
+            // mark new message start
+            socket->rx_length = 0;
+            next = c + 1;
+        }
+        ++c;
     }
-    else if (key->protocol == L4_TCP6) {
-        family = SS_AF_INET6;
-        protocol = "L4_TCP6";
+
+    if (next < limit) {
+        len = (size_t) SS_MIN(limit - next, (long) sizeof(socket->rx_data) - socket->rx_length);
+        RTE_LOG(INFO, STACK, "syslog_tcp: copy %zu bytes to rx_data from %hu to %hu due to segment end\n", len, socket->rx_length, (uint16_t) (socket->rx_length + len));
+        rte_memcpy((uint8_t*) (socket->rx_data + socket->rx_length), (uint8_t*) next, len);
+        socket->rx_length    += len;
+        socket->rx_data[len]  = '\0';
     }
-    else {
-        // XXX: now panic and freak out?
-        return -1;
-    }
-    ss_inet_ntop_raw(family, key->sip, sip, sizeof(sip));
-    ss_inet_ntop_raw(family, key->dip, dip, sizeof(dip));
     
-    RTE_LOG(INFO, STACK, "%s: flow key: %s: %s:%hu --> %s:%hu\n",
-        message, protocol, sip, sport, dip, dport);
+    if (socket->rx_length >= L4_TCP_BUFFER_SIZE) {
+        char message[256];
+        snprintf(message, sizeof(message), "syslog_tcp: truncate message at %hu bytes due to buffer limit\n", socket->rx_length);
+        ss_flow_key_dump(message, &socket->key);
+
+        // process full message, XXX: check return value
+        rv = ss_extract_syslog("tcp_syslog", rx_buf, socket->rx_data, socket->rx_length);
+
+        // mark new message start
+        socket->rx_length = 0;
+        next = c + 1;
+    }
     
     return 0;
-}
-
-const char* ss_tcp_flags_dump(uint8_t tcp_flags) {
-    char* flags = tcp_flags_strings[rte_lcore_id()];
-    int offset = 0;
-    if      (tcp_flags & TH_URG) {
-        offset += snprintf(flags + offset, sizeof(flags) - (u_long) offset, "%s ", "URG");
-    }    
-    else if (tcp_flags & TH_ACK) {
-        offset += snprintf(flags + offset, sizeof(flags) - (u_long) offset, "%s ", "ACK");
-    }    
-    else if (tcp_flags & TH_PSH) {
-        offset += snprintf(flags + offset, sizeof(flags) - (u_long) offset, "%s ", "PSH");
-    }    
-    else if (tcp_flags & TH_RST) {
-        offset += snprintf(flags + offset, sizeof(flags) - (u_long) offset, "%s ", "RST");
-    }    
-    else if (tcp_flags & TH_SYN) {
-        offset += snprintf(flags + offset, sizeof(flags) - (u_long) offset, "%s ", "SYN");
-    }    
-    else if (tcp_flags & TH_FIN) {
-        offset += snprintf(flags + offset, sizeof(flags) - (u_long) offset, "%s ", "FIN");
-    }
-    return flags;
 }
 
 int ss_tcp_socket_init(ss_flow_key_t* key, ss_tcp_socket_t* socket) {
