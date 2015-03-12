@@ -17,6 +17,8 @@
 
 #include "common.h"
 #include "extractor.h"
+#include "l4_utils.h"
+#include "netflow.h"
 
 int ss_frame_handle_udp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
