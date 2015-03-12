@@ -1,7 +1,8 @@
 #include <stdint.h>
 #include <stdio.h>
-
 #include <sys/types.h>
+
+#include <bsd/string.h>
 
 #include <netinet/in.h>
 #include <netinet/ip6.h>
@@ -14,6 +15,7 @@
 #include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_mbuf.h>
+#include <rte_random.h>
 #include <rte_rwlock.h>
 
 #include "tcp.h"
@@ -21,10 +23,10 @@
 #include "checksum.h"
 #include "common.h"
 #include "ethernet.h"
+#include "extractor.h"
 #include "je_utils.h"
+#include "l4_utils.h"
 #include "sdn_sensor.h"
-
-#define SS_TCP_FLAGS_STR_MAX 32
 
 // XXX: how can I place a TCP hash on each socket?
 static struct rte_hash_parameters tcp_hash_params = {
@@ -40,7 +42,6 @@ static struct rte_hash_parameters tcp_hash_params = {
 static rte_rwlock_t tcp_hash_lock;
 static rte_hash_t* tcp_hash;
 static ss_tcp_socket_t* tcp_sockets[L4_TCP_HASH_SIZE];
-static char tcp_flags_strings[RTE_MAX_LCORE][SS_TCP_FLAGS_STR_MAX];
 
 int ss_tcp_init() {
     rte_rwlock_init(&tcp_hash_lock);
