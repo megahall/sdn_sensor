@@ -282,11 +282,9 @@ ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf) {
     }
     rte_rwlock_write_unlock(&tcp_hash_lock);
 
-    RTE_LOG(INFO, STACK, "new tcp socket: sport: %hu dport: %hu id: %u is_error: %d\n",
+    RTE_LOG(INFO, STACK, "new tcp socket: sport: %hu dport: %hu id: %lu is_error: %d\n",
         rte_bswap16(key->sport), rte_bswap16(key->dport), socket->id, is_error);
 
-    rte_spinlock_recursive_unlock(&socket->lock);
-    
     error_out:
     if (unlikely(is_error)) {
         if (socket) { je_free(socket); socket = NULL; }
