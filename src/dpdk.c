@@ -22,6 +22,8 @@ void ss_port_stats_print(ss_port_statistics_t* port_statistics, unsigned int por
 
     /* Clear screen and move to top left */
     //printf("%s%s", clr, topLeft);
+    
+    if (rte_get_log_level() < RTE_LOG_DEBUG) return;
 
     printf("Port statistics ====================================\n");
 
