@@ -16,6 +16,7 @@
 
 #include <pcap/pcap.h>
 
+#include <rte_byteorder.h>
 #include <rte_lpm.h>
 #include <rte_lpm6.h>
 #include <rte_log.h>
@@ -67,6 +68,53 @@ const char* ss_direction_dump(ss_direction_t direction) {
         case SS_FRAME_TX: return "TX";
         default:          return "UNKNOWN";
     }
+}
+
+int ss_flow_key_dump(const char* message, ss_flow_key_t* key) {
+    uint8_t family;
+    const char* protocol;
+    char sip[SS_ADDR_STR_MAX];
+    char dip[SS_ADDR_STR_MAX];
+    uint16_t sport = rte_bswap16(key->sport);
+    uint16_t dport = rte_bswap16(key->dport);
+
+    memset(sip, 0, sizeof(sip));
+    memset(dip, 0, sizeof(dip));
+
+    if (key->protocol == L4_TCP4) {
+        family = SS_AF_INET4;
+        protocol = "L4_TCP4";
+    }
+    else if (key->protocol == L4_TCP6) {
+        family = SS_AF_INET6;
+        protocol = "L4_TCP6";
+    }
+    else {
+        // XXX: now panic and freak out?
+        return -1;
+    }
+    ss_inet_ntop_raw(family, key->sip, sip, sizeof(sip));
+    ss_inet_ntop_raw(family, key->dip, dip, sizeof(dip));
+
+    RTE_LOG(INFO, STACK, "%s: flow key: %s: %s:%hu --> %s:%hu\n",
+        message, protocol, sip, sport, dip, dport);
+
+    return 0;
+}
+
+#define SS_TCP_FLAGS_STR_MAX 32
+static char tcp_flags_strings[RTE_MAX_LCORE][SS_TCP_FLAGS_STR_MAX];
+
+const char* ss_tcp_flags_dump(uint8_t tcp_flags) {
+    char* flags = & tcp_flags_strings[rte_lcore_id()][0];
+    memset(flags, 0, SS_TCP_FLAGS_STR_MAX);
+    if (tcp_flags & TH_URG) strcat(flags, "URG ");
+    if (tcp_flags & TH_ACK) strcat(flags, "ACK ");
+    if (tcp_flags & TH_PSH) strcat(flags, "PSH ");
+    if (tcp_flags & TH_RST) strcat(flags, "RST ");
+    if (tcp_flags & TH_SYN) strcat(flags, "SYN ");
+    if (tcp_flags & TH_FIN) strcat(flags, "FIN ");
+    return flags;
 }
 
 /* PCAP CHAIN */
