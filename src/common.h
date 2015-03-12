@@ -31,6 +31,9 @@
 
 /* MACROS */
 
+#define SS_MAX(a, b) (( (a) > (b) ) ? (a) : (b) )
+#define SS_MIN(a, b) (( (a) < (b) ) ? (a) : (b) )
+
 #define SS_ROUND_UP(N, S) ((((N) + (S) - 1) / (S)) * (S))
 
 #define SS_CHECK_SELF(fbuf, rv) \
