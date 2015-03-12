@@ -323,10 +323,34 @@ ss_tcp_socket_t* ss_tcp_socket_lookup(ss_flow_key_t* key) {
     return socket;
 }
 
-int ss_tcp_prepare_tx(ss_tcp_socket_t* socket, ss_tcp_state_t state) {
-    rte_spinlock_recursive_lock(&socket->lock);
+int ss_tcp_prepare_rx(ss_frame_t* rx_buf, ss_tcp_socket_t* socket) {
+    socket->rx_ticks = rte_rdtsc();
+    if (socket->state == SS_TCP_SYN_RX) {
+        socket->last_seq = rte_bswap32(rx_buf->tcp->seq);
+        socket->last_ack_seq = rte_bswap32(rx_buf->tcp->ack_seq);
+    }
+    return 0;
+}
+
+int ss_tcp_prepare_tx(ss_frame_t* tx_buf, ss_tcp_socket_t* socket, ss_tcp_state_t state) {
     socket->tx_ticks = rte_rdtsc();
-    rte_spinlock_recursive_unlock(&socket->lock);
+
+    tcp_hdr_t* tcp = tx_buf ? tx_buf->tcp : NULL;
+    if (!tcp) return -1;
+
+    socket->last_seq = rte_bswap32(tx_buf->tcp->seq);
+    if (tcp->th_flags & TH_ACK) {
+        socket->last_ack_seq = rte_bswap32(tx_buf->tcp->ack_seq);
+    }
+
+    if (rte_get_log_level() >= RTE_LOG_INFO) {
+        RTE_LOG(INFO, STACK, "tx tcp packet: sport: %hu dport: %hu seq: %u ack: %u hlen: %hu flags: %s wsize: %hu\n",
+            rte_bswap16(tcp->source), rte_bswap16(tcp->dest),
+            rte_bswap32(tcp->seq),    rte_bswap32(tcp->ack_seq),
+            (uint16_t) (4 * tcp->doff), ss_tcp_flags_dump(tcp->th_flags),
+            rte_bswap16(tcp->window));
+    }
+
     return 0;
 }
 
