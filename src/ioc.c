@@ -932,7 +932,7 @@ ss_ioc_entry_t* ss_ioc_ip_match(ip_addr_t* ip) {
     switch (ip->family) {
         case SS_AF_INET4: {
 #ifdef SS_IOC_BACKEND_RAM
-            uint32_t* iip = (uint32_t*) &ip->ip4_addr;
+            uint32_t iip = *(uint32_t*) &ip->ip4_addr;
             HASH_FIND_INT(ss_conf->ip4_table, &iip, iptr);
             if (iptr) goto out;
 #elif SS_IOC_BACKEND_DISK
