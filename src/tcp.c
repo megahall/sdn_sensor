@@ -361,9 +361,8 @@ uint16_t ss_tcp_rx_mss_get(ss_tcp_socket_t* socket) {
 
 int ss_tcp_handle_close(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
-    uint16_t checksum;
 
-    if (rx_buf->tcp->th_flags & TH_RST) goto delete_only;
+    if (rx_buf->tcp->th_flags & TH_RST) goto shutdown_only;
     
     rv = ss_frame_prepare_tcp(rx_buf, tx_buf);
     if (rv) {
@@ -372,12 +371,10 @@ int ss_tcp_handle_close(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t*
     }
     
     // Client closed socket now.
-    // RST should be set for hard close from server.
-    // SYN flag is set. Client is opening connection.
-    // Send back initial seq_num + 1.
+    // RST should be set for hard close (equivalent to SO_LINGER == 0) from server.
     tx_buf->tcp->seq      = rx_buf->tcp->ack_seq;
     tx_buf->tcp->ack_seq  = 0;
-    tx_buf->tcp->doff     = 5;
+    tx_buf->tcp->doff     = L4_TCP_HEADER_OFFSET;
     tx_buf->tcp->th_flags = TH_RST;
     tx_buf->tcp->window   = rte_bswap16(L4_TCP_WINDOW_SIZE);
     tx_buf->tcp->check    = rte_bswap16(0x0000);
@@ -388,13 +385,9 @@ int ss_tcp_handle_close(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t*
         RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf checksum, error: %d\n", rv);
         return -1;
     }
-
-    tx_buf->ip4->tot_len  = rte_bswap16(rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t)); // XXX: better way?
-    checksum = ss_in_cksum((uint16_t*) tx_buf->ip4, sizeof(ip4_hdr_t));
-    tx_buf->ip4->check    = checksum;
     
-    delete_only:
-
+    shutdown_only:
+    ss_tcp_prepare_tx(tx_buf, socket, SS_TCP_CLOSED);
     return ss_tcp_socket_delete(&socket->key);
 }
 
