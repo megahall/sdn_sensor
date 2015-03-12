@@ -442,7 +442,18 @@ int ss_tcp_handle_open(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* 
 
 int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
+    
+    if (socket->state == SS_TCP_CLOSED) return 0;
 
+    uint16_t tcp_data_len  = rte_bswap16(rx_buf->ip4->tot_len) - (4 * rx_buf->tcp->doff) - sizeof(tcp_hdr_t);
+    uint32_t curr_seq      = rx_buf->tcp->ack_seq;
+    uint32_t curr_ack_seq  = rte_bswap32(rx_buf->tcp->seq) + (tcp_data_len ? tcp_data_len : 1);
+
+    if (curr_ack_seq <= socket->last_ack_seq) {
+        socket->last_ack_seq = curr_ack_seq;
+        return 0;
+    }
+        
     rv = ss_frame_prepare_tcp(rx_buf, tx_buf);
     if (rv) {
         RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf, error: %d\n", rv);
