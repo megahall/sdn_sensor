@@ -407,11 +407,27 @@ int ss_tcp_handle_open(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* 
     // ACK flag is set. Client sent initial seq_num.
     // Send back initial seq_num + 1.
     tx_buf->tcp->ack_seq  = rte_bswap32(rte_bswap32(rx_buf->tcp->seq) + 1);
-    tx_buf->tcp->doff     = 5;
+    tx_buf->tcp->doff     = L4_TCP_HEADER_OFFSET + 2; // 1-byte MSS, 1-byte window scale
     tx_buf->tcp->th_flags = TH_SYN | TH_ACK;
     tx_buf->tcp->window   = rte_bswap16(L4_TCP_WINDOW_SIZE);
     tx_buf->tcp->check    = rte_bswap16(0x0000);
     tx_buf->tcp->urg_ptr  = rte_bswap16(0x0000);
+    // add the two most fundamental hard-coded options
+    uint32_t* tcp_mss     = (uint32_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(uint32_t));
+    if (!tcp_mss) {
+        RTE_LOG(ERR, STACK, "could not add tcp_mss to tx_mbuf\n");
+        return -1;
+    }
+    // mss: kind 2, length 4, uint16_t mss
+    *tcp_mss              = rte_bswap32(0x0204 << 16 | ss_tcp_rx_mss_get(socket));
+
+    uint32_t* win_scale   = (uint32_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(uint32_t));
+    if (!win_scale) {
+        RTE_LOG(ERR, STACK, "could not add win_scale to tx_mbuf\n");
+        return -1;
+    }
+    // win_scale: kind 3, length 3, uint8_t shift, followed by uint8_t nop (0x01)
+    *win_scale            = rte_bswap32(0x0303 << 16 | ((L4_TCP_WINDOW_SHIFT & 0xff) << 8) | 0x1);
     
     rv = ss_tcp_prepare_checksum(tx_buf);
     if (rv) {
