@@ -139,8 +139,7 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     }
     else if (tcp_flags & TH_ACK || tcp_flags == 0) {
         RTE_LOG(INFO, STACK, "rx tcp ack packet\n");
-        rv = ss_tcp_handle_update(socket, rx_buf, tx_buf);
-        curr_seq = (uint32_t) rv;
+        rv = ss_tcp_handle_update(socket, rx_buf, tx_buf, &curr_seq);
     }
     else {
         RTE_LOG(ERR, STACK, "unknown tcp flags: %s\n",
@@ -148,13 +147,11 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         rv = -1;
     }
     
-    // XXX: add staleness check later
-    /*
-    if (curr_seq < socket->last_ack_seq) {
+    // check for stale packets
+    if (socket->state != SS_TCP_SYN_RX && curr_seq < socket->last_ack_seq) {
         RTE_LOG(INFO, STACK, "rx tcp stale skipped packet\n");
         goto out;
     }
-    else*/
     if (rx_buf->data.l4_length == 0) {
         RTE_LOG(DEBUG, STACK, "rx tcp control packet\n");
         goto out;
