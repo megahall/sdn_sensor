@@ -17,7 +17,7 @@ int ss_tcp_prepare_tx(ss_frame_t* tx_buf, ss_tcp_socket_t* socket, ss_tcp_state_
 uint16_t ss_tcp_rx_mss_get(ss_tcp_socket_t* socket);
 int ss_tcp_handle_close(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* tx_buf);
 int ss_tcp_handle_open(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* tx_buf);
-int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* tx_buf);
+int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* tx_buf, uint32_t* curr_ack_seq_ptr);
 int ss_frame_prepare_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
 int ss_tcp_prepare_checksum(ss_frame_t* tx_buf);
 
