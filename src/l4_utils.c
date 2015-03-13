@@ -1,9 +1,28 @@
+#include <ctype.h>
+
 #include <rte_byteorder.h>
 #include <rte_mbuf.h>
 
 #include "common.h"
 #include "l4_utils.h"
 #include "sdn_sensor.h"
+
+int ss_buffer_dump(const char* source, uint8_t* buffer, uint16_t length) {
+    printf("dump %s buffer: size [%hu]: [ ", source, length);
+
+    for (size_t i = 0; i < length; ++i) {
+        char c = (char) buffer[i];
+        if (isalnum(c) || ispunct(c)) {
+            printf("%c", c);
+        }
+        else {
+            printf("[0x%hhx]", c);
+        }
+    }
+    printf(" ]\n");
+
+    return 0;
+}
 
 int ss_frame_layer_off_len_get(ss_frame_t* rx_buf,
     void* layer_start, size_t layer_hdr_size,
