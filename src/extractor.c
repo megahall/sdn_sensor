@@ -249,12 +249,16 @@ int ss_extract_syslog(const char* source, ss_frame_t* fbuf, uint8_t* l4_offset, 
     
     if (re_match.re_entry->type == SS_RE_TYPE_COMPLETE) {
         // include length of null byte
-        metadata = ss_metadata_prepare_syslog(source, re_match.re_entry->name, &re_match.re_entry->nn_queue, fbuf, NULL);
+        metadata = ss_metadata_prepare_syslog(
+            source, re_match.re_entry->name, &re_match.re_entry->nn_queue,
+            fbuf, l4_offset, l4_length, NULL);
     }
     else if (re_match.re_entry->type == SS_RE_TYPE_SUBSTRING) {
         //ss_ioc_entry_dump_dpdk(re_match.ioc_entry);
         // include length of null byte
-        metadata = ss_metadata_prepare_syslog(source, re_match.re_entry->name, &re_match.re_entry->nn_queue, fbuf, re_match.ioc_entry);
+        metadata = ss_metadata_prepare_syslog(
+            source, re_match.re_entry->name, &re_match.re_entry->nn_queue,
+            fbuf, l4_offset, l4_length, re_match.ioc_entry);
     }
     
     if (metadata) {
