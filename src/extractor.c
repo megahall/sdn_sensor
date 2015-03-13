@@ -39,8 +39,8 @@ int ss_extract_eth(ss_frame_t* fbuf) {
     }
     
     TAILQ_FOREACH_SAFE(pptr, &ss_conf->pcap_chain.pcap_list, entry, ptmp) {
-        RTE_LOG(DEBUG, EXTRACTOR, "attempt match port %u frame direction %d against pcap rule %s\n",
-            fbuf->data.port_id, fbuf->data.direction, pptr->name);
+        RTE_LOG(DEBUG, EXTRACTOR, "attempt match port %u frame direction %s against pcap rule %s\n",
+            fbuf->data.port_id, ss_direction_dump(fbuf->data.direction), pptr->name);
         rv = ss_pcap_match(pptr, &match);
         if (rv > 0) {
             // match
@@ -78,7 +78,7 @@ int ss_extract_eth(ss_frame_t* fbuf) {
     return 0;
     
     error_out:
-    RTE_LOG(ERR, EXTRACTOR, "match error port %u frame direction %d\n", fbuf->data.port_id, fbuf->data.direction);
+    RTE_LOG(ERR, EXTRACTOR, "match error port %u frame direction %s\n", fbuf->data.port_id, ss_direction_dump(fbuf->data.direction));
     return -1;
 }
 
@@ -237,10 +237,10 @@ int ss_extract_syslog(const char* source, ss_frame_t* fbuf, uint8_t* l4_offset, 
     uint64_t mlength = 0;
     ss_re_match_t re_match;
 
-    RTE_LOG(INFO, EXTRACTOR, "attempt syslog match port %u frame direction %d payload length %hu content %s\n",
+    RTE_LOG(INFO, EXTRACTOR, "attempt syslog match port %u frame direction %d payload length %hu\n",
         fbuf->data.port_id, fbuf->data.direction,
-        l4_length, (char*) l4_offset);
-        
+        l4_length);
+    
     rv = ss_re_chain_match(&re_match, l4_offset, l4_length);
     if (rv <= 0 || re_match.re_entry == NULL) {
         RTE_LOG(DEBUG, EXTRACTOR, "no match against syslog rule %s\n", re_match.re_entry->name);
