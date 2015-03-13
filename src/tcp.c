@@ -205,11 +205,13 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
         if (*c == '\n') {
             // append to existing rx_data
             len = (size_t) SS_MIN((uint8_t*) c - rx_buf->l4_offset, (long) sizeof(socket->rx_data) - socket->rx_length);
-            RTE_LOG(INFO, STACK, "syslog_tcp: copy %zu bytes to rx_data from %hu to %hu due to delimiter\n", len, socket->rx_length, (uint16_t) (socket->rx_length + len));
+            RTE_LOG(INFO, STACK, "syslog_tcp: copy %zu bytes to rx_data from %hu to %hu due to delimiter\n",
+                len, socket->rx_length, (uint16_t) (socket->rx_length + len));
             rte_memcpy((uint8_t*) (socket->rx_data + socket->rx_length), (uint8_t*) rx_buf->l4_offset, len);
             socket->rx_length    += len;
             socket->rx_data[len]  = '\0';
 
+            //ss_buffer_dump("delimited message", socket->rx_data, socket->rx_length);
             // process full message, XXX: check return value
             rv = ss_extract_syslog("tcp_syslog", rx_buf, socket->rx_data, socket->rx_length);
 
@@ -222,7 +224,8 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
 
     if (next < limit) {
         len = (size_t) SS_MIN(limit - next, (long) sizeof(socket->rx_data) - socket->rx_length);
-        RTE_LOG(INFO, STACK, "syslog_tcp: copy %zu bytes to rx_data from %hu to %hu due to segment end\n", len, socket->rx_length, (uint16_t) (socket->rx_length + len));
+        RTE_LOG(INFO, STACK, "syslog_tcp: copy %zu bytes to rx_data from %hu to %hu due to segment end\n",
+            len, socket->rx_length, (uint16_t) (socket->rx_length + len));
         rte_memcpy((uint8_t*) (socket->rx_data + socket->rx_length), (uint8_t*) next, len);
         socket->rx_length    += len;
         socket->rx_data[len]  = '\0';
@@ -233,6 +236,7 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
         snprintf(message, sizeof(message), "syslog_tcp: truncate message at %hu bytes due to buffer limit\n", socket->rx_length);
         ss_flow_key_dump(message, &socket->key);
 
+        //ss_buffer_dump("truncated message", socket->rx_data, socket->rx_length);
         // process full message, XXX: check return value
         rv = ss_extract_syslog("tcp_syslog", rx_buf, socket->rx_data, socket->rx_length);
 
