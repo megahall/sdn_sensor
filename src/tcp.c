@@ -441,7 +441,7 @@ int ss_tcp_handle_open(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* 
     return 0;
 }
 
-int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
+int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* tx_buf, uint32_t* curr_ack_seq_ptr) {
     int rv = 0;
     
     if (socket->state == SS_TCP_CLOSED) return 0;
@@ -452,6 +452,7 @@ int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t
 
     if (curr_ack_seq <= socket->last_ack_seq) {
         socket->last_ack_seq = curr_ack_seq;
+        *curr_ack_seq_ptr = curr_ack_seq;
         return 0;
     }
         
@@ -479,7 +480,8 @@ int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t
     
     ss_tcp_prepare_tx(tx_buf, socket, SS_TCP_OPEN);
     
-    return (int) curr_ack_seq;
+    *curr_ack_seq_ptr = curr_ack_seq;
+    return 0;
 }
 
 int ss_frame_prepare_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
