@@ -258,7 +258,8 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
     
     if (socket->rx_length >= L4_TCP_BUFFER_SIZE) {
         char message[256];
-        snprintf(message, sizeof(message), "syslog_tcp: truncate message at %hu bytes due to buffer limit\n", socket->rx_length);
+        snprintf(message, sizeof(message), "syslog_tcp: truncate message at %hu bytes due to buffer limit",
+            socket->rx_length);
         ss_flow_key_dump(message, &socket->key);
 
         //ss_buffer_dump("truncated message", socket->rx_data, socket->rx_length);
