@@ -184,32 +184,7 @@ void ss_main_loop(void) __attribute__ ((noreturn)) {
         /* TX queue drain */
         diff_tsc = curr_tsc - prev_tsc;
         if (unlikely(diff_tsc > drain_tsc)) {
-            for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
-                //RTE_LOG(INFO, SS, "attempt send for port %d\n", port_id);
-                if (mbuf_table[port_id][lcore_id].length == 0) {
-                    //RTE_LOG(INFO, SS, "send no frames for port %d\n", port_id);
-                    continue;
-                }
-                //RTE_LOG(INFO, SS, "send %u frames for port %d\n", queue_conf->tx_table[port_id].length, port_id);
-                ss_send_burst((uint8_t) port_id, lcore_id);
-                mbuf_table[port_id][lcore_id].length = 0;
-            }
-
-            /* advance the timer */
             timer_tsc += diff_tsc;
-
-            /* if timer has reached its timeout */
-            if (unlikely(timer_tsc >= (uint64_t) ss_conf->timer_cycles)) {
-                /* do this only on master core */
-                if (lcore_id == rte_get_master_lcore()) {
-                    double elapsed = timer_tsc / (double) rte_get_tsc_hz();
-                    RTE_LOG(NOTICE, SS, "call ss_port_stats_print after %011.6f secs.\n", elapsed);
-                    ss_port_stats_print(port_statistics, rte_eth_dev_count());
-                    /* reset the timer */
-                    timer_tsc = 0;
-                }
-            }
-
             ss_timer_callback(lcore_id, &timer_tsc);
             prev_tsc = curr_tsc;
         }
