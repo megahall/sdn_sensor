@@ -322,11 +322,13 @@ ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf) {
     return socket;
 }
 
-int ss_tcp_socket_delete(ss_flow_key_t* key) {
-    rte_rwlock_write_lock(&tcp_hash_lock);
+int ss_tcp_socket_delete(ss_flow_key_t* key, int is_locked) {
+    ss_flow_key_dump("delete socket for key", key);
+
+    if (likely(!is_locked)) rte_rwlock_write_lock(&tcp_hash_lock);
     int32_t socket_id = rte_hash_del_key(tcp_hash, key);
     ss_tcp_socket_t* socket = ((int32_t) socket_id) < 0 ? NULL : tcp_sockets[socket_id];
-    rte_rwlock_write_unlock(&tcp_hash_lock);
+    if (likely(!is_locked)) rte_rwlock_write_unlock(&tcp_hash_lock);
 
     if (!socket) return -1;
     
