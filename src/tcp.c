@@ -53,6 +53,30 @@ int ss_tcp_init() {
     }
     
     memset(tcp_sockets, 0, sizeof(tcp_sockets));
+    
+    return 0;
+}
+
+int ss_tcp_timer_callback() {
+    uint64_t expired_ticks = rte_rdtsc() - (rte_get_tsc_hz() * L4_TCP_EXPIRED_SECONDS);
+    int expired_sockets = 0;
+    ss_tcp_socket_t* socket;
+
+    rte_rwlock_write_lock(&tcp_hash_lock);
+    for (int i = 0; i < L4_TCP_HASH_SIZE; ++i) {
+        socket = tcp_sockets[i];
+        if (!socket) continue;
+        if (socket->rx_ticks < expired_ticks &&
+            socket->tx_ticks < expired_ticks) {
+            rte_spinlock_recursive_lock(&socket->lock);
+            ss_tcp_socket_delete(&socket->key, 1);
+            rte_spinlock_recursive_unlock(&socket->lock);
+            ++expired_sockets;
+        }
+    }
+    rte_rwlock_write_unlock(&tcp_hash_lock);
+    
+    RTE_LOG(INFO, STACK, "deleted %d expired tcp sockets\n", expired_sockets);
     return 0;
 }
 
