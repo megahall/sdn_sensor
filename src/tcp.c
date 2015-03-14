@@ -233,8 +233,8 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
             RTE_LOG(INFO, STACK, "syslog_tcp: copy %zu bytes to rx_data from %hu to %hu due to delimiter\n",
                 len, socket->rx_length, (uint16_t) (socket->rx_length + len));
             rte_memcpy((uint8_t*) (socket->rx_data + socket->rx_length), (uint8_t*) rx_buf->l4_offset, len);
-            socket->rx_length    += len;
-            socket->rx_data[len]  = '\0';
+            socket->rx_length += len;
+            socket->rx_data[socket->rx_length + 1]  = '\0';
 
             //ss_buffer_dump("delimited message", socket->rx_data, socket->rx_length);
             // process full message, XXX: check return value
@@ -252,8 +252,8 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
         RTE_LOG(INFO, STACK, "syslog_tcp: copy %zu bytes to rx_data from %hu to %hu due to segment end\n",
             len, socket->rx_length, (uint16_t) (socket->rx_length + len));
         rte_memcpy((uint8_t*) (socket->rx_data + socket->rx_length), (uint8_t*) next, len);
-        socket->rx_length    += len;
-        socket->rx_data[len]  = '\0';
+        socket->rx_length += len;
+        socket->rx_data[socket->rx_length + 1]  = '\0';
     }
     
     if (socket->rx_length >= L4_TCP_BUFFER_SIZE) {
