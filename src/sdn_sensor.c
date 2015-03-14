@@ -278,13 +278,13 @@ int main(int argc, char* argv[]) {
     
     rv = ss_re_init();
     if (rv) {
-        fprintf(stderr, "could not initialize libpcre\n");
+        fprintf(stderr, "could not initialize regular expression libraries\n");
         exit(1);
     }
     
     ss_pcap = pcap_open_dead(DLT_EN10MB, 65536);
     if (ss_pcap == NULL) {
-        fprintf(stderr, "could not prepare pcap_t\n");
+        fprintf(stderr, "could not prepare BPF filtering code\n");
         exit(1);
     }
     
@@ -306,7 +306,7 @@ int main(int argc, char* argv[]) {
     /* init EAL */
     rv = rte_eal_init((int) ss_conf->eal_vector.we_wordc, ss_conf->eal_vector.we_wordv);
     if (rv < 0) {
-        rte_exit(EXIT_FAILURE, "Invalid EAL arguments\n");
+        rte_exit(EXIT_FAILURE, "invalid dpdk eal launch arguments\n");
     }
     rte_set_log_level(ss_conf->log_level);
     
@@ -332,14 +332,14 @@ int main(int argc, char* argv[]) {
     }
     
     if (rte_eal_pci_probe() < 0) {
-        rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
+        rte_exit(EXIT_FAILURE, "could not initialize pci bus / ethernet nics\n");
     }
     
     lcore_count = (uint16_t) rte_lcore_count();
     port_count = rte_eth_dev_count();
     RTE_LOG(NOTICE, SS, "port_count %d\n", port_count);
     if (port_count == 0) {
-        rte_exit(EXIT_FAILURE, "No Ethernet ports - bye\n");
+        rte_exit(EXIT_FAILURE, "could not detect any active ethernet nics or ports\n");
     }
 
     if (port_count > RTE_MAX_ETHPORTS) {
