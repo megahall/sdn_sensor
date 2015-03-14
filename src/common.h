@@ -89,6 +89,7 @@
 #define L4_TCP_MSS                  1460
 #define L4_TCP_BUFFER_SIZE          4096
 //#define L4_TCP_BUFFER_SIZE ((L4_TCP_WINDOW_SIZE << L4_TCP_WINDOW_SHIFT) * 2)
+#define L4_TCP_EXPIRED_SECONDS       600
 
 #define L4_TCP4 4
 #define L4_TCP6 6
