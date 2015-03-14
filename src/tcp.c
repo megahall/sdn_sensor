@@ -284,6 +284,7 @@ int ss_tcp_socket_init(ss_flow_key_t* key, ss_tcp_socket_t* socket) {
 ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf) {
     int is_error = 0;
     
+    ss_flow_key_dump("create socket for key", key);
     // XXX: should these be allocated from jemalloc or RTE alloc?
     ss_tcp_socket_t* socket = je_calloc(1, sizeof(ss_tcp_socket_t));
     if (socket == NULL) { is_error = 1; goto error_out; }
