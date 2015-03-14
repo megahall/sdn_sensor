@@ -177,7 +177,7 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         RTE_LOG(INFO, STACK, "rx tcp stale skipped packet\n");
         goto out;
     }
-    if (rx_buf->data.l4_length == 0) {
+    else if (rx_buf->data.l4_length == 0) {
         RTE_LOG(DEBUG, STACK, "rx tcp control packet\n");
         goto out;
     }
