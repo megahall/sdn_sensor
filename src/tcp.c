@@ -196,7 +196,7 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
             break;
         }
         case L4_PORT_SYSLOG_TCP: {
-            RTE_LOG(DEBUG, STACK, "rx tcp syslog-tls packet\n");
+            RTE_LOG(DEBUG, STACK, "rx tcp syslog-conn packet\n");
             ss_tcp_extract_syslog(socket, rx_buf);
             break;
         }
