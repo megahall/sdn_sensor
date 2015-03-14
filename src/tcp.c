@@ -340,14 +340,13 @@ int ss_tcp_socket_delete(ss_flow_key_t* key, int is_locked) {
 }
 
 ss_tcp_socket_t* ss_tcp_socket_lookup(ss_flow_key_t* key) {
-    ss_flow_key_dump("********** socket lookup key **********", key);
+    ss_flow_key_dump("find socket for key", key);
     rte_rwlock_read_lock(&tcp_hash_lock);
     int32_t socket_id = rte_hash_lookup(tcp_hash, key);
-    RTE_LOG(INFO, STACK, "rte_hash_lookup socket_id %u\n", socket_id);
     rte_rwlock_read_unlock(&tcp_hash_lock);
     ss_tcp_socket_t* socket = ((int32_t) socket_id) < 0 ? NULL : tcp_sockets[socket_id];
     if (socket) {
-        RTE_LOG(INFO, STACK, "retrieved existing socket id %u\n", socket_id);
+        RTE_LOG(INFO, STACK, "found socket at id: %u\n", socket_id);
     }
     return socket;
 }
