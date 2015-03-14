@@ -165,7 +165,7 @@ void ss_main_loop(void) __attribute__ ((noreturn)) {
     rte_mbuf_t* mbufs[MAX_PKT_BURST];
     rte_mbuf_t* mbuf;
     uint16_t lcore_id, socket_id;
-    uint64_t prev_tsc, diff_tsc, cur_tsc, timer_tsc;
+    uint64_t prev_tsc, diff_tsc, curr_tsc, timer_tsc;
     unsigned int rx_count;
     uint8_t i, port_id;
     const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
@@ -179,10 +179,10 @@ void ss_main_loop(void) __attribute__ ((noreturn)) {
     RTE_LOG(INFO, SS, "entering main loop on lcore %u\n", lcore_id);
 
     while (1) {
-        cur_tsc = rte_rdtsc();
+        curr_tsc = rte_rdtsc();
 
         /* TX queue drain */
-        diff_tsc = cur_tsc - prev_tsc;
+        diff_tsc = curr_tsc - prev_tsc;
         if (unlikely(diff_tsc > drain_tsc)) {
             for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
                 //RTE_LOG(INFO, SS, "attempt send for port %d\n", port_id);
@@ -210,7 +210,8 @@ void ss_main_loop(void) __attribute__ ((noreturn)) {
                 }
             }
 
-            prev_tsc = cur_tsc;
+            ss_timer_callback(lcore_id, &timer_tsc);
+            prev_tsc = curr_tsc;
         }
 
         /* RX queue processing */
