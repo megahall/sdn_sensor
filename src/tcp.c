@@ -488,7 +488,7 @@ int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t
         RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf, error: %d\n", rv);
         return -1;
     }
-    
+
     // XXX: Make the client "happy", and just ACK everything.
     // This is lossy, but back-pressure on syslog messages is pointless.
     tx_buf->tcp->seq       = curr_seq;
