@@ -268,7 +268,6 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
 
         // mark new message start
         socket->rx_length = 0;
-        next = c + 1;
     }
     
     return 0;
