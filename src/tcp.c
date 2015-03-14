@@ -562,7 +562,8 @@ int ss_tcp_prepare_checksum(ss_frame_t* tx_buf) {
     if (!tx_buf || !tx_buf->mbuf) goto error_out;
 
     uint8_t* pptr;
-    uint16_t checksum;
+    uint16_t ip_checksum;
+    uint16_t tcp_checksum;
     
     uint8_t  zeros         = 0x00;
     uint8_t  protocol      = IPPROTO_TCP;
@@ -611,21 +612,20 @@ int ss_tcp_prepare_checksum(ss_frame_t* tx_buf) {
     pptr = ss_phdr_append(pmbuf, data_ptr,               tcp_data_len);
     if (pptr == NULL) goto error_out;
 
-    RTE_LOG(DEBUG, STACK, "tcp payload size %u\n", tcp_data_len);
     if (rte_get_log_level() >= RTE_LOG_DEBUG) {
         printf("tcp pseudo-header:\n");
         rte_pktmbuf_dump(stderr, pmbuf, rte_pktmbuf_pkt_len(pmbuf));
     }
-    checksum = ss_in_cksum(rte_pktmbuf_mtod(pmbuf, uint16_t*), rte_pktmbuf_pkt_len(pmbuf));
+    tcp_checksum = ss_in_cksum(rte_pktmbuf_mtod(pmbuf, uint16_t*), rte_pktmbuf_pkt_len(pmbuf));
     rte_pktmbuf_free(pmbuf);
-    tx_buf->tcp->check = checksum;
-    RTE_LOG(DEBUG, STACK, "tcp checksum: 0x%04hX\n", checksum);
+    tx_buf->tcp->check = tcp_checksum;
     
     uint16_t ip_len = rte_bswap16(rte_pktmbuf_pkt_len(tx_buf->mbuf) - sizeof(eth_hdr_t));
     tx_buf->ip4->tot_len = ip_len; // XXX: better way?
-    checksum = ss_in_cksum((uint16_t*) tx_buf->ip4, sizeof(ip4_hdr_t));
-    tx_buf->ip4->check   = checksum;
-    RTE_LOG(DEBUG, STACK, "ip4 checksum: 0x%04hX\n", checksum);
+    ip_checksum = ss_in_cksum((uint16_t*) tx_buf->ip4, sizeof(ip4_hdr_t));
+    tx_buf->ip4->check   = ip_checksum;
+    RTE_LOG(DEBUG, STACK, "tcp data len: %u, tcp checksum: 0x%04hX, ip4 checksum: 0x%04hX\n",
+        tcp_data_len, tcp_checksum, ip_checksum);
     
     return 0;
 
