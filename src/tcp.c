@@ -416,7 +416,7 @@ int ss_tcp_handle_close(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t*
     
     shutdown_only:
     ss_tcp_prepare_tx(tx_buf, socket, SS_TCP_CLOSED);
-    return ss_tcp_socket_delete(&socket->key);
+    return ss_tcp_socket_delete(&socket->key, 0);
 }
 
 int ss_tcp_handle_open(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
