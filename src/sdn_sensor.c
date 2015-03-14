@@ -364,11 +364,11 @@ int main(int argc, char* argv[]) {
         rte_eth_dev_info_get(port_id, &dev_info);
         
         /* Configure port */
-        RTE_LOG(INFO, SS, "Initializing port %u... ", (unsigned) port_id);
+        RTE_LOG(INFO, SS, "initializing port %u...\n", (unsigned) port_id);
         fflush(stderr);
         rv = rte_eth_dev_configure(port_id, lcore_count, lcore_count, &port_conf);
         if (rv < 0) {
-            rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n", rv, (unsigned) port_id);
+            rte_exit(EXIT_FAILURE, "cannot configure ethernet port: %u, error: %d\n", (unsigned) port_id, rv);
         }
         
         for (lcore_id = 0; lcore_id < lcore_count; ++lcore_id) {
@@ -403,14 +403,12 @@ int main(int argc, char* argv[]) {
         /* Start port */
         rv = rte_eth_dev_start(port_id);
         if (rv < 0) {
-            rte_exit(EXIT_FAILURE, "rte_eth_dev_start:err=%d, port=%u\n", rv, (unsigned) port_id);
+            rte_exit(EXIT_FAILURE, "rte_eth_dev_start: error: port: %u error: %d\n", (unsigned) port_id, rv);
         }
-        
-        RTE_LOG(INFO, SS, "done: \n");
         
         rte_eth_promiscuous_enable(port_id);
         
-        RTE_LOG(INFO, SS, "Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
+        RTE_LOG(INFO, SS, "port %u: now active with mac address: %02X:%02X:%02X:%02X:%02X:%02X\n",
             (unsigned) port_id,
             port_eth_addrs[port_id].addr_bytes[0],
             port_eth_addrs[port_id].addr_bytes[1],
