@@ -43,8 +43,6 @@ rte_mempool_t* ss_pool[SOCKET_COUNT] = { NULL };
 /* ethernet addresses of ports */
 struct ether_addr port_eth_addrs[RTE_MAX_ETHPORTS];
 
-//const char* icmp_payload = "mhallmhallmhallmhallmhallmhallmhallmhall!!!!!!!!";
-
 static mbuf_table_entry_t mbuf_table[RTE_MAX_ETHPORTS][RTE_MAX_LCORE];
 
 static unsigned int port_count = 0;
