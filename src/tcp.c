@@ -52,6 +52,7 @@ int ss_tcp_init() {
         return -1;
     }
     
+    memset(tcp_sockets, 0, sizeof(tcp_sockets));
     return 0;
 }
 
