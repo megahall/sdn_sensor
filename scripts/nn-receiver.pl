@@ -36,7 +36,8 @@ nn_setsockopt($nn_socket, NN_SOL_SOCKET, NN_IPV4ONLY, 0) or die "nn_setsockopt f
 my $ip_list   = qx(hostname --all-ip-addresses);
 my @ip_list   = split(" ", $ip_list);
 unshift(@ip_list, "127.0.0.1");
-my @port_list = ( "10001", "10002", "10003", "10004", "10005", "31337" );
+print "ip_list: " . Dumper(\@ip_list);
+my @port_list = ( "10001", "10002", "10003", "10004", "10005", "31337", "31338" );
 my @bind_list = ();
 
 foreach my $ip (@ip_list) {
