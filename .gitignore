@@ -56,6 +56,7 @@ vgcore.*
 /scripts/ack-grep_1.96-2_all.deb
 /src/sdn_sensor
 /conf/sdn_sensor_vagrant.json
+/cov-analysis-*
 
 # Perl Code
 /blib/
