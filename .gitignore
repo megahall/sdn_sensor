@@ -51,6 +51,9 @@ Makefile.in
 core
 vgcore.*
 
+# OS Junk
+.DS_Store
+
 # Project Specific
 /.vagrant
 /scripts/ack-grep_1.96-2_all.deb
