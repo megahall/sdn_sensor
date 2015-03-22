@@ -16,9 +16,6 @@
 [submodule "external/virtio-net-pmd"]
 	path = external/virtio-net-pmd
 	url = https://github.com/megahall/virtio_net_pmd.git
-[submodule "external/ndpi"]
-	path = external/ndpi
-	url = https://github.com/megahall/ndpi.git
 [submodule "external/lmdb"]
 	path = external/lmdb
 	url = https://github.com/megahall/lmdb.git
