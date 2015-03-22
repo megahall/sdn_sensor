@@ -1,0 +1,11 @@
+.DS_Store
+bin
+build
+dist
+target
+.classpath
+.project
+.settings
+pom.xml.releaseBackup
+release.properties
+.gradle
