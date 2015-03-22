@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<esper-configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.espertech.com/schema/esper" xsi:noNamespaceSchemaLocation="esper-configuration-4-0.xsd">
+    <!-- Event classes configuration -->
+    <event-type name="LogMessage" class="net.mhcomputing.sdn_sensor.types.LogMessage">
+        <!-- <legacy-type accessor-style="javabean" code-generation="enabled" property-resolution-style="distinct_case_insensitive" start-timestamp-property-name="timeGenerated" end-timestamp-property-name="timeGenerated"/> -->
+    </event-type>
+    <event-type name="Connection" class="net.mhcomputing.sdn_sensor.threats.Connection"/>
+    <event-type-auto-name package-name="net.mhcomputing.sdn_sensor.types"/>
+    
+    <!-- Custom functions configuration -->
+    <plugin-singlerow-function name="is_malicious" function-class="net.mhcomputing.sdn_sensor.engine.EsperUtils" function-method="isMalicious" />
+    <plugin-singlerow-function name="hash_lm" function-class="net.mhcomputing.sdn_sensor.engine.EsperUtils" function-method="hashLm" />
+    <plugin-singlerow-function name="lower" function-class="net.mhcomputing.sdn_sensor.engine.EsperUtils" function-method="toLowerCase" />
+    <plugin-singlerow-function name="upper" function-class="net.mhcomputing.sdn_sensor.engine.EsperUtils" function-method="toUpperCase" />
+    
+    <!-- Java path configuration -->
+    <auto-import import-name="net.mhcomputing.sdn_sensor.engine.Utils"/>
+    <auto-import import-name="net.mhcomputing.sdn_sensor.types.*"/>
+    
+    <!-- Esper engine configuration -->
+    <engine-settings>
+        <defaults>
+            <!-- <execution disable-locking="true"/> -->
+            <threading>
+                <!-- <threadpool-inbound enabled="true" num-threads="4" capacity="500000"/> -->
+                <!-- <threadpool-outbound enabled="true" num-threads="4"/> -->
+                <!-- <internal-timer enabled="false" msec-resolution="100"/> -->
+                <listener-dispatch preserve-order="false"/>
+                <insert-into-dispatch preserve-order="false" />
+                <!-- <listener-dispatch preserve-order="true" timeout-msec="1000" locking="spin"/> -->
+                <!-- <insert-into-dispatch preserve-order="true" timeout-msec="100" locking="spin"/> -->
+            </threading>
+            <event-meta>
+                <class-property-resolution style="distinct_case_insensitive"/>
+            </event-meta>
+            <logging>
+                <execution-path enabled="false"/>
+                <timer-debug enabled="false"/>
+                <query-plan enabled="true"/>
+                <jdbc enabled="false"/>
+            </logging>
+            <exceptionHandling>
+                <handlerFactory class="net.mhcomputing.sdn_sensor.engine.EsperExceptionHandler"/>
+            </exceptionHandling>
+        </defaults>
+    </engine-settings>
+</esper-configuration>
