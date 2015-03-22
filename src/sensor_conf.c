@@ -400,6 +400,15 @@ int ss_conf_dpdk_parse(json_object* items) {
         else if (strcasestr(log_level, "DEBUG")) {
             ss_conf->log_level = RTE_LOG_DEBUG;
         }
+        else if (strcasestr(log_level, "FINE")) {
+            ss_conf->log_level = RTE_LOG_FINE;
+        }
+        else if (strcasestr(log_level, "FINER")) {
+            ss_conf->log_level = RTE_LOG_FINER;
+        }
+        else if (strcasestr(log_level, "FINEST")) {
+            ss_conf->log_level = RTE_LOG_FINEST;
+        }
         else {
             fprintf(stderr, "could not parse log level: %s\n", log_level);
             ss_conf->log_level = RTE_LOG_WARNING;
