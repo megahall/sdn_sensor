@@ -106,7 +106,7 @@ int ss_flow_key_dump(const char* message, ss_flow_key_t* key) {
 static char tcp_flags_strings[RTE_MAX_LCORE][SS_TCP_FLAGS_STR_MAX];
 
 const char* ss_tcp_flags_dump(uint8_t tcp_flags) {
-    char* flags = & tcp_flags_strings[rte_lcore_id()][0];
+    char* flags = &tcp_flags_strings[rte_lcore_id()][0];
     memset(flags, 0, SS_TCP_FLAGS_STR_MAX);
     if (tcp_flags & TH_URG) strcat(flags, "URG ");
     if (tcp_flags & TH_ACK) strcat(flags, "ACK ");
@@ -115,6 +115,17 @@ const char* ss_tcp_flags_dump(uint8_t tcp_flags) {
     if (tcp_flags & TH_SYN) strcat(flags, "SYN ");
     if (tcp_flags & TH_FIN) strcat(flags, "FIN ");
     return flags;
+}
+
+#define SS_ETHER_STR_MAX 18
+static char ether_addr_strings[RTE_MAX_LCORE][SS_ETHER_STR_MAX];
+
+const char* ss_ether_addr_dump(struct ether_addr* addr) {
+    char* saddr = &ether_addr_strings[rte_lcore_id()][0];
+    snprintf(saddr, SS_ETHER_STR_MAX, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
+        addr->addr_bytes[0], addr->addr_bytes[1], addr->addr_bytes[2],
+        addr->addr_bytes[3], addr->addr_bytes[4], addr->addr_bytes[5]);
+    return saddr;
 }
 
 /* PCAP CHAIN */
