@@ -57,6 +57,7 @@ vgcore.*
 /src/sdn_sensor
 /conf/sdn_sensor_vagrant.json
 /cov-analysis-*
+/data
 
 # Perl Code
 /blib/
