@@ -102,7 +102,7 @@ while ($is_running) {
     ++$message_id;
     $message = $parser->decode($buffer);
     $source = $message->{'source'} || "";
-    #print "received callback id $message_id size $length: " . $buffer . "\n" unless $source eq 'pcap';
+    print "received callback id $message_id size $length: " . $buffer . "\n" unless $source eq 'pcap';
 }
 
 my $stop      = time();
