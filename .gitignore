@@ -86,7 +86,8 @@ nytprof.out
 __pycache__/
 *.py[cod]
 
-# Installer logs
+# logs
+*.log
 pip-log.txt
 pip-delete-this-directory.txt
 
