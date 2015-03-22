@@ -19,3 +19,6 @@
 [submodule "external/lmdb"]
 	path = external/lmdb
 	url = https://github.com/megahall/lmdb.git
+[submodule "external/jnano"]
+	path = external/jnano
+	url = https://github.com/megahall/jnano.git
