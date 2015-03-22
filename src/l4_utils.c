@@ -36,7 +36,7 @@ int ss_frame_layer_off_len_get(ss_frame_t* rx_buf,
 
     uint16_t total_length = (uint16_t) ((*layer_offset + *layer_length) - mbuf_start);
     if (total_length > mbuf_length) {
-        RTE_LOG(ERR, STACK, "received unsafe packet, total_length %u > mbuf_length %u\n",
+        RTE_LOG(ERR, UTILS, "received unsafe packet, total_length %u > mbuf_length %u\n",
         total_length, mbuf_length);
         *layer_offset = NULL;
         *layer_length = 0;
@@ -55,7 +55,7 @@ uint8_t* ss_phdr_append(rte_mbuf_t* pmbuf, void* data, uint16_t length) {
 int ss_frame_prepare_ip4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     tx_buf->ip4 = (ip4_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(ip4_hdr_t));
     if (tx_buf->ip4 == NULL) {
-        RTE_LOG(ERR, STACK, "could not allocate mbuf ipv4 header\n");
+        RTE_LOG(ERR, L3L4, "could not allocate mbuf ipv4 header\n");
         return -1;
     }
     tx_buf->ip4->version   = 0x4;
@@ -77,7 +77,7 @@ int ss_frame_prepare_ip4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
 int ss_frame_prepare_ip6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     tx_buf->ip6 = (ip6_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(ip6_hdr_t));
     if (tx_buf->ip6 == NULL) {
-        RTE_LOG(ERR, STACK, "could not allocate mbuf ipv6 header\n");
+        RTE_LOG(ERR, L3L4, "could not allocate mbuf ipv6 header\n");
         return -1;
     }
     tx_buf->ip6->ip6_flow   = rte_bswap32(0x60000000);
@@ -99,4 +99,3 @@ void ss_frame_destroy(ss_frame_t* fbuf) {
         fbuf->mbuf = NULL;
     }
 }
-

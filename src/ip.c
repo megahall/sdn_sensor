@@ -23,19 +23,19 @@ int ss_frame_handle_ip4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
 
     rx_buf->ip4 = (ip4_hdr_t*) ((uint8_t*) rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*) + sizeof(eth_hdr_t));
-    RTE_LOG(DEBUG, STACK, "ip4 src %08x\n", rx_buf->ip4->saddr);
-    RTE_LOG(DEBUG, STACK, "ip4 dst %08x\n", rx_buf->ip4->daddr);
     rte_memcpy(&rx_buf->data.sip, &rx_buf->ip4->saddr, sizeof(rx_buf->data.sip));
     rte_memcpy(&rx_buf->data.dip, &rx_buf->ip4->daddr, sizeof(rx_buf->data.dip));
     
     rx_buf->data.self = (memcmp(&rx_buf->ip4->daddr, &ss_conf->ip4_address.ip4_addr, IPV4_ALEN)) == 0;
 
+    RTE_LOG(DEBUG, L3L4, "rx ip4 src %08x, ip4 dst %08x, protocol %hhu, self %hhu\n",
+        rte_bswap32(rx_buf->ip4->saddr), rte_bswap32(rx_buf->ip4->daddr), rx_buf->ip4->protocol, rx_buf->data.self);
+
     // XXX: walk through extension headers eventually
-    RTE_LOG(DEBUG, STACK, "ip4 protocol %hhu\n", rx_buf->ip4->protocol);
     rx_buf->data.ip_protocol = rx_buf->ip4->protocol;
     rv = ss_frame_find_l4_header(rx_buf, rx_buf->ip4->protocol);
     if (rv && rx_buf->ip4->protocol != IPPROTO_IGMP) {
-        RTE_LOG(ERR, STACK, "port %u received damaged ip4 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip4->protocol);
+        RTE_LOG(ERR, L3L4, "port %u received damaged ip4 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip4->protocol);
         rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
     }
     
@@ -54,7 +54,7 @@ int ss_frame_handle_ip4(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         }
         default: {
             if (rx_buf->ip4->protocol != IPPROTO_IGMP) {
-                RTE_LOG(INFO, STACK, "port %u received unsupported ip4 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip4->protocol);
+                RTE_LOG(INFO, L3L4, "port %u received unsupported ip4 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip4->protocol);
                 rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
             }
             rv = -1;
@@ -69,22 +69,22 @@ int ss_frame_handle_ip6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
 
     rx_buf->ip6 = (ip6_hdr_t*) ((uint8_t*) rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*) + sizeof(eth_hdr_t));
-    //rte_memdump(stderr, "ip6 hdr", rx_buf->ip6, sizeof(ip6_hdr_t));
-    if (rte_get_log_level() >= RTE_LOG_INFO)
+    if (rte_get_log_level() >= RTE_LOG_DEBUG) {
         rte_memdump(stderr, "ip6 src", &rx_buf->ip6->ip6_src, sizeof(rx_buf->ip6->ip6_src));
-    if (rte_get_log_level() >= RTE_LOG_INFO)
         rte_memdump(stderr, "ip6 dst", &rx_buf->ip6->ip6_dst, sizeof(rx_buf->ip6->ip6_dst));
+        RTE_LOG(DEBUG, L3L4, "ip6 protocol %hhu\n", rx_buf->ip6->ip6_nxt);
+    }
     rte_memcpy(&rx_buf->data.sip, &rx_buf->ip6->ip6_src, sizeof(rx_buf->data.sip));
     rte_memcpy(&rx_buf->data.dip, &rx_buf->ip6->ip6_dst, sizeof(rx_buf->data.dip));
 
     rx_buf->data.self = (memcmp(&rx_buf->ip6->ip6_dst, &ss_conf->ip6_address.ip6_addr, IPV6_ALEN)) == 0;
     
     // XXX: walk through extension headers eventually
-    RTE_LOG(DEBUG, STACK, "ip6 protocol %hhu\n", rx_buf->ip6->ip6_nxt);
     rx_buf->data.ip_protocol = rx_buf->ip6->ip6_nxt;
     rv = ss_frame_find_l4_header(rx_buf, rx_buf->ip6->ip6_nxt);
     if (rv) {
-        RTE_LOG(ERR, STACK, "port %u received damaged ip6 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip6->ip6_nxt);
+        RTE_LOG(ERR, L3L4, "port %u received damaged ip6 %hhu frame:\n",
+            rx_buf->data.port_id, rx_buf->ip6->ip6_nxt);
         rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
     }
     
@@ -102,7 +102,8 @@ int ss_frame_handle_ip6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
             break;
         }
         default: {
-            RTE_LOG(INFO, STACK, "port %u received unsupported ip6 %hhu frame:\n", rx_buf->data.port_id, rx_buf->ip6->ip6_nxt);
+            RTE_LOG(INFO, L3L4, "port %u received unsupported ip6 %hhu frame:\n",
+                rx_buf->data.port_id, rx_buf->ip6->ip6_nxt);
             rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
             rv = -1;
             break;

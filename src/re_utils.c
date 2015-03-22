@@ -234,7 +234,7 @@ int ss_re_chain_match(ss_re_match_t* re_match, uint8_t* l4_offset, uint16_t l4_l
     ss_re_entry_t* rtmp;
 
     TAILQ_FOREACH_SAFE(rptr, &ss_conf->re_chain.re_list, entry, rtmp) {
-        RTE_LOG(DEBUG, EXTRACTOR, "attempt re backend %d match type %d against syslog rule %s\n",
+        RTE_LOG(FINE, EXTRACTOR, "attempt re backend %d match type %d against syslog rule %s\n",
             rptr->backend, rptr->type, rptr->name);
         if (rptr->backend == SS_RE_BACKEND_PCRE) {
             rv = ss_re_chain_match_pcre(re_match, rptr, l4_offset, l4_length);
@@ -330,11 +330,11 @@ int ss_re_chain_match_pcre_complete(ss_re_match_t* re_match, ss_re_entry_t* re_e
         return -1;
     }
     else if (match_count == PCRE_ERROR_NOMATCH) {
-        RTE_LOG(DEBUG, EXTRACTOR, "no complete match against syslog rule %s\n", re_entry->name);
+        RTE_LOG(FINER, EXTRACTOR, "no complete match against syslog rule %s\n", re_entry->name);
         return 0;
     }
     else {
-        RTE_LOG(NOTICE, EXTRACTOR, "successful complete match for syslog rule %s\n", re_entry->name);
+        RTE_LOG(FINE, EXTRACTOR, "successful complete match for syslog rule %s\n", re_entry->name);
         return 1;
     }
 }
@@ -369,11 +369,11 @@ int ss_re_chain_match_pcre_substring(ss_re_match_t* re_match, ss_re_entry_t* re_
         if (pcre_get_substring((char*) l4_offset,
                                match_vector, match_count,
                                0, (const char**) &match_string) >= 0) {
-            RTE_LOG(DEBUG, EXTRACTOR, "attempt ioc match against substring %d: %s\n",
+            RTE_LOG(FINER, EXTRACTOR, "attempt ioc match against substring %d: %s\n",
                 match_index, match_string);
             iptr = ss_ioc_syslog_match((char*) match_string, re_entry->ioc_type);
             if (iptr) {
-                RTE_LOG(NOTICE, EXTRACTOR, "successful ioc match for syslog rule %s against substring %s\n",
+                RTE_LOG(FINE, EXTRACTOR, "successful ioc match for syslog rule %s against substring %s\n",
                     re_entry->name, match_string);
                 have_match = 1;
                 re_match->ioc_entry = iptr;
@@ -387,12 +387,12 @@ int ss_re_chain_match_pcre_substring(ss_re_match_t* re_match, ss_re_entry_t* re_
     
     end_loop:
     if (have_match) {
-        RTE_LOG(NOTICE, EXTRACTOR, "successful substring ioc match for syslog rule %s\n", re_entry->name);
+        RTE_LOG(FINE, EXTRACTOR, "successful substring ioc match for syslog rule %s\n", re_entry->name);
         return 1;
     }
     else {
         // no match
-        RTE_LOG(DEBUG, EXTRACTOR, "failed match against syslog rule %s\n", re_entry->name);
+        RTE_LOG(FINER, EXTRACTOR, "failed match against syslog rule %s\n", re_entry->name);
         return 0;
     }
 }
@@ -481,11 +481,11 @@ int ss_re_chain_match_re2_complete(ss_re_match_t* re_match, ss_re_entry_t* re_en
     }
     
     if (rv) {
-        RTE_LOG(NOTICE, EXTRACTOR, "successful complete match for syslog rule %s\n", re_entry->name);
+        RTE_LOG(FINE, EXTRACTOR, "successful complete match for syslog rule %s\n", re_entry->name);
         return 1;
     }
     else {
-        RTE_LOG(DEBUG, EXTRACTOR, "no complete match against syslog rule %s\n", re_entry->name);
+        RTE_LOG(FINER, EXTRACTOR, "no complete match against syslog rule %s\n", re_entry->name);
         return 0;
     }
 }
@@ -519,12 +519,12 @@ int ss_re_chain_match_re2_substring(ss_re_match_t* re_match, ss_re_entry_t* re_e
         rte_memcpy(substring, match[0].data, match_length > SS_IOC_DNS_SIZE? SS_IOC_DNS_SIZE : match_length);
         substring[match_length] = '\0';
         
-        RTE_LOG(DEBUG, EXTRACTOR, "attempt ioc match against substring %d: %s\n",
+        RTE_LOG(FINER, EXTRACTOR, "attempt ioc match against substring %d: %s\n",
             match_index, substring);
         
         iptr = ss_ioc_syslog_match(substring, re_entry->ioc_type);
         if (iptr) {
-            RTE_LOG(NOTICE, EXTRACTOR, "successful ioc match for syslog rule %s against substring %s\n",
+            RTE_LOG(FINE, EXTRACTOR, "successful ioc match for syslog rule %s against substring %s\n",
                 re_entry->name, substring);
             have_match = 1;
             re_match->ioc_entry = iptr;
@@ -535,12 +535,12 @@ int ss_re_chain_match_re2_substring(ss_re_match_t* re_match, ss_re_entry_t* re_e
     
     end_loop:
     if (have_match) {
-        RTE_LOG(NOTICE, EXTRACTOR, "successful substring ioc match against syslog rule %s\n", re_entry->name);
+        RTE_LOG(FINE, EXTRACTOR, "successful substring ioc match against syslog rule %s\n", re_entry->name);
         return 1;
     }
     else {
         // no match
-        RTE_LOG(DEBUG, EXTRACTOR, "no substring match against syslog rule %s\n", re_entry->name);
+        RTE_LOG(FINER, EXTRACTOR, "no substring match against syslog rule %s\n", re_entry->name);
         return 0;
     }
 }

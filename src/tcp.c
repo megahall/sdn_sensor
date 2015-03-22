@@ -48,7 +48,7 @@ int ss_tcp_init() {
 
     tcp_hash = rte_hash_create(&tcp_hash_params);
     if (tcp_hash == NULL) {
-        RTE_LOG(ERR, STACK, "could not initialize tcp socket hash\n");
+        RTE_LOG(ERR, L3L4, "could not initialize tcp socket hash\n");
         return -1;
     }
     
@@ -76,7 +76,7 @@ int ss_tcp_timer_callback() {
     }
     rte_rwlock_write_unlock(&tcp_hash_lock);
     
-    RTE_LOG(INFO, STACK, "deleted %d expired tcp sockets\n", expired_sockets);
+    RTE_LOG(NOTICE, L3L4, "deleted %d expired tcp sockets\n", expired_sockets);
     return 0;
 }
 
@@ -126,7 +126,7 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         // XXX: now panic and freak out?
     }
     
-    RTE_LOG(INFO, STACK, "rx tcp packet: sport: %hu dport: %hu seq: %u ack: %u hlen: %hu dlen: %hu flags: %s wsize: %hu\n",
+    RTE_LOG(DEBUG, L3L4, "rx tcp packet: sport: %hu dport: %hu seq: %u ack: %u hlen: %hu dlen: %hu flags: %s wsize: %hu\n",
         sport, dport, seq, ack_seq, hdr_length, rx_buf->data.l4_length, ss_tcp_flags_dump(tcp_flags), wsize);
 
     ss_tcp_socket_t* socket     = ss_tcp_socket_lookup(&key);
@@ -134,7 +134,7 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         socket = ss_tcp_socket_create(&key, rx_buf);
     }
     if (unlikely(socket == NULL)) {
-        RTE_LOG(ERR, STACK, "could not find or create tcp socket\n");
+        RTE_LOG(ERR, L3L4, "could not find or create tcp socket\n");
         return -1;
     }
     
@@ -149,61 +149,61 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
      */
 
     if      (tcp_flags & TH_RST) {
-        RTE_LOG(INFO, STACK, "rx tcp rst packet\n");
+        RTE_LOG(FINE, L3L4, "rx tcp rst packet\n");
         // just delete the connection
         rv = ss_tcp_handle_close(socket, rx_buf, tx_buf);
     }
     else if (tcp_flags & TH_FIN) {
         // send RST (as if SO_LINGER is 0) and delete the connection
-        RTE_LOG(INFO, STACK, "rx tcp fin packet\n");
+        RTE_LOG(FINE, L3L4, "rx tcp fin packet\n");
         rv = ss_tcp_handle_close(socket, rx_buf, tx_buf);
     }
     else if (tcp_flags == TH_SYN) {
-        RTE_LOG(INFO, STACK, "rx tcp syn packet\n");
+        RTE_LOG(FINE, L3L4, "rx tcp syn packet\n");
         rv = ss_tcp_handle_open(socket, rx_buf, tx_buf);
     }
     else if (tcp_flags & TH_ACK || tcp_flags == 0) {
-        RTE_LOG(INFO, STACK, "rx tcp ack packet\n");
+        RTE_LOG(FINE, L3L4, "rx tcp ack packet\n");
         rv = ss_tcp_handle_update(socket, rx_buf, tx_buf, &curr_seq);
     }
     else {
-        RTE_LOG(ERR, STACK, "unknown tcp flags: %s\n",
+        RTE_LOG(ERR, L3L4, "unknown tcp flags: %s\n",
             ss_tcp_flags_dump(tcp_flags));
         rv = -1;
     }
     
     // check for stale packets
     if (socket->state != SS_TCP_SYN_RX && curr_seq < socket->last_ack_seq) {
-        RTE_LOG(INFO, STACK, "rx tcp stale skipped packet\n");
+        RTE_LOG(DEBUG, L3L4, "rx tcp stale skipped packet\n");
         goto out;
     }
     else if (rx_buf->data.l4_length == 0) {
-        RTE_LOG(DEBUG, STACK, "rx tcp control packet\n");
+        RTE_LOG(FINE, L3L4, "rx tcp control packet\n");
         goto out;
     }
     else {
-        RTE_LOG(DEBUG, STACK, "rx tcp data packet\n");
+        RTE_LOG(FINE, L3L4, "rx tcp data packet\n");
     }
 
     switch (rx_buf->data.dport) {
         case L4_PORT_DNS: {
-            RTE_LOG(DEBUG, STACK, "rx tcp dns packet\n");
+            RTE_LOG(DEBUG, L3L4, "rx tcp dns packet\n");
             break;
         }
         case L4_PORT_SYSLOG: {
-            RTE_LOG(DEBUG, STACK, "rx tcp syslog packet\n");
+            RTE_LOG(DEBUG, L3L4, "rx tcp syslog packet\n");
             ss_tcp_extract_syslog(socket, rx_buf);
             break;
         }
         case L4_PORT_SYSLOG_TCP: {
-            RTE_LOG(DEBUG, STACK, "rx tcp syslog-conn packet\n");
+            RTE_LOG(DEBUG, L3L4, "rx tcp syslog-conn packet\n");
             ss_tcp_extract_syslog(socket, rx_buf);
             break;
         }
         case L4_PORT_NETFLOW_1:
         case L4_PORT_NETFLOW_2:
         case L4_PORT_NETFLOW_3: {
-            RTE_LOG(DEBUG, STACK, "rx tcp NetFlow packet\n");
+            RTE_LOG(DEBUG, L3L4, "rx tcp NetFlow packet\n");
             break;
         }
     }
@@ -221,8 +221,8 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
     char*  limit = (char*) (rx_buf->l4_offset + rx_buf->data.l4_length);
     char*  next  = (char*) rx_buf->l4_offset;
     
-    if (rte_get_log_level() >= RTE_LOG_INFO) {
-        RTE_LOG(INFO, STACK, "dump tcp syslog segment:\n");
+    if (rte_get_log_level() >= RTE_LOG_FINEST) {
+        RTE_LOG(FINEST, L3L4, "dump tcp syslog segment:\n");
         rte_pktmbuf_dump(stderr, rx_buf->mbuf, rte_pktmbuf_pkt_len(rx_buf->mbuf));
     }
     
@@ -230,7 +230,7 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
         if (*c == '\n') {
             // append to existing rx_data
             len = (size_t) SS_MIN((uint8_t*) c - rx_buf->l4_offset, (long) sizeof(socket->rx_data) - socket->rx_length);
-            RTE_LOG(INFO, STACK, "syslog_tcp: copy %zu bytes to rx_data from %hu to %hu due to delimiter\n",
+            RTE_LOG(FINER, L3L4, "syslog_tcp: copy %zu bytes to rx_data from %hu to %hu due to delimiter\n",
                 len, socket->rx_length, (uint16_t) (socket->rx_length + len));
             rte_memcpy((uint8_t*) (socket->rx_data + socket->rx_length), (uint8_t*) rx_buf->l4_offset, len);
             socket->rx_length += len;
@@ -249,7 +249,7 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
 
     if (next < limit) {
         len = (size_t) SS_MIN(limit - next, (long) sizeof(socket->rx_data) - socket->rx_length);
-        RTE_LOG(INFO, STACK, "syslog_tcp: copy %zu bytes to rx_data from %hu to %hu due to segment end\n",
+        RTE_LOG(FINER, L3L4, "syslog_tcp: copy %zu bytes to rx_data from %hu to %hu due to segment end\n",
             len, socket->rx_length, (uint16_t) (socket->rx_length + len));
         rte_memcpy((uint8_t*) (socket->rx_data + socket->rx_length), (uint8_t*) next, len);
         socket->rx_length += len;
@@ -309,13 +309,13 @@ ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf) {
     }
     rte_rwlock_write_unlock(&tcp_hash_lock);
 
-    RTE_LOG(INFO, STACK, "new tcp socket: sport: %hu dport: %hu id: %lu is_error: %d\n",
+    RTE_LOG(INFO, L3L4, "new tcp socket: sport: %hu dport: %hu id: %lu is_error: %d\n",
         rte_bswap16(key->sport), rte_bswap16(key->dport), socket->id, is_error);
 
     error_out:
     if (unlikely(is_error)) {
         if (socket) { je_free(socket); socket = NULL; }
-        RTE_LOG(ERR, STACK, "failed to allocate tcp socket\n");
+        RTE_LOG(ERR, L3L4, "failed to allocate tcp socket\n");
         return NULL;
     }
 
@@ -346,7 +346,7 @@ ss_tcp_socket_t* ss_tcp_socket_lookup(ss_flow_key_t* key) {
     rte_rwlock_read_unlock(&tcp_hash_lock);
     ss_tcp_socket_t* socket = ((int32_t) socket_id) < 0 ? NULL : tcp_sockets[socket_id];
     if (socket) {
-        RTE_LOG(INFO, STACK, "found socket at id: %u\n", socket_id);
+        RTE_LOG(DEBUG, L3L4, "found socket at id: %u\n", socket_id);
     }
     return socket;
 }
@@ -371,8 +371,8 @@ int ss_tcp_prepare_tx(ss_frame_t* tx_buf, ss_tcp_socket_t* socket, ss_tcp_state_
         socket->last_ack_seq = rte_bswap32(tx_buf->tcp->ack_seq);
     }
 
-    if (rte_get_log_level() >= RTE_LOG_INFO) {
-        RTE_LOG(INFO, STACK, "tx tcp packet: sport: %hu dport: %hu seq: %u ack: %u hlen: %hu flags: %s wsize: %hu\n",
+    if (rte_get_log_level() >= RTE_LOG_DEBUG) {
+        RTE_LOG(DEBUG, L3L4, "tx tcp packet: sport: %hu dport: %hu seq: %u ack: %u hlen: %hu flags: %s wsize: %hu\n",
             rte_bswap16(tcp->source), rte_bswap16(tcp->dest),
             rte_bswap32(tcp->seq),    rte_bswap32(tcp->ack_seq),
             (uint16_t) (4 * tcp->doff), ss_tcp_flags_dump(tcp->th_flags),
@@ -394,7 +394,7 @@ int ss_tcp_handle_close(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t*
     
     rv = ss_frame_prepare_tcp(rx_buf, tx_buf);
     if (rv) {
-        RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf, error: %d\n", rv);
+        RTE_LOG(ERR, L3L4, "could not prepare tcp tx_mbuf, error: %d\n", rv);
         return -1;
     }
     
@@ -410,7 +410,7 @@ int ss_tcp_handle_close(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t*
     
     rv = ss_tcp_prepare_checksum(tx_buf);
     if (rv) {
-        RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf checksum, error: %d\n", rv);
+        RTE_LOG(ERR, L3L4, "could not prepare tcp tx_mbuf checksum, error: %d\n", rv);
         return -1;
     }
     
@@ -424,7 +424,7 @@ int ss_tcp_handle_open(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* 
 
     rv = ss_frame_prepare_tcp(rx_buf, tx_buf);
     if (rv) {
-        RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf, error: %d\n", rv);
+        RTE_LOG(ERR, L3L4, "could not prepare tcp tx_mbuf, error: %d\n", rv);
         return -1;
     }
     
@@ -443,7 +443,7 @@ int ss_tcp_handle_open(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* 
     // add the two most fundamental hard-coded options
     uint32_t* tcp_mss     = (uint32_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(uint32_t));
     if (!tcp_mss) {
-        RTE_LOG(ERR, STACK, "could not add tcp_mss to tx_mbuf\n");
+        RTE_LOG(ERR, L3L4, "could not add tcp_mss to tx_mbuf\n");
         return -1;
     }
     // mss: kind 2, length 4, uint16_t mss
@@ -451,7 +451,7 @@ int ss_tcp_handle_open(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* 
 
     uint32_t* win_scale   = (uint32_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(uint32_t));
     if (!win_scale) {
-        RTE_LOG(ERR, STACK, "could not add win_scale to tx_mbuf\n");
+        RTE_LOG(ERR, L3L4, "could not add win_scale to tx_mbuf\n");
         return -1;
     }
     // win_scale: kind 3, length 3, uint8_t shift, followed by uint8_t nop (0x01)
@@ -459,7 +459,7 @@ int ss_tcp_handle_open(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t* 
     
     rv = ss_tcp_prepare_checksum(tx_buf);
     if (rv) {
-        RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf checksum, error: %d\n", rv);
+        RTE_LOG(ERR, L3L4, "could not prepare tcp tx_mbuf checksum, error: %d\n", rv);
         return -1;
     }
     
@@ -485,7 +485,7 @@ int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t
         
     rv = ss_frame_prepare_tcp(rx_buf, tx_buf);
     if (rv) {
-        RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf, error: %d\n", rv);
+        RTE_LOG(ERR, L3L4, "could not prepare tcp tx_mbuf, error: %d\n", rv);
         return -1;
     }
 
@@ -501,7 +501,7 @@ int ss_tcp_handle_update(ss_tcp_socket_t* socket, ss_frame_t* rx_buf, ss_frame_t
 
     rv = ss_tcp_prepare_checksum(tx_buf);
     if (rv) {
-        RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf checksum, error: %d\n", rv);
+        RTE_LOG(ERR, L3L4, "could not prepare tcp tx_mbuf checksum, error: %d\n", rv);
         return -1;
     }
     
@@ -516,7 +516,7 @@ int ss_frame_prepare_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     
     rv = ss_frame_prepare_eth(tx_buf, rx_buf->data.port_id, (eth_addr_t*) &rx_buf->eth->s_addr, rx_buf->data.eth_type);
     if (rv) {
-        RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf, ethernet error: %d\n", rv);
+        RTE_LOG(ERR, L3L4, "could not prepare tcp tx_mbuf, ethernet error: %d\n", rv);
         goto error_out;
     }
     
@@ -527,18 +527,18 @@ int ss_frame_prepare_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         rv = ss_frame_prepare_ip6(rx_buf, tx_buf);
     }
     else {
-        RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf, unknown L3 protocol: %hhu\n", rx_buf->data.ip_protocol);
+        RTE_LOG(ERR, L3L4, "could not prepare tcp tx_mbuf, unknown L3 protocol: %hhu\n", rx_buf->data.ip_protocol);
         goto error_out;
     }
     
     if (rv) {
-        RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf, L3 error: %d\n", rv);
+        RTE_LOG(ERR, L3L4, "could not prepare tcp tx_mbuf, L3 error: %d\n", rv);
         goto error_out;
     }
 
     tx_buf->tcp = (tcp_hdr_t*) rte_pktmbuf_append(tx_buf->mbuf, sizeof(tcp_hdr_t));
     if (tx_buf->tcp == NULL) {
-        RTE_LOG(ERR, STACK, "could not allocate tcp tx_mbuf tcp header\n");
+        RTE_LOG(ERR, L3L4, "could not allocate tcp tx_mbuf tcp header\n");
         goto error_out;
     }
     tx_buf->tcp->source = rte_bswap16(rx_buf->data.dport);
@@ -548,7 +548,7 @@ int ss_frame_prepare_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
 
     error_out:
     if (tx_buf->mbuf) {
-        RTE_LOG(ERR, STACK, "could not prepare tcp tx_mbuf\n");
+        RTE_LOG(ERR, L3L4, "could not prepare tcp tx_mbuf\n");
         tx_buf->active = 0;
         rte_pktmbuf_free(tx_buf->mbuf);
         tx_buf->mbuf = NULL;
@@ -577,7 +577,7 @@ int ss_tcp_prepare_checksum(ss_frame_t* tx_buf) {
     
     pmbuf = rte_pktmbuf_alloc(ss_pool[rte_socket_id()]);
     if (pmbuf == NULL) {
-        RTE_LOG(ERR, STACK, "could not allocate mbuf tcp pseudo header\n");
+        RTE_LOG(ERR, L3L4, "could not allocate mbuf tcp pseudo header\n");
         goto error_out;
     }
     
@@ -612,7 +612,7 @@ int ss_tcp_prepare_checksum(ss_frame_t* tx_buf) {
     pptr = ss_phdr_append(pmbuf, data_ptr,               tcp_data_len);
     if (pptr == NULL) goto error_out;
 
-    if (rte_get_log_level() >= RTE_LOG_DEBUG) {
+    if (rte_get_log_level() >= RTE_LOG_FINER) {
         printf("tcp pseudo-header:\n");
         rte_pktmbuf_dump(stderr, pmbuf, rte_pktmbuf_pkt_len(pmbuf));
     }
@@ -624,14 +624,14 @@ int ss_tcp_prepare_checksum(ss_frame_t* tx_buf) {
     tx_buf->ip4->tot_len = ip_len; // XXX: better way?
     ip_checksum = ss_in_cksum((uint16_t*) tx_buf->ip4, sizeof(ip4_hdr_t));
     tx_buf->ip4->check   = ip_checksum;
-    RTE_LOG(DEBUG, STACK, "tcp data len: %u, tcp checksum: 0x%04hX, ip4 checksum: 0x%04hX\n",
+    RTE_LOG(DEBUG, L3L4, "prepare tcp: tcp data len: %u, tcp checksum: 0x%04hX, ip4 checksum: 0x%04hX\n",
         tcp_data_len, tcp_checksum, ip_checksum);
     
     return 0;
 
     error_out:
     if (tx_buf->mbuf) {
-        RTE_LOG(ERR, STACK, "could not process tcp frame\n");
+        RTE_LOG(ERR, L3L4, "could not process tcp frame\n");
         if (pmbuf) rte_pktmbuf_free(pmbuf);
         tx_buf->active = 0;
         rte_pktmbuf_free(tx_buf->mbuf);

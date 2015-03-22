@@ -96,7 +96,7 @@ int ss_flow_key_dump(const char* message, ss_flow_key_t* key) {
     ss_inet_ntop_raw(family, key->sip, sip, sizeof(sip));
     ss_inet_ntop_raw(family, key->dip, dip, sizeof(dip));
 
-    RTE_LOG(INFO, STACK, "%s: flow key: %s: %s:%hu --> %s:%hu\n",
+    RTE_LOG(INFO, L3L4, "%s: flow key: %s: %s:%hu --> %s:%hu\n",
         message, protocol, sip, sport, dip, dport);
 
     return 0;
