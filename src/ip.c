@@ -16,6 +16,7 @@
 #include "common.h"
 #include "sdn_sensor.h"
 #include "icmp.h"
+#include "l4_utils.h"
 #include "tcp.h"
 #include "udp.h"
 
@@ -113,56 +114,8 @@ int ss_frame_handle_ip6(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     return rv;
 }
 
-int ss_frame_find_l4_header(ss_frame_t* rx_buf, uint8_t ip_protocol) {
-    uint16_t ether_type = rte_bswap16(rx_buf->eth->ether_type);
-    
-    uint8_t* l3_pointer;
-    size_t   l3_size;
-    
-    switch (ether_type) {
-        case ETHER_TYPE_IPV4: {
-            l3_pointer = (uint8_t*) rx_buf->ip4;
-            l3_size = sizeof(ip4_hdr_t);
-            break;
-        }
-        case ETHER_TYPE_IPV6: {
-            l3_pointer = (uint8_t*) rx_buf->ip6;
-            l3_size = sizeof(ip6_hdr_t);
-            break;
-        }
-        default: {
-            RTE_LOG(ERR, STACK, "could not locate l4 header for ether type 0x%04hx\n", ether_type);
-            return -1;
-        }
-    }
-    
-    switch (ip_protocol) {
-        case IPPROTO_ICMP: {
-            rx_buf->icmp4 = (icmp4_hdr_t*) (l3_pointer + l3_size);
-            return 0;
-        }
-        case IPPROTO_ICMPV6: {
-            rx_buf->icmp6 = (icmp6_hdr_t*) (l3_pointer + l3_size);
-            return 0;
-        }
-        case IPPROTO_UDP: {
-            rx_buf->udp   = (udp_hdr_t*) (l3_pointer + l3_size);
-            return 0;
-        }
-        case IPPROTO_TCP: {
-            rx_buf->tcp   = (tcp_hdr_t*) (l3_pointer + l3_size);
-            return 0;
-        }
-        default: {
-            RTE_LOG(ERR, STACK, "could not locate l4 header for ip protocol %hhd\n", ip_protocol);
-            return -1;
-        }
-    }
-}
-
 /* From http://www.rfc-editor.org/rfc/rfc1812.txt section 5.2.2 */
-int ss_frame_check_ipv4(ip4_hdr_t* ip4, uint32_t l2_length)
-{
+int ss_frame_check_ipv4(ip4_hdr_t* ip4, uint32_t l2_length) {
     /*
      * 1. The packet length reported by the Link Layer must be large
      * enough to hold the minimum length legal IP datagram (20 bytes).
@@ -193,7 +146,7 @@ int ss_frame_check_ipv4(ip4_hdr_t* ip4, uint32_t l2_length)
      * datagram header, whose length is specified in the IP header length
      * field.
      */
-    if (rte_cpu_to_be_16(ip4->tot_len) < sizeof(ip4_hdr_t))
+    if (rte_bswap16(ip4->tot_len) < sizeof(ip4_hdr_t))
         return -5;
     
     return 0;

@@ -46,6 +46,53 @@ int ss_frame_layer_off_len_get(ss_frame_t* rx_buf,
     return 0;
 }
 
+int ss_frame_find_l4_header(ss_frame_t* rx_buf, uint8_t ip_protocol) {
+    uint16_t ether_type = rte_bswap16(rx_buf->eth->ether_type);
+
+    uint8_t* l3_pointer;
+    size_t   l3_size;
+
+    switch (ether_type) {
+        case ETHER_TYPE_IPV4: {
+            l3_pointer = (uint8_t*) rx_buf->ip4;
+            l3_size = sizeof(ip4_hdr_t);
+            break;
+        }
+        case ETHER_TYPE_IPV6: {
+            l3_pointer = (uint8_t*) rx_buf->ip6;
+            l3_size = sizeof(ip6_hdr_t);
+            break;
+        }
+        default: {
+            RTE_LOG(ERR, UTILS, "could not locate l4 header for ether type 0x%04hx\n", ether_type);
+            return -1;
+        }
+    }
+
+    switch (ip_protocol) {
+        case IPPROTO_ICMP: {
+            rx_buf->icmp4 = (icmp4_hdr_t*) (l3_pointer + l3_size);
+            return 0;
+        }
+        case IPPROTO_ICMPV6: {
+            rx_buf->icmp6 = (icmp6_hdr_t*) (l3_pointer + l3_size);
+            return 0;
+        }
+        case IPPROTO_UDP: {
+            rx_buf->udp   = (udp_hdr_t*) (l3_pointer + l3_size);
+            return 0;
+        }
+        case IPPROTO_TCP: {
+            rx_buf->tcp   = (tcp_hdr_t*) (l3_pointer + l3_size);
+            return 0;
+        }
+        default: {
+            RTE_LOG(ERR, UTILS, "could not locate l4 header for ip protocol %hhd\n", ip_protocol);
+            return -1;
+        }
+    }
+}
+
 uint8_t* ss_phdr_append(rte_mbuf_t* pmbuf, void* data, uint16_t length) {
     uint8_t* pptr = (uint8_t*) rte_pktmbuf_append(pmbuf, length);
     rte_memcpy(pptr, data, length);
