@@ -36,10 +36,6 @@ sudo mkdir -p /lib/modules/$(uname -r)/kernel/drivers/uio
 sudo cp build/build/lib/librte_eal/linuxapp/igb_uio/igb_uio.ko /lib/modules/$(uname -r)/kernel/drivers/uio/igb_uio.ko
 sudo depmod -a
 
-cd "${build_directory}/external/virtio-net-pmd"
-make clean
-make "RTE_INCLUDE=${RTE_INCLUDE}"
-
 echo "dpdk setup completed successfully"
 
 exit 0
