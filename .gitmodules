@@ -13,9 +13,6 @@
 [submodule "external/dpdk"]
 	path = external/dpdk
 	url = https://github.com/megahall/dpdk_mhall.git
-[submodule "external/virtio-net-pmd"]
-	path = external/virtio-net-pmd
-	url = https://github.com/megahall/virtio_net_pmd.git
 [submodule "external/lmdb"]
 	path = external/lmdb
 	url = https://github.com/megahall/lmdb.git
