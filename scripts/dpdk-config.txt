@@ -1,109 +1,73 @@
-# BSD LICENSE
-# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
-# All rights reserved.
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-# * Redistributions of source code must retain the above copyright
-# notice, this list of conditions and the following disclaimer.
-# * Redistributions in binary form must reproduce the above copyright
-# notice, this list of conditions and the following disclaimer in
-# the documentation and/or other materials provided with the
-# distribution.
-# * Neither the name of Intel Corporation nor the names of its
-# contributors may be used to endorse or promote products derived
-# from this software without specific prior written permission.
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-# BSD LICENSE
-# Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
-# All rights reserved.
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions
-# are met:
-# * Redistributions of source code must retain the above copyright
-# notice, this list of conditions and the following disclaimer.
-# * Redistributions in binary form must reproduce the above copyright
-# notice, this list of conditions and the following disclaimer in
-# the documentation and/or other materials provided with the
-# distribution.
-# * Neither the name of Intel Corporation nor the names of its
-# contributors may be used to endorse or promote products derived
-# from this software without specific prior written permission.
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#   BSD LICENSE
+#
+#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   All rights reserved.
+#
+#   Redistribution and use in source and binary forms, with or without
+#   modification, are permitted provided that the following conditions
+#   are met:
+#
+#     * Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in
+#       the documentation and/or other materials provided with the
+#       distribution.
+#     * Neither the name of Intel Corporation nor the names of its
+#       contributors may be used to endorse or promote products derived
+#       from this software without specific prior written permission.
+#
+#   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+#   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+#   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+#   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+#   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+#   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+#   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+#   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
 
-# CONFIG_RTE_EXEC_ENV can be linuxapp, baremetal, bsdapp
+# define execution environment
+# CONFIG_RTE_EXEC_ENV can be linuxapp, bsdapp
 CONFIG_RTE_EXEC_ENV="linuxapp"
 CONFIG_RTE_EXEC_ENV_LINUXAPP=y
 
-##
 ## machine can define specific variables or action for a specific board
 ## RTE_MACHINE can be:
-## default nothing specific
-## native current machine
-## atm Intel® Atom™ microarchitecture
-## nhm Intel® microarchitecture code name Nehalem
-## wsm Intel® microarchitecture code name Westmere
-## snb Intel® microarchitecture code name Sandy Bridge
-## ivb Intel® microarchitecture code name Ivy Bridge
+## default  nothing specific
+## native   current machine
+## atm      Intel® Atom™ microarchitecture
+## nhm      Intel® microarchitecture code name Nehalem
+## wsm      Intel® microarchitecture code name Westmere
+## snb      Intel® microarchitecture code name Sandy Bridge
+## ivb      Intel® microarchitecture code name Ivy Bridge
 ##
 ## Note: if your compiler does not support the relevant -march options,
 ## it will be compiled with whatever latest processor the compiler supports!
 ##
 CONFIG_RTE_MACHINE="native"
 
-##
 ## define the architecture we compile for.
 ## CONFIG_RTE_ARCH can be i686, x86_64, x86_64_32
-##
 CONFIG_RTE_ARCH="x86_64"
 CONFIG_RTE_ARCH_X86_64=y
 
-##
 ## The compiler we use.
 ## Can be gcc, icc or clang.
-##
 CONFIG_RTE_TOOLCHAIN="clang"
 CONFIG_RTE_TOOLCHAIN_CLANG=y
 
 # Use intrinsics or assembly code for key routines
 CONFIG_RTE_FORCE_INTRINSICS=n
 
-# Compile to share library
+# Compile to shared library
 CONFIG_RTE_BUILD_SHARED_LIB=n
-# Combine to one single library
+# Combine into one single library
 CONFIG_RTE_BUILD_COMBINE_LIBS=y
 CONFIG_RTE_LIBNAME="intel_dpdk"
-
-# Compile libc directory
-CONFIG_RTE_LIBC=n
-# Compile newlib as libc from source
-CONFIG_RTE_LIBC_NEWLIB_SRC=n
-# Use binary newlib
-CONFIG_RTE_LIBC_NEWLIB_BIN=n
-# Use binary newlib
-CONFIG_RTE_LIBC_NETINCS=n
-# Compile libgloss (newlib-stubs)
-CONFIG_RTE_LIBGLOSS=n
 
 # Compile Environment Abstraction Layer
 CONFIG_RTE_LIBRTE_EAL=y
@@ -127,8 +91,10 @@ CONFIG_RTE_PCI_MAX_READ_REQUEST_SIZE=0
 
 # Compile Environment Abstraction Layer for linux
 CONFIG_RTE_LIBRTE_EAL_LINUXAPP=y
-# Compile Environment Abstraction Layer for Bare metal
-CONFIG_RTE_LIBRTE_EAL_BAREMETAL=n
+
+# Compile Environment Abstraction Layer to support hotplug
+CONFIG_RTE_LIBRTE_EAL_HOTPLUG=n
+
 # Compile Environment Abstraction Layer to support Vmware TSC map
 CONFIG_RTE_LIBRTE_EAL_VMWARE_TSC_MAP_SUPPORT=y
 
@@ -139,8 +105,11 @@ CONFIG_RTE_LIBRTE_KVARGS=y
 CONFIG_RTE_LIBRTE_ETHER=y
 CONFIG_RTE_LIBRTE_ETHDEV_DEBUG=n
 CONFIG_RTE_MAX_ETHPORTS=32
+CONFIG_RTE_MAX_QUEUES_PER_PORT=256
 CONFIG_RTE_LIBRTE_IEEE1588=n
 CONFIG_RTE_ETHDEV_QUEUE_STAT_CNTRS=16
+CONFIG_RTE_ETHDEV_RXTX_CALLBACKS=y
+
 # Support NIC bypass logic
 CONFIG_RTE_NIC_BYPASS=n
 
@@ -163,7 +132,6 @@ CONFIG_RTE_LIBRTE_IXGBE_DEBUG_TX_FREE=n
 CONFIG_RTE_LIBRTE_IXGBE_DEBUG_DRIVER=n
 CONFIG_RTE_LIBRTE_IXGBE_PF_DISABLE_STRIP_CRC=n
 CONFIG_RTE_LIBRTE_IXGBE_RX_ALLOW_BULK_ALLOC=y
-CONFIG_RTE_LIBRTE_IXGBE_ALLOW_UNSUPPORTED_SFP=n
 CONFIG_RTE_IXGBE_INC_VECTOR=y
 CONFIG_RTE_IXGBE_RX_OLFLAGS_ENABLE=y
 
@@ -174,13 +142,32 @@ CONFIG_RTE_LIBRTE_I40E_DEBUG_RX=n
 CONFIG_RTE_LIBRTE_I40E_DEBUG_TX=n
 CONFIG_RTE_LIBRTE_I40E_DEBUG_TX_FREE=n
 CONFIG_RTE_LIBRTE_I40E_DEBUG_DRIVER=n
-CONFIG_RTE_LIBRTE_I40E_PF_DISABLE_STRIP_CRC=n
 CONFIG_RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC=y
-CONFIG_RTE_LIBRTE_I40E_ALLOW_UNSUPPORTED_SFP=n
 CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=n
 CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF=4
+CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM=4
 # interval up to 8160 us, aligned to 2 (or default value)
 CONFIG_RTE_LIBRTE_I40E_ITR_INTERVAL=-1
+
+# Compile burst-oriented FM10K PMD
+CONFIG_RTE_LIBRTE_FM10K_PMD=n
+CONFIG_RTE_LIBRTE_FM10K_DEBUG_INIT=n
+CONFIG_RTE_LIBRTE_FM10K_DEBUG_RX=n
+CONFIG_RTE_LIBRTE_FM10K_DEBUG_TX=n
+CONFIG_RTE_LIBRTE_FM10K_DEBUG_TX_FREE=n
+CONFIG_RTE_LIBRTE_FM10K_DEBUG_DRIVER=n
+CONFIG_RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE=y
+
+# Compile burst-oriented Mellanox ConnectX-3 (MLX4) PMD
+CONFIG_RTE_LIBRTE_MLX4_PMD=n
+CONFIG_RTE_LIBRTE_MLX4_DEBUG=n
+CONFIG_RTE_LIBRTE_MLX4_SGE_WR_N=4
+CONFIG_RTE_LIBRTE_MLX4_MAX_INLINE=0
+CONFIG_RTE_LIBRTE_MLX4_TX_MP_CACHE=8
+CONFIG_RTE_LIBRTE_MLX4_SOFT_COUNTERS=1
+
+# Compile burst-oriented Cisco ENIC PMD driver
+CONFIG_RTE_LIBRTE_ENIC_PMD=n
 
 # Compile burst-oriented VIRTIO PMD driver
 CONFIG_RTE_LIBRTE_VIRTIO_PMD=y
@@ -199,17 +186,26 @@ CONFIG_RTE_LIBRTE_VMXNET3_DEBUG_TX_FREE=n
 CONFIG_RTE_LIBRTE_VMXNET3_DEBUG_DRIVER=n
 
 # Compile example software rings based PMD
-CONFIG_RTE_LIBRTE_PMD_RING=y
+CONFIG_RTE_LIBRTE_PMD_RING=n
 CONFIG_RTE_PMD_RING_MAX_RX_RINGS=16
 CONFIG_RTE_PMD_RING_MAX_TX_RINGS=16
+
 # Compile software PMD backed by PCAP files
 CONFIG_RTE_LIBRTE_PMD_PCAP=y
 
 # Compile link bonding PMD library
-CONFIG_RTE_LIBRTE_PMD_BOND=y
+CONFIG_RTE_LIBRTE_PMD_BOND=n
+CONFIG_RTE_LIBRTE_BOND_DEBUG_ALB=n
+CONFIG_RTE_LIBRTE_BOND_DEBUG_ALB_L1=n
+
+# Compile software PMD backed by AF_PACKET sockets (Linux only)
+CONFIG_RTE_LIBRTE_PMD_AF_PACKET=y
 
 # Compile Xen PMD
 CONFIG_RTE_LIBRTE_PMD_XENVIRT=n
+
+# Compile null PMD
+CONFIG_RTE_LIBRTE_PMD_NULL=n
 
 # Do prefetch of packet data within PMD driver receive function
 CONFIG_RTE_PMD_PACKET_PREFETCH=y
@@ -218,6 +214,7 @@ CONFIG_RTE_PMD_PACKET_PREFETCH=y
 CONFIG_RTE_LIBRTE_RING=y
 CONFIG_RTE_LIBRTE_RING_DEBUG=n
 CONFIG_RTE_RING_SPLIT_PROD_CONS=n
+CONFIG_RTE_RING_PAUSE_REP_COUNT=0
 
 # Compile librte_mempool
 CONFIG_RTE_LIBRTE_MEMPOOL=y
@@ -227,7 +224,6 @@ CONFIG_RTE_LIBRTE_MEMPOOL_DEBUG=n
 # Compile librte_mbuf
 CONFIG_RTE_LIBRTE_MBUF=y
 CONFIG_RTE_LIBRTE_MBUF_DEBUG=n
-CONFIG_RTE_MBUF_SCATTER_GATHER=y
 CONFIG_RTE_MBUF_REFCNT_ATOMIC=y
 CONFIG_RTE_PKTMBUF_HEADROOM=128
 
@@ -251,6 +247,9 @@ CONFIG_RTE_LIBRTE_CMDLINE_DEBUG=n
 CONFIG_RTE_LIBRTE_HASH=y
 CONFIG_RTE_LIBRTE_HASH_DEBUG=n
 
+# Compile librte_jobstats
+CONFIG_RTE_LIBRTE_JOBSTATS=y
+
 # Compile librte_lpm
 CONFIG_RTE_LIBRTE_LPM=y
 CONFIG_RTE_LIBRTE_LPM_DEBUG=n
@@ -258,7 +257,6 @@ CONFIG_RTE_LIBRTE_LPM_DEBUG=n
 # Compile librte_acl
 CONFIG_RTE_LIBRTE_ACL=y
 CONFIG_RTE_LIBRTE_ACL_DEBUG=n
-CONFIG_RTE_LIBRTE_ACL_STANDALONE=n
 
 # Compile librte_power
 CONFIG_RTE_LIBRTE_POWER=y
@@ -287,6 +285,9 @@ CONFIG_RTE_SCHED_PORT_N_GRINDERS=8
 # Compile the distributor library
 CONFIG_RTE_LIBRTE_DISTRIBUTOR=y
 
+# Compile the reorder library
+CONFIG_RTE_LIBRTE_REORDER=y
+
 # Compile librte_port
 CONFIG_RTE_LIBRTE_PORT=y
 
@@ -298,12 +299,21 @@ CONFIG_RTE_LIBRTE_PIPELINE=y
 
 # Compile librte_kni
 CONFIG_RTE_LIBRTE_KNI=n
+CONFIG_RTE_KNI_PREEMPT_DEFAULT=y
 CONFIG_RTE_KNI_KO_DEBUG=n
 CONFIG_RTE_KNI_VHOST=n
 CONFIG_RTE_KNI_VHOST_MAX_CACHE_SIZE=1024
 CONFIG_RTE_KNI_VHOST_VNET_HDR_EN=n
 CONFIG_RTE_KNI_VHOST_DEBUG_RX=n
 CONFIG_RTE_KNI_VHOST_DEBUG_TX=n
+
+# Compile vhost library
+# fuse-devel is needed to run vhost-cuse.
+# fuse-devel enables user space char driver development
+# vhost-user is turned on by default.
+CONFIG_RTE_LIBRTE_VHOST=n
+CONFIG_RTE_LIBRTE_VHOST_USER=y
+CONFIG_RTE_LIBRTE_VHOST_DEBUG=n
 
 #Compile Xen domain0 support
 CONFIG_RTE_LIBRTE_XEN_DOM0=n
