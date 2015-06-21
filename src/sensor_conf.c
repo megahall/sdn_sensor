@@ -34,8 +34,10 @@
 #define PROGRAM_PATH "/proc/self/exe"
 #define CONF_PATH "/../conf/sdn_sensor.json"
 
+#ifdef SS_IOC_BACKEND_DISK
 #define MDB_SIZE_4_GB 4294967296
 #define MDB_COUNT_32  32
+#endif
 
 #define SS_NS_PER_SEC 1E9
 #define SS_NS_PER_HALF_SEC 5E8
@@ -54,7 +56,9 @@ int ss_conf_destroy() {
 
     // XXX: destroy ss_ioc_entry_t* tables
 
+#ifdef SS_IOC_BACKEND_DISK
     mdb_env_close(ss_conf->mdb_env);
+#endif
 
     je_free(ss_conf);
 
@@ -425,6 +429,7 @@ int ss_conf_dpdk_parse(json_object* items) {
     return 0;
 }
 
+#ifdef SS_IOC_BACKEND_DISK
 int ss_conf_mdb_init() {
     int rv;
     MDB_txn* mdb_txn = NULL;
@@ -508,6 +513,7 @@ int ss_conf_mdb_init() {
     if (mdb_txn)          { mdb_txn_abort(mdb_txn); mdb_txn = NULL; }
     return -1;
 }
+#endif
 
 ss_conf_t* ss_conf_file_parse(char* conf_path) {
     int is_ok = 1;
@@ -552,11 +558,14 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
     TAILQ_INIT(&ss_conf->pcap_chain.pcap_list);
     TAILQ_INIT(&ss_conf->dns_chain.dns_list);
     TAILQ_INIT(&ss_conf->ioc_chain.ioc_list);
+
+#ifdef SS_IOC_BACKEND_DISK
     rv = ss_conf_mdb_init();
     if (rv) {
         fprintf(stderr, "could not initialize mdb: %s\n", mdb_strerror(rv));
         is_ok = 0; goto error_out;
     }
+#endif
 
     ss_conf->radix4 = ss_radix_tree_create(SS_V4_PREFIX_MAX);
     ss_conf->radix6 = ss_radix_tree_create(SS_V6_PREFIX_MAX);
