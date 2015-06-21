@@ -30,7 +30,7 @@
 #include "netflow_addr.h"
 #include "netflow_format.h"
 #include "nn_queue.h"
-#include "radix.h"
+#include "patricia.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 
@@ -505,7 +505,7 @@ int ss_ioc_chain_optimize_cidr(ss_ioc_entry_t* iptr) {
     memset(tvalue, 0, sizeof(tvalue));
     const char* result = ss_inet_ntop(&iptr->ip, tvalue, sizeof(tvalue));
 #ifdef SS_IOC_BACKEND_RAM
-    ss_radix_node_t* node;
+    patricia_trie_t* node;
 #endif
     if (result == NULL) {
         fprintf(stderr, "ioc id %lu: could not parse ip value\n", iptr->id);
@@ -515,9 +515,30 @@ int ss_ioc_chain_optimize_cidr(ss_ioc_entry_t* iptr) {
     switch (iptr->ip.family) {
         case SS_AF_INET4: {
 #ifdef SS_IOC_BACKEND_RAM
-            node = ss_radix_search_best(ss_conf->radix4, &iptr->ip, 1);
-            if (node == NULL) {
-                ss_radix_lookup(ss_conf->radix4, &iptr->ip);
+            ip_addr_radix_t key;
+            memset(&key, 0, sizeof(key));
+            memcpy(&key.ip4, &iptr->ip.ip4_addr, IPV4_ALEN);
+            node = patricia_get(key.key, ss_conf->radix4);
+            if (node == NULL || !patricia_match_key_node(key.key, node)) {
+                node = je_malloc(sizeof(patricia_trie_t));
+                if (node == NULL) {
+                    fprintf(stderr, "could not allocate radix4 node\n");
+                    return -1;
+                }
+                memset(node, 0, sizeof(patricia_trie_t));
+                node->p_m = je_malloc(sizeof(patricia_mask_t));
+                if (node->p_m == NULL) {
+                    fprintf(stderr, "could not allocate radix4 mask\n");
+                    return -1;
+                }
+                node->p_m->pm_data = iptr;
+                node->p_key = key.key;
+                node->p_m->pm_mask = iptr->ip.cidr;
+                patricia_trie_t* inserted = patricia_put(node, ss_conf->radix4);
+                if (inserted == NULL) {
+                    fprintf(stderr, "could not insert radix4 node\n");
+                    return -1;
+                }
             }
             else {
                 fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
