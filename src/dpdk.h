@@ -1,5 +1,4 @@
-#ifndef __DPDK_H__
-#define __DPDK_H__
+#pragma once
 
 #include <stdint.h>
 
@@ -11,5 +10,3 @@ void ss_port_stats_print(ss_port_statistics_t* port_statistics, unsigned int por
 void ss_port_link_status_check_all(uint8_t port_limit);
 
 /* END PROTOTYPES */
-
-#endif /* __DPDK_H__ */

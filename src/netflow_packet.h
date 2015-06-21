@@ -15,8 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef _NETFLOW_H
-#define _NETFLOW_H
+#pragma once
 
 /* NetFlow packet definitions */
 
@@ -217,5 +216,3 @@ struct NF10_DATA_FLOWSET_HEADER {
 #define NF10_ENGINE_ID            39
 /* ... */
 #define NF10_IPV6_NEXT_HOP        62
-
-#endif /* _NETFLOW_H */

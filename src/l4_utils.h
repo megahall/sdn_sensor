@@ -1,5 +1,4 @@
-#ifndef __L4_UTILS_H__
-#define __L4_UTILS_H__
+#pragma once
 
 
 /* BEGIN PROTOTYPES */
@@ -13,5 +12,3 @@ int ss_frame_prepare_ip6(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
 void ss_frame_destroy(ss_frame_t* fbuf);
 
 /* END PROTOTYPES */
-
-#endif /* __L4_UTILS_H__ */

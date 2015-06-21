@@ -15,8 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __NETFLOW_FORMAT_H__
-#define __NETFLOW_FORMAT_H__
+#pragma once
 
 /* On-disk storage format */
 
@@ -264,5 +263,3 @@ u_int64_t netflow_ntohll(u_int64_t v);
 u_int64_t netflow_htonll(u_int64_t v);
 
 /* END PROTOTYPES */
-
-#endif /* __NETFLOW_FORMAT_H__ */

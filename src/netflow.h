@@ -15,8 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __NETFLOW_H__
-#define __NETFLOW_H__
+#pragma once
 
 #include <sys/types.h>
 #include <stdio.h>
@@ -67,5 +66,3 @@ int netflow_frame_handle(ss_frame_t* fbuf);
 int netflow_init(int argc, char* *argv);
 
 /* END PROTOTYPES */
-
-#endif /* __NETFLOW_H__ */

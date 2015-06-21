@@ -1,5 +1,4 @@
-#ifndef __EXTRACTOR_H__
-#define __EXTRACTOR_H__
+#pragma once
 
 #include "common.h"
 #include "re_utils.h"
@@ -14,5 +13,3 @@ int ss_extract_dns_atype(ss_answer_t* result, dns_answer_t* aptr);
 int ss_extract_syslog(const char* source, ss_frame_t* fbuf, uint8_t* l4_offset, uint16_t l4_length);
 
 /* END PROTOTYPES */
-
-#endif /* __EXTRACTOR_H__ */

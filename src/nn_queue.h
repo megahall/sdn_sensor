@@ -1,5 +1,4 @@
-#ifndef __NN_QUEUE_H__
-#define __NN_QUEUE_H__
+#pragma once
 
 #include <stdint.h>
 
@@ -71,5 +70,3 @@ int ss_nn_queue_dump(nn_queue_t* nn_queue);
 int ss_nn_queue_send(nn_queue_t* nn_queue, uint8_t* message, uint16_t length);
 
 /* END PROTOTYPES */
-
-#endif /* __NN_QUEUE_H__ */

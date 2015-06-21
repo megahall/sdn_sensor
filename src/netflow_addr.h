@@ -15,8 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __NETFLOW_ADDR_H__
-#define __NETFLOW_ADDR_H__
+#pragma once
 
 /* Address handling routines */
 
@@ -70,5 +69,3 @@ int addr_netmatch(const struct xaddr* host, const struct xaddr* net, int masklen
 const char* addr_ntop_buf(const struct xaddr* a);
 
 /* END PROTOTYPES */
-
-#endif /* __NETFLOW_ADDR_H__ */

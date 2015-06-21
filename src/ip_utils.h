@@ -1,5 +1,4 @@
-#ifndef __IP_UTILS_H__
-#define __IP_UTILS_H__
+#pragma once
 
 #include <stdint.h>
 #include <stdio.h>
@@ -63,5 +62,3 @@ const char* ss_inet_ntop4(const uint8_t* src, char* dst, size_t size);
 const char* ss_inet_ntop6(const uint8_t* src, char* dst, size_t size);
 
 /* END PROTOTYPES */
-
-#endif

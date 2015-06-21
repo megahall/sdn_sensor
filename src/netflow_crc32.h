@@ -15,8 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __NETFLOW_CRC32_H__
-#define __NETFLOW_CRC32_H__
+#pragma once
 
 /* NETFLOW CRC32 */
 
@@ -27,6 +26,3 @@ void netflow_crc32_update(const u_char* buf, u_int32_t size, u_int32_t* crcp);
 u_int32_t netflow_crc32(const u_char* buf, u_int32_t size);
 
 /* END PROTOTYPES */
-
-#endif /* __NETFLOW_CRC32_H__ */
-

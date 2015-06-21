@@ -1,5 +1,4 @@
-#ifndef __RE_UTILS_H__
-#define __RE_UTILS_H__
+#pragma once
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -101,5 +100,3 @@ int ss_re_chain_match_re2_complete(ss_re_match_t* re_match, ss_re_entry_t* re_en
 int ss_re_chain_match_re2_substring(ss_re_match_t* re_match, ss_re_entry_t* re_entry, uint8_t* l4_offset, uint16_t l4_length);
 
 /* END PROTOTYPES */
-
-#endif /* __RE_UTILS_H__ */

@@ -1,5 +1,4 @@
-#ifndef __NETFLOW_LOG_H__
-#define __NETFLOW_LOG_H__
+#pragma once
 
 
 /* BEGIN PROTOTYPES */
@@ -12,5 +11,3 @@ void logerr(const char* fmt, ...);
 void logerrx(const char* fmt, ...);
 
 /* END PROTOTYPES */
-
-#endif /* __NETFLOW_LOG_H__ */

@@ -1,5 +1,6 @@
-#ifndef __IP_H__
-#define __IP_H__
+#pragma once
+
+#include <stdint.h>
 
 #include "common.h"
 
@@ -10,5 +11,3 @@ int ss_frame_handle_ip6(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
 int ss_frame_check_ipv4(ip4_hdr_t* ip4, uint32_t l2_length);
 
 /* END PROTOTYPES */
-
-#endif /* __IP_H__ */

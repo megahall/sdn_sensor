@@ -1,5 +1,4 @@
-#ifndef __ETHERNET_H__
-#define __ETHERNET_H__
+#pragma once
 
 #include <stdint.h>
 
@@ -14,5 +13,3 @@ int ss_frame_handle_arp(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
 int ss_frame_handle_ndp(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
 
 /* END PROTOTYPES */
-
-#endif /* __ETHERNET_H__ */

@@ -1,5 +1,5 @@
-#ifndef __TCP_H__
-#define __TCP_H__
+#pragma once
+
 
 #include "common.h"
 
@@ -23,5 +23,3 @@ int ss_frame_prepare_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf);
 int ss_tcp_prepare_checksum(ss_frame_t* tx_buf);
 
 /* END PROTOTYPES */
-
-#endif /* __TCP_H__ */

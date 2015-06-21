@@ -1,5 +1,4 @@
-#ifndef __COMMON_H__
-#define __COMMON_H__
+#pragma once
 
 #include <stdint.h>
 
@@ -389,5 +388,3 @@ int ss_cidr_table_add(ss_cidr_table_t* cidr_table, ss_cidr_entry_t* cidr_entry);
 int ss_cidr_table_remove(ss_cidr_table_t* cidr_table, char* cidr);
 
 /* END PROTOTYPES */
-
-#endif /* __COMMON_H__ */

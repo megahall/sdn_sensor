@@ -1,5 +1,4 @@
-#ifndef __SDN_SENSOR_H__
-#define __SDN_SENSOR_H__
+#pragma once
 
 #include <stdint.h>
 
@@ -90,5 +89,3 @@ void signal_handler_init(const char* signal_name, int signal);
 int main(int argc, char* argv[]);
 
 /* END PROTOTYPES */
-
-#endif /* __SDN_SENSOR_H__ */

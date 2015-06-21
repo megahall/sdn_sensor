@@ -1,5 +1,4 @@
-#ifndef __IOC_H__
-#define __IOC_H__
+#pragma once
 
 #include <bsd/sys/queue.h>
 
@@ -84,5 +83,3 @@ ss_ioc_entry_t* ss_ioc_xaddr_match(struct xaddr* addr);
 ss_ioc_entry_t* ss_ioc_netflow_match(struct store_flow_complete* flow);
 
 /* END PROTOTYPES */
-
-#endif /* __IOC_H__ */

@@ -15,8 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __NETFLOW_COMMON_H__
-#define __NETFLOW_COMMON_H__
+#pragma once
 
 #include <sys/cdefs.h>
 #include <sys/time.h>
@@ -49,5 +48,3 @@
 
 
 /* END PROTOTYPES */
-
-#endif /* __NETFLOW_COMMON_H__ */

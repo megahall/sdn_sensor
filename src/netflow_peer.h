@@ -15,8 +15,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#ifndef __PEER_H__
-#define __PEER_H__
+#pragma once
 
 /*
  * Routines for tracking state from NetFlow sources. NetFlow v.9 / IPFIX
@@ -174,5 +173,3 @@ struct peer_state* find_peer(struct xaddr* addr);
 void dump_peers(void);
 
 /* END PROTOTYPES */
-
-#endif /* __PEER_H__ */

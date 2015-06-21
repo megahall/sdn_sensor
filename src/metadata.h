@@ -1,5 +1,5 @@
-#ifndef __METADATA_H__
-#define __METADATA_H__
+#pragma once
+
 
 #include <json-c/json.h>
 #include <json-c/json_object_private.h>
@@ -17,5 +17,3 @@ uint8_t* ss_metadata_prepare_frame(const char* source, const char* rule, nn_queu
 uint8_t* ss_metadata_prepare_syslog(const char* source, const char* rule, nn_queue_t* nn_queue, ss_frame_t* fbuf, uint8_t* l4_offset, uint16_t l4_length, ss_ioc_entry_t* iptr);
 
 /* END PROTOTYPES */
-
-#endif /* __METADATA_H__ */

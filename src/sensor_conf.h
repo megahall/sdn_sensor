@@ -1,5 +1,4 @@
-#ifndef __SENSOR_CONF_H__
-#define __SENSOR_CONF_H__
+#pragma once
 
 #include <stdint.h>
 #include <wordexp.h>
@@ -77,5 +76,3 @@ int ss_conf_mdb_init(void);
 ss_conf_t* ss_conf_file_parse(char* conf_path);
 
 /* END PROTOTYPES */
-
-#endif /* __SENSOR_CONF_H__ */
