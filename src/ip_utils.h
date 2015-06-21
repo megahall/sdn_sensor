@@ -61,6 +61,19 @@ struct ip_addr_bytes_s {
 
 typedef struct ip_addr_bytes_s ip_addr_bytes_t;
 
+struct ip_addr_radix_s {
+    union {
+        __uint128_t key;
+        struct {
+            uint8_t padding[12];
+            ip4_addr_t ip4;
+        };
+        ip6_addr_t ip6;
+    };
+};
+
+typedef struct ip_addr_radix_s ip_addr_radix_t;
+
 /* BEGIN PROTOTYPES */
 
 int ss_cidr_dump(FILE* fd, const char* label, ip_addr_t* ip_addr);
