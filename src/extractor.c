@@ -1,20 +1,28 @@
 #define _GNU_SOURCE /* strcasestr */
 
+#include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <bsd/string.h>
 #include <bsd/sys/queue.h>
 
+#include <rte_log.h>
+#include <rte_mbuf.h>
+#include <rte_memcpy.h>
 #include <rte_memory.h>
 
 #include "extractor.h"
 
 #include "common.h"
 #include "ioc.h"
+#include "ip_utils.h"
 #include "metadata.h"
+#include "nn_queue.h"
+#include "re_utils.h"
 #include "sdn_sensor.h"
+#include "sensor_conf.h"
 
-// NOTE: this stuff comes from spcdns
 #include "dns.h"
 #include "mappings.h"
 

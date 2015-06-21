@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -23,6 +24,8 @@
 #define IPV6_ALEN            16
 
 /* DATA TYPES */
+
+typedef unsigned int uint;
 
 struct ip4_addr_s {
     uint32_t addr;
@@ -53,12 +56,15 @@ typedef struct ip_addr_s ip_addr_t;
 
 int ss_cidr_dump(FILE* fd, const char* label, ip_addr_t* ip_addr);
 int ss_cidr_parse(const char* input, ip_addr_t* ip_addr);
+int ss_cidr_is_empty(ip_addr_t* ip_addr);
 int ss_inet_pton(int af, const char* src, ip_addr_t* dst);
 int ss_inet_pton4(const char* src, uint8_t* dst);
 int ss_inet_pton6(const char* src, uint8_t* dst);
 const char* ss_inet_ntop(const ip_addr_t* src, char* dst, unsigned int size);
+const char* ss_inet_ntop_tls(const ip_addr_t* src);
 const char* ss_inet_ntop_raw(const uint8_t family, const uint8_t* src, char* dst, unsigned int size);
 const char* ss_inet_ntop4(const uint8_t* src, char* dst, size_t size);
 const char* ss_inet_ntop6(const uint8_t* src, char* dst, size_t size);
+int comp_with_mask(void* addr, void* dest, uint mask);
 
 /* END PROTOTYPES */

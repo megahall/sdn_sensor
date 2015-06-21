@@ -22,8 +22,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <sys/types.h>
-
 #include "netflow_common.h"
 #include "netflow_crc32.h"
 

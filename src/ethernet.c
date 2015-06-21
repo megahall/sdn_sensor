@@ -9,6 +9,7 @@
 #include <rte_byteorder.h>
 #include <rte_ether.h>
 #include <rte_hexdump.h>
+#include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_mbuf.h>
 #include <rte_memcpy.h>
@@ -19,6 +20,7 @@
 #include "extractor.h"
 #include "icmp.h"
 #include "ip.h"
+#include "ip_utils.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 

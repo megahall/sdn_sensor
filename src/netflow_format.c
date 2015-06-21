@@ -15,8 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/types.h>
-
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -27,10 +25,16 @@
 #include <poll.h>
 #include <endian.h>
 
+#include <netinet/in.h>
+#include <sys/types.h>
+
 #include <bsd/string.h>
+
+#include <rte_log.h>
 
 #include <jemalloc/jemalloc.h>
 
+#include "common.h"
 #include "ioc.h"
 #include "je_utils.h"
 #include "netflow_common.h"

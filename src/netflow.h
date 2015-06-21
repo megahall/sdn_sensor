@@ -20,10 +20,12 @@
 #include <sys/types.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <syslog.h>
 
 #include <bsd/sys/queue.h>
 
+#include "common.h"
 #include "netflow_addr.h"
 #include "netflow_common.h"
 #include "netflow_format.h"
@@ -63,6 +65,6 @@ int process_netflow_v10_data(u_int8_t* pkt, size_t len, struct timeval* tv, stru
 void process_netflow_v10(struct flow_packet* fp, struct peer_state* peer);
 int process_packet(struct flow_packet* fp);
 int netflow_frame_handle(ss_frame_t* fbuf);
-int netflow_init(int argc, char* *argv);
+int netflow_init(int argc, char** argv);
 
 /* END PROTOTYPES */

@@ -4,6 +4,7 @@
 
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
+#include <rte_log.h>
 
 #include "sdn_sensor.h"
 #include "dpdk.h"

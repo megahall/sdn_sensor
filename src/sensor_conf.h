@@ -12,7 +12,9 @@
 #include <lmdb.h>
 
 #include "common.h"
+#include "ip_utils.h"
 #include "ioc.h"
+#include "radix.h"
 #include "re_utils.h"
 
 typedef enum json_type json_type_t;
@@ -72,7 +74,6 @@ uint64_t ss_conf_tsc_hz_get(void);
 char* ss_conf_file_read(char* conf_path);
 int ss_conf_network_parse(json_object* items);
 int ss_conf_dpdk_parse(json_object* items);
-int ss_conf_mdb_init(void);
 ss_conf_t* ss_conf_file_parse(char* conf_path);
 
 /* END PROTOTYPES */

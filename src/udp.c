@@ -1,10 +1,12 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <sys/types.h>
 
 #include <netinet/in.h>
 #include <netinet/ip6.h>
+#include <netinet/udp.h>
 
 #include <rte_byteorder.h>
 #include <rte_hexdump.h>
@@ -19,6 +21,7 @@
 #include "extractor.h"
 #include "l4_utils.h"
 #include "netflow.h"
+#include "re_utils.h"
 
 int ss_frame_handle_udp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;

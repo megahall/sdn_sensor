@@ -6,6 +6,7 @@
 #include <pcap/pcap.h>
 
 #include <net/if_arp.h>
+#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 #include <netinet/ip_icmp.h>
@@ -16,8 +17,6 @@
 #include <rte_ether.h>
 #include <rte_hash.h>
 #include <rte_log.h>
-#include <rte_lpm.h>
-#include <rte_lpm6.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
@@ -27,6 +26,7 @@
 
 #include "ip_utils.h"
 #include "nn_queue.h"
+#include "radix.h"
 
 /* MACROS */
 
@@ -62,9 +62,6 @@
 #define SS_DNS_NAME_MAX      96
 #define SS_DNS_RESULT_MAX     8
 
-#define SS_LPM_RULE_MAX    1024
-#define SS_LPM_TBL8S_MAX   (1 << 16)
-
 #define SS_PCRE_MATCH_MAX  (16 * 3)
 
 #define ETHER_TYPE_IPV4 ETHER_TYPE_IPv4
@@ -98,8 +95,6 @@
 typedef struct rte_mbuf    rte_mbuf_t;
 typedef struct rte_mempool rte_mempool_t;
 
-typedef struct rte_lpm     rte_lpm4_t;
-typedef struct rte_lpm6    rte_lpm6_t;
 typedef struct rte_hash    rte_hash_t;
 
 typedef struct ether_addr  eth_addr_t;

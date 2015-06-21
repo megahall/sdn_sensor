@@ -17,11 +17,17 @@
 
 #pragma once
 
+#include <stddef.h>
+#include <stdint.h>
+#include <sys/types.h>
+#include <time.h>
+
 /* On-disk storage format */
 
 #include "ioc.h"
 #include "netflow_common.h"
 #include "netflow_addr.h"
+#include "nn_queue.h"
 
 /* On-disk address formats for v4 and v6 addresses */
 struct store_addr6 {

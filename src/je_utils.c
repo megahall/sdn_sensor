@@ -1,8 +1,9 @@
 #include <stdbool.h>
-
-#include <jemalloc/jemalloc.h>
+#include <string.h>
 
 #include <rte_memcpy.h>
+
+#include <jemalloc/jemalloc.h>
 
 #include "je_utils.h"
 

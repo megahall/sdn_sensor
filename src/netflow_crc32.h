@@ -17,7 +17,7 @@
 
 #pragma once
 
-/* NETFLOW CRC32 */
+#include <sys/types.h>
 
 /* BEGIN PROTOTYPES */
 

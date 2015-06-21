@@ -1,11 +1,18 @@
 #include <ctype.h>
+#include <netinet/in.h>
+#include <netinet/ip6.h>
+#include <stdio.h>
 
 #include <rte_byteorder.h>
+#include <rte_log.h>
 #include <rte_mbuf.h>
+#include <rte_memcpy.h>
 
 #include "common.h"
+#include "ip_utils.h"
 #include "l4_utils.h"
 #include "sdn_sensor.h"
+#include "sensor_conf.h"
 
 int ss_buffer_dump(const char* source, uint8_t* buffer, uint16_t length) {
     printf("dump %s buffer: size [%hu]: [ ", source, length);

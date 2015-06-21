@@ -17,9 +17,11 @@
 
 #pragma once
 
-/* NetFlow packet definitions */
+#include <sys/types.h>
 
 #include "netflow_common.h"
+
+/* NetFlow packet definitions */
 
 /*
  * These are Cisco Netflow(tm) packet formats

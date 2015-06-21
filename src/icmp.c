@@ -8,6 +8,7 @@
 #include <netinet/ip_icmp.h>
 
 #include <rte_byteorder.h>
+#include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_mbuf.h>
 #include <rte_memcpy.h>

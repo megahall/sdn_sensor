@@ -1,12 +1,16 @@
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 
 #include <bsd/string.h>
 
 #include <netinet/in.h>
 #include <netinet/ip6.h>
+#include <netinet/tcp.h>
 
+#include <rte_branch_prediction.h>
 #include <rte_byteorder.h>
 #include <rte_cycles.h>
 #include <rte_hash.h>
@@ -15,18 +19,23 @@
 #include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_mbuf.h>
+#include <rte_memcpy.h>
 #include <rte_random.h>
 #include <rte_rwlock.h>
+#include <rte_spinlock.h>
 
-#include "tcp.h"
+#include <jemalloc/jemalloc.h>
 
 #include "checksum.h"
 #include "common.h"
 #include "ethernet.h"
 #include "extractor.h"
+#include "ip_utils.h"
 #include "je_utils.h"
 #include "l4_utils.h"
 #include "sdn_sensor.h"
+#include "sensor_conf.h"
+#include "tcp.h"
 
 // XXX: how can I place a TCP hash on each socket?
 static struct rte_hash_parameters tcp_hash_params = {

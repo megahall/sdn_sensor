@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
 
 #include <sys/types.h>
 
@@ -10,13 +11,16 @@
 #include <rte_hexdump.h>
 #include <rte_log.h>
 #include <rte_mbuf.h>
+#include <rte_memcpy.h>
 
 #include "ip.h"
 
 #include "common.h"
 #include "sdn_sensor.h"
 #include "icmp.h"
+#include "ip_utils.h"
 #include "l4_utils.h"
+#include "sensor_conf.h"
 #include "tcp.h"
 #include "udp.h"
 

@@ -1,16 +1,24 @@
 #include <stdbool.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <bsd/sys/queue.h>
 
+#include <rte_log.h>
+#include <rte_memcpy.h>
+
+#include <cre2.h>
 #include <pcre.h>
 
 #include <jemalloc/jemalloc.h>
 
-#include "re_utils.h"
-
+#include "common.h"
 #include "json.h"
 #include "metadata.h"
+#include "re_utils.h"
 #include "sdn_sensor.h"
+#include "sensor_conf.h"
 
 int ss_re_init() {
     pcre_malloc       = &je_malloc;

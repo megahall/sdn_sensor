@@ -1,8 +1,8 @@
 #pragma once
 
-#include "common.h"
-#include "re_utils.h"
+#include <stdint.h>
 
+#include "common.h"
 #include "dns.h"
 
 /* BEGIN PROTOTYPES */

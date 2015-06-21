@@ -23,6 +23,7 @@
  * full horror.
  */
 
+#include <sys/time.h>
 #include <sys/types.h>
 
 #include <bsd/sys/queue.h>

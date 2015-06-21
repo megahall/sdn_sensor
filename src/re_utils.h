@@ -6,6 +6,8 @@
 #include <bsd/sys/queue.h>
 #include <pcap/pcap.h>
 
+#include <rte_memory.h>
+
 #include <pcre.h>
 #include <cre2.h>
 

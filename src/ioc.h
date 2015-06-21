@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdint.h>
 #include <bsd/sys/queue.h>
 
 #include <rte_memory.h>
@@ -9,7 +10,6 @@
 #include "common.h"
 #include "ip_utils.h"
 #include "netflow_addr.h"
-#include "netflow_format.h"
 
 /* CONSTANTS */
 
@@ -74,6 +74,13 @@ int ss_ioc_chain_destroy(void);
 int ss_ioc_chain_add(ss_ioc_entry_t* ioc_entry);
 int ss_ioc_chain_remove_index(int index);
 int ss_ioc_chain_remove_id(uint64_t id);
+int ss_ioc_chain_optimize_ip(ss_ioc_entry_t* iptr);
+int ss_ioc_chain_optimize_cidr(ss_ioc_entry_t* iptr);
+int ss_ioc_chain_optimize_domain(ss_ioc_entry_t* iptr);
+int ss_ioc_chain_optimize_url(ss_ioc_entry_t* iptr);
+int ss_ioc_chain_optimize_email(ss_ioc_entry_t* iptr);
+int ss_ioc_chain_optimize_md5(ss_ioc_entry_t* iptr);
+int ss_ioc_chain_optimize_sha256(ss_ioc_entry_t* iptr);
 int ss_ioc_chain_optimize(void);
 ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md);
 ss_ioc_entry_t* ss_ioc_dns_match(ss_metadata_t* md);

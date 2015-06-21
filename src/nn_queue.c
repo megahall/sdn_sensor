@@ -1,11 +1,17 @@
 #include <stddef.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/time.h>
 
 #include <bsd/string.h>
+#include <pcap/pcap.h>
+
+#include <rte_log.h>
+
+#include <jemalloc/jemalloc.h>
 
 #include <nanomsg/nn.h>
 #include <nanomsg/inproc.h>
@@ -17,10 +23,6 @@
 #include <nanomsg/pipeline.h>
 #include <nanomsg/survey.h>
 #include <nanomsg/bus.h>
-
-#include <rte_log.h>
-
-#include <pcap/pcap.h>
 
 /* XXX: mhall: causes include loop w/ common.h */
 /* #include "nn_queue.h" */

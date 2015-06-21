@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdarg.h>
 
 /* BEGIN PROTOTYPES */
 

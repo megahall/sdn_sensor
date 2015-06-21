@@ -5,6 +5,7 @@
 #include <string.h>
 #include <strings.h>
 #include <sys/time.h>
+#include <sys/types.h>
 
 #include <jemalloc/jemalloc.h>
 
@@ -14,6 +15,7 @@
 #include "metadata.h"
 #include "common.h"
 #include "ioc.h"
+#include "ip_utils.h"
 #include "je_utils.h"
 #include "json.h"
 #include "nn_queue.h"

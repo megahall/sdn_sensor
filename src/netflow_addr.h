@@ -19,11 +19,12 @@
 
 /* Address handling routines */
 
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 
 #include "common.h"
-#include "netflow_common.h"
 
 struct xaddr {
     sa_family_t    af;

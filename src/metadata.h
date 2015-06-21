@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdint.h>
 
 #include <json-c/json.h>
 #include <json-c/json_object_private.h>

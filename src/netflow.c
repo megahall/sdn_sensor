@@ -15,10 +15,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-
 #include <unistd.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -26,26 +22,40 @@
 #include <signal.h>
 #include <syslog.h>
 #include <string.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <time.h>
 #include <poll.h>
 
+#include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+
 #include <bsd/string.h>
 #include <bsd/sys/queue.h>
 #include <bsd/sys/tree.h>
+
+#include <rte_log.h>
+#include <rte_memcpy.h>
 
 #include <jemalloc/jemalloc.h>
 
 #include "sdn_sensor.h"
 
 #include "common.h"
+#include "ioc.h"
 #include "metadata.h"
 #include "netflow.h"
+#include "netflow_addr.h"
 #include "netflow_common.h"
 #include "netflow_format.h"
 #include "netflow_log.h"
 #include "netflow_packet.h"
 #include "netflow_peer.h"
+#include "nn_queue.h"
+#include "sensor_conf.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wconversion"

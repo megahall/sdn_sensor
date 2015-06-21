@@ -27,8 +27,10 @@
 
 #include <bsd/string.h>
 
-#include "common.h"
+#include <rte_memcpy.h>
 
+#include "common.h"
+#include "ip_utils.h"
 #include "netflow_common.h"
 #include "netflow_addr.h"
 

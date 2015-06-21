@@ -1,12 +1,15 @@
 #define _GNU_SOURCE /* strcasestr */
 
+#include <errno.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <netinet/in.h>
 #include <sys/time.h>
+#include <sys/types.h>
 
 #include <bsd/string.h>
 #include <bsd/sys/queue.h>
@@ -26,7 +29,10 @@
 #include "json.h"
 #include "netflow_addr.h"
 #include "netflow_format.h"
+#include "nn_queue.h"
+#include "radix.h"
 #include "sdn_sensor.h"
+#include "sensor_conf.h"
 
 #if defined(SS_IOC_BACKEND_RAM) && defined(SS_IOC_BACKEND_DISK)
 #error "SS_IOC_BACKEND_RAM and SS_IOC_BACKEND_DISK are mutually exclusive"
@@ -42,12 +48,12 @@ int ss_ioc_file_load(json_object* ioc_json) {
     int rv = -1;
     uint64_t id;
     FILE* ioc_fd   = NULL;
-    
+
     id = ss_conf->ioc_file_id++;
     ss_ioc_file_t* ioc_file = &ss_conf->ioc_files[id];
     memset(ioc_file, 0, sizeof(*ioc_file));
     ioc_file->file_id = id;
-    
+
     if (!ioc_json) {
         fprintf(stderr, "ioc_json is null\n");
         goto error_out;
@@ -56,36 +62,36 @@ int ss_ioc_file_load(json_object* ioc_json) {
         fprintf(stderr, "ioc_json is not object\n");
         goto error_out;
     }
-    
+
     ioc_file->path = ss_json_string_get(ioc_json, "path");
     if (ioc_file->path == NULL) {
         fprintf(stderr, "ioc_path is null\n");
         goto error_out;
     }
-    
+
     rv = ss_nn_queue_create(ioc_json, &ioc_file->nn_queue);
     if (rv) {
         fprintf(stderr, "could not allocate ioc_file %s nm_queue\n", ioc_file->path);
         goto error_out;
     }
-    
+
     ioc_fd = fopen(ioc_file->path, "r");
     if (ioc_fd == NULL) {
         fprintf(stderr, "could not open ioc file %s: %s\n",
             ioc_file->path, strerror(errno));
         goto error_out;
     }
-    
+
     ssize_t grv;
     char* ioc_str;
     size_t ioc_len;
     ss_ioc_entry_t* ioc;
     uint64_t line = 0;
     uint64_t indicators = 0;
-    
+
     while (1) {
         ++line;
-        
+
         errno = 0;
         grv = getdelim(&ioc_str, &ioc_len, SS_IOC_LINE_DELIMITER, ioc_fd);
         if (grv < 0 && errno) {
@@ -98,14 +104,14 @@ int ss_ioc_file_load(json_object* ioc_json) {
                 ioc_file->path, line);
             break;
         }
-        
+
         ioc = ss_ioc_entry_create(ioc_file, ioc_str);
         if (ioc == NULL) {
             fprintf(stderr, "could not create IOC from file %s, line: %lu, payload: %s\n",
                 ioc_file->path, line, ioc_str);
             continue;
         }
-        
+
         ss_ioc_chain_add(ioc);
         ++indicators;
         if (indicators && indicators % 10000 == 0) {
@@ -113,17 +119,17 @@ int ss_ioc_file_load(json_object* ioc_json) {
                 ioc_file->path, line);
         }
     }
-    
+
     fprintf(stderr, "loaded %lu IOCs from %s\n", indicators, ioc_file->path);
     rv = 0;
-    
+
     error_out:
     if (ioc_file->path) je_free(ioc_file->path);
     if (ioc_fd)         fclose(ioc_fd);
     if (rv != 0) {
         fprintf(stderr, "ioc_file %s could not be loaded\n", ioc_file->path);
     }
-    
+
     return rv;
 }
 
@@ -131,7 +137,7 @@ int ss_ioc_chain_dump(uint64_t limit) {
     uint64_t counter = 1;
     ss_ioc_entry_t* iptr;
     ss_ioc_entry_t* itmp;
-    
+
     fprintf(stderr, "dumping %lu entries from ioc_chain...\n", limit);
     TAILQ_FOREACH_SAFE(iptr, &ss_conf->ioc_chain.ioc_list, entry, itmp) {
         fprintf(stderr, "ioc chain entry number %lu\n", counter);
@@ -139,7 +145,7 @@ int ss_ioc_chain_dump(uint64_t limit) {
         counter++;
         if (limit && counter > limit) break;
     }
-    
+
     return 0;
 }
 
@@ -155,7 +161,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
     MDB_val     key, value;
     rv = mdb_txn_begin(ss_conf->mdb_env, NULL, 0, &txn);
 #endif
-    
+
     counter = 1;
     fprintf(stderr, "dumping %lu entries from ip4_table...\n", limit);
 #ifdef SS_IOC_BACKEND_RAM
@@ -176,7 +182,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
     }
     mdb_cursor_close(cursor);
 #endif
-    
+
     counter = 1;
     fprintf(stderr, "dumping %lu entries from ip6_table...\n", limit);
 #ifdef SS_IOC_BACKEND_RAM
@@ -197,7 +203,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
     }
     mdb_cursor_close(cursor);
 #endif
-    
+
     counter = 1;
     fprintf(stderr, "dumping %lu entries from domain_table...\n", limit);
 #ifdef SS_IOC_BACKEND_RAM
@@ -218,7 +224,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
     }
     mdb_cursor_close(cursor);
 #endif
-    
+
     counter = 1;
     fprintf(stderr, "dumping %lu entries from url_table...\n", limit);
 #ifdef SS_IOC_BACKEND_RAM
@@ -264,7 +270,7 @@ int ss_ioc_tables_dump(uint64_t limit) {
 #ifdef SS_IOC_BACKEND_DISK
     if (txn) mdb_txn_abort(txn);
 #endif
-    
+
     return 0;
 }
 
@@ -274,16 +280,16 @@ ss_ioc_entry_t* ss_ioc_entry_create(ss_ioc_file_t* ioc_file, char* ioc_str) {
     char* freeptr = sepptr;
     char* field   = NULL;
     int rv = 0;
-    
+
     //fprintf(stderr, "attempt to parse ioc: %s\n", ioc_str);
-    
+
     ioc = je_calloc(1, sizeof(ss_ioc_entry_t));
     if (ioc == NULL) {
         fprintf(stderr, "could not allocate ioc entry\n");
         goto error_out;
     }
     ioc->file_id = ioc_file->file_id;
-    
+
     field = strsep(&sepptr, SS_IOC_FIELD_DELIMITERS);
     errno = 0;
     ioc->id          = strtoull(field, NULL, 10);
@@ -292,7 +298,7 @@ ss_ioc_entry_t* ss_ioc_entry_create(ss_ioc_file_t* ioc_file, char* ioc_str) {
             field, strerror(errno));
         goto error_out;
     }
-    
+
     field = strsep(&sepptr, SS_IOC_FIELD_DELIMITERS);
     ioc->type        = ss_ioc_type_load(field);
     if (ioc->type == (ss_ioc_type_t) -1) {
@@ -300,10 +306,10 @@ ss_ioc_entry_t* ss_ioc_entry_create(ss_ioc_file_t* ioc_file, char* ioc_str) {
             ioc->id, field);
         goto error_out;
     }
-    
+
     field = strsep(&sepptr, SS_IOC_FIELD_DELIMITERS);
     strlcpy(ioc->threat_type, field, sizeof(ioc->threat_type));
-    
+
     field = strsep(&sepptr, SS_IOC_FIELD_DELIMITERS);
     rv = ss_cidr_parse(field, &ioc->ip);
     if (rv != 1) {
@@ -311,16 +317,16 @@ ss_ioc_entry_t* ss_ioc_entry_create(ss_ioc_file_t* ioc_file, char* ioc_str) {
             ioc->id, field);
         goto error_out;
     }
-    
+
     field = strsep(&sepptr, SS_IOC_FIELD_DELIMITERS);
     strlcpy(ioc->dns, field, sizeof(ioc->dns));
-    
+
     field = strsep(&sepptr, SS_IOC_FIELD_DELIMITERS);
     strlcpy(ioc->value, field, sizeof(ioc->value));
     
     je_free(freeptr); freeptr = NULL;
     return ioc;
-    
+
     error_out:
     if (ioc) ss_ioc_entry_destroy(ioc);
     if (freeptr) je_free(freeptr); freeptr = NULL;
@@ -665,7 +671,7 @@ int ss_ioc_chain_optimize() {
             fprintf(stderr, "checkpoint IOC count %lu\n", indicators);
         }
     }
-    
+
 #ifdef SS_IOC_BACKEND_DISK
     rv = mdb_txn_commit(txn);
     if (rv) {
@@ -673,7 +679,7 @@ int ss_ioc_chain_optimize() {
         return -1;
     }
 #endif
-    
+
     fprintf(stderr, "optimized %lu IOCs\n", indicators);
     return 0;
 }
@@ -685,14 +691,14 @@ ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md) {
     int   rv;
     MDB_txn* txn = NULL;
     MDB_val  key, value;
-    
+
     rv = mdb_txn_begin(ss_conf->mdb_env, NULL, MDB_RDONLY, &txn);
     if (rv) {
         fprintf(stderr, "could not begin ioc metadata mdb transaction: %s\n", mdb_strerror(rv));
         return NULL;
     }
 #endif
-    
+
     if (md->eth_type == ETHER_TYPE_IPV4) {
         ip = *(uint32_t*) &md->sip;
 #ifdef SS_IOC_BACKEND_RAM
@@ -707,7 +713,7 @@ ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md) {
             goto out;
         }
 #endif
-        
+
         ip = *(uint32_t*) &md->dip;
 #ifdef SS_IOC_BACKEND_RAM
         HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
@@ -735,7 +741,7 @@ ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md) {
             goto out;
         }
 #endif
-        
+
 #ifdef SS_IOC_BACKEND_RAM
         HASH_FIND(hh, ss_conf->ip6_table, &md->dip, sizeof(md->dip), iptr);
         if (iptr) goto out;
@@ -749,7 +755,7 @@ ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md) {
         }
 #endif
     }
-    
+
     out:
 #ifdef SS_IOC_BACKEND_DISK
     if (txn) mdb_txn_abort(txn);
@@ -763,7 +769,7 @@ ss_ioc_entry_t* ss_ioc_dns_match(ss_metadata_t* md) {
     int   rv;
     MDB_txn* txn = NULL;
     MDB_val  key, value;
-    
+
     rv = mdb_txn_begin(ss_conf->mdb_env, NULL, MDB_RDONLY, &txn);
     if (rv) {
         fprintf(stderr, "could not begin ioc dns match mdb transaction: %s\n", mdb_strerror(rv));
@@ -783,7 +789,7 @@ ss_ioc_entry_t* ss_ioc_dns_match(ss_metadata_t* md) {
         goto out;
     }
 #endif
-    
+
     for (int i = 0; i < SS_DNS_RESULT_MAX; ++i) {
         ss_answer_t* dns_answer = &md->dns_answers[i];
         switch (dns_answer->type) {
@@ -813,7 +819,7 @@ ss_ioc_entry_t* ss_ioc_dns_match(ss_metadata_t* md) {
             }
         }
     }
-    
+
     out:
 #ifdef SS_IOC_BACKEND_DISK
     if (txn) mdb_txn_abort(txn);
@@ -830,14 +836,14 @@ ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type) {
 #ifdef SS_IOC_BACKEND_DISK
     MDB_txn* txn = NULL;
     MDB_val  key, value;
-    
+
     rv = mdb_txn_begin(ss_conf->mdb_env, NULL, MDB_RDONLY, &txn);
     if (rv) {
         fprintf(stderr, "could not begin ioc syslog match mdb transaction: %s\n", mdb_strerror(rv));
         return NULL;
     }
 #endif
-    
+
     switch (ioc_type) {
         case SS_IOC_TYPE_IP: {
             rv = ss_cidr_parse(ioc, &ip_addr);
@@ -907,7 +913,7 @@ ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type) {
             break;
         }
     }
-    
+
     out:
 #ifdef SS_IOC_BACKEND_DISK
     if (txn) mdb_txn_abort(txn);
@@ -921,7 +927,7 @@ ss_ioc_entry_t* ss_ioc_ip_match(ip_addr_t* ip) {
     int   rv;
     MDB_txn* txn = NULL;
     MDB_val  key, value;
-    
+
     rv = mdb_txn_begin(ss_conf->mdb_env, NULL, MDB_RDONLY, &txn);
     if (rv) {
         fprintf(stderr, "could not begin ioc ip match mdb transaction: %s\n", mdb_strerror(rv));
@@ -964,7 +970,7 @@ ss_ioc_entry_t* ss_ioc_ip_match(ip_addr_t* ip) {
         default: {
         }
     }
-    
+
     out:
 #ifdef SS_IOC_BACKEND_DISK
     if (txn) mdb_txn_abort(txn);
@@ -979,14 +985,14 @@ ss_ioc_entry_t* ss_ioc_xaddr_match(struct xaddr* addr) {
     int   rv;
     MDB_txn* txn = NULL;
     MDB_val  key, value;
-    
+
     rv = mdb_txn_begin(ss_conf->mdb_env, NULL, MDB_RDONLY, &txn);
     if (rv) {
         fprintf(stderr, "could not begin ioc xaddr match mdb transaction: %s\n", mdb_strerror(rv));
         goto out;
     }
 #endif
-    
+
     if      (addr->af == SS_AF_INET4) {
         ip = *(uint32_t*) &addr->v4.s_addr;
 #ifdef SS_IOC_BACKEND_RAM
@@ -1015,7 +1021,7 @@ ss_ioc_entry_t* ss_ioc_xaddr_match(struct xaddr* addr) {
 #endif
     }
 
-    out:    
+    out:
 #ifdef SS_IOC_BACKEND_DISK
     if (txn) mdb_txn_abort(txn);
 #endif
@@ -1024,7 +1030,7 @@ ss_ioc_entry_t* ss_ioc_xaddr_match(struct xaddr* addr) {
 
 ss_ioc_entry_t* ss_ioc_netflow_match(struct store_flow_complete* flow) {
     ss_ioc_entry_t* iptr = NULL;
-    
+
     /* XXX: some day, check the src_as and dst_as */
     iptr = ss_ioc_xaddr_match(&flow->agent_addr);
     if (iptr) return iptr;
@@ -1034,6 +1040,6 @@ ss_ioc_entry_t* ss_ioc_netflow_match(struct store_flow_complete* flow) {
     if (iptr) return iptr;
     iptr = ss_ioc_xaddr_match(&flow->gateway_addr);
     if (iptr) return iptr;
-    
+
     return iptr;
 }

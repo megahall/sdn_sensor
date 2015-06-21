@@ -23,22 +23,24 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include <rte_memcpy.h>
+
 #include "common.h"
 #include "ip_utils.h"
 
 int ss_cidr_dump(FILE* fd, const char* label, ip_addr_t* ip_addr) {
     char tmp[SS_ADDR_STR_MAX];
     memset(tmp, 0, sizeof(tmp));
-    
+
     if (fd == NULL) fd = stderr;
-    
+
     if (ip_addr == NULL) {
         fprintf(fd, "cidr %s: null\n", label);
         return -1;
     }
-    
+
     ss_inet_ntop(ip_addr, tmp, sizeof(tmp));
-    
+
     fprintf(fd, "cidr %s: %s\n", label, tmp);
     return 0;
 }
@@ -50,18 +52,18 @@ int ss_cidr_parse(const char* input, ip_addr_t* ip_addr) {
     char* prefix_start;
     char* prefix_end;
     long prefix = 0;
-    
+
     if (!input || ! *input || !ip_addr)
         return -1;
-    
+
     input_len = strlen(input);
-    
+
     /* if token is too big... */
     if (input_len >= SS_INET6_ADDRSTRLEN+4)
         return -1;
-    
+
     snprintf(ip_str, input_len+1, "%s", input);
-    
+
     /* convert the network prefix */
     prefix_start = strrchr(ip_str, '/');
     if (prefix_start == NULL) {
@@ -102,7 +104,7 @@ int ss_cidr_parse(const char* input, ip_addr_t* ip_addr) {
         fprintf(stderr, "could not parse CIDR / IP: %s", ip_str);
         memset(&ip_addr, 0, sizeof(ip_addr));
     }
-    
+
     return rv;
 }
 
@@ -175,7 +177,7 @@ int ss_inet_pton4(const char* src, uint8_t* dst) {
     }
     if (octets < 4)
         return (0);
-    
+
     rte_memcpy(dst, tmp, IPV4_ALEN);
     return (1);
 }
@@ -287,7 +289,7 @@ int ss_inet_pton6(const char* src, uint8_t* dst) {
     if (tp != endp) {
         return (0);
     }
-    
+
     rte_memcpy(dst, tmp, IPV6_ALEN);
     return (1);
 }
@@ -357,7 +359,7 @@ const char* ss_inet_ntop4(const uint8_t* src, char* dst, size_t size) {
         errno = ENOSPC;
         return (NULL);
     }
-    
+
     return strcpy(dst, tmp);
 }
 
