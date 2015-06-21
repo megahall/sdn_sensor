@@ -27,7 +27,7 @@
 
 #include "common.h"
 #include "ip_utils.h"
-#include "radix.h"
+#include "patricia.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 
@@ -567,8 +567,14 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
     }
 #endif
 
-    ss_conf->radix4 = ss_radix_tree_create(SS_V4_PREFIX_MAX);
-    ss_conf->radix6 = ss_radix_tree_create(SS_V6_PREFIX_MAX);
+    ss_conf->radix4 = patricia_create();
+    if (ss_conf->radix4 == NULL) {
+        fprintf(stderr, "could not allocate ioc radix4\n");
+    }
+    ss_conf->radix6 = patricia_create();
+    if (ss_conf->radix6 == NULL) {
+        fprintf(stderr, "could not allocate ioc radix6\n");
+    }
     
     items = json_object_object_get(json_conf, "network");
     if (items == NULL) {
