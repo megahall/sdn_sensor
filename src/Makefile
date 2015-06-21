@@ -36,6 +36,7 @@ INCLUDE_FILES  = -include $(RTE_SDK)/build/include/rte_config.h
 INCLUDE_PATHS  = -isystem$(RTE_SDK)/build/include -I$(SDN_SENSOR_BASE)/external/spcdns/src -isystem/usr/local/jemalloc/include -I/usr/local/lmdb/include
 CPROTO_PATHS   = $(subst -isystem,-I,$(INCLUDE_PATHS))
 CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) $(DEFINES)
+IWYU_CFLAGS   := $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) $(DEFINES)
 
 # XXX: work around bugs in iwyu utility
 IWYU_PATHS = -I/usr/local/include -I/usr/lib/llvm-3.4/lib/clang/3.4/include -I/usr/lib/gcc/x86_64-linux-gnu/4.8/include -I/usr/include/x86_64-linux-gnu -I/usr/include
@@ -116,4 +117,4 @@ cproto:
 
 iwyu: $(HEADERS) $(SOURCES)
 	@echo 'Checking includes in sdn_sensor...'
-	for file in $^; do iwyu ${CFLAGS} ${IWYU_PATHS} $$file; done;
+	for file in $^; do iwyu ${IWYU_CFLAGS} -Wno-pedantic -Wno-unused-macros ${IWYU_PATHS} $$file; done;
