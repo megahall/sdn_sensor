@@ -435,15 +435,309 @@ int ss_ioc_chain_remove_id(uint64_t id) {
     return -1;
 }
 
+int ss_ioc_chain_optimize_ip(ss_ioc_entry_t* iptr) {
+    char   tvalue[SS_DNS_NAME_MAX];
+    memset(tvalue, 0, sizeof(tvalue));
+    const char* result = ss_inet_ntop(&iptr->ip, tvalue, sizeof(tvalue));
+#ifdef SS_IOC_BACKEND_RAM
+    ss_ioc_entry_t* hiptr = NULL;
+#endif
+    if (result == NULL) {
+        fprintf(stderr, "ioc id %lu: could not parse ip value\n", iptr->id);
+        return -1;
+    }
+    //fprintf(stderr, "ioc id %lu, extracted ip value: %s\n", iptr->id, tvalue);
+    switch (iptr->ip.family) {
+        case SS_AF_INET4: {
+#ifdef SS_IOC_BACKEND_RAM
+            HASH_FIND_INT(ss_conf->ip4_table, &iptr->ip.ip4_addr, hiptr);
+            if (hiptr == NULL) {
+                HASH_ADD_INT(ss_conf->ip4_table, ip.ip4_addr, iptr);
+            }
+            else {
+                fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
+            }
+#elif SS_IOC_BACKEND_DISK
+            key.mv_size   = sizeof(iptr->ip.ip4_addr);
+            key.mv_data   = &iptr->ip.ip4_addr;
+            value.mv_size = sizeof(*iptr);
+            value.mv_data = iptr;
+            rv = mdb_put(txn, ss_conf->ip4_dbi, &key, &value, 0);
+            if (rv) {
+                fprintf(stderr, "ioc id %lu: could not insert in ip4_dbi: %s\n", iptr->id, mdb_strerror(rv));
+                return -1;
+            }
+#endif
+            break;
+        }
+        case SS_AF_INET6: {
+#ifdef SS_IOC_BACKEND_RAM
+            HASH_FIND(hh, ss_conf->ip6_table, &iptr->ip.ip6_addr, sizeof(iptr->ip.ip6_addr), hiptr);
+            if (hiptr == NULL) {
+                HASH_ADD(hh, ss_conf->ip6_table, ip.ip6_addr, sizeof(iptr->ip.ip6_addr), iptr);
+            }
+            else {
+                fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
+            }
+#elif SS_IOC_BACKEND_DISK
+            key.mv_size   = sizeof(iptr->ip.ip6_addr);
+            key.mv_data   = &iptr->ip.ip6_addr;
+            value.mv_size = sizeof(*iptr);
+            value.mv_data = iptr;
+            rv = mdb_put(txn, ss_conf->ip6_dbi, &key, &value, 0);
+            if (rv) {
+                fprintf(stderr, "ioc id %lu: could not insert in ip6_dbi: %s\n", iptr->id, mdb_strerror(rv));
+                return -1;
+            }
+#endif
+            break;
+        }
+        default: {
+            fprintf(stderr, "ioc id %lu: could not parse ip value: %s\n", iptr->id, tvalue);
+            return -1;
+        }
+    }
+    return 0;
+}
+
+int ss_ioc_chain_optimize_cidr(ss_ioc_entry_t* iptr) {
+    char   tvalue[SS_DNS_NAME_MAX];
+    memset(tvalue, 0, sizeof(tvalue));
+    const char* result = ss_inet_ntop(&iptr->ip, tvalue, sizeof(tvalue));
+#ifdef SS_IOC_BACKEND_RAM
+    ss_radix_node_t* node;
+#endif
+    if (result == NULL) {
+        fprintf(stderr, "ioc id %lu: could not parse ip value\n", iptr->id);
+        return -1;
+    }
+    //fprintf(stderr, "ioc id %lu, extracted ip value: %s\n", iptr->id, tvalue);
+    switch (iptr->ip.family) {
+        case SS_AF_INET4: {
+#ifdef SS_IOC_BACKEND_RAM
+            node = ss_radix_search_best(ss_conf->radix4, &iptr->ip, 1);
+            if (node == NULL) {
+                ss_radix_lookup(ss_conf->radix4, &iptr->ip);
+            }
+            else {
+                fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
+            }
+#elif SS_IOC_BACKEND_DISK
+#endif
+            break;
+        }
+        case SS_AF_INET6: {
+#ifdef SS_IOC_BACKEND_RAM
+            node = ss_radix_search_best(ss_conf->radix6, &iptr->ip, 1);
+            if (node == NULL) {
+                ss_radix_lookup(ss_conf->radix6, &iptr->ip);
+            }
+            else {
+                fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
+            }
+#elif SS_IOC_BACKEND_DISK
+#endif
+            break;
+        }
+        default: {
+            fprintf(stderr, "ioc id %lu: could not parse ip value: %s\n", iptr->id, tvalue);
+            return -1;
+        }
+    }
+    return 0;
+}
+
+int ss_ioc_chain_optimize_domain(ss_ioc_entry_t* iptr) {
+    char   tvalue[SS_DNS_NAME_MAX];
+    char*  header;
+    size_t offset;
+#ifdef SS_IOC_BACKEND_RAM
+    ss_ioc_entry_t* hiptr = NULL;
+#endif
+    // NOTE: convert names to canonical form (trailing '.')
+    offset = strlcpy(tvalue, iptr->value, sizeof(tvalue));
+    if (tvalue[offset] != '.') {
+        tvalue[offset] = '.';
+        tvalue[offset + 1] = '\0';
+    }
+    strlcpy(iptr->value, tvalue, sizeof(iptr->value));
+    //fprintf(stderr, "ioc %lu extracted dns domain: %s\n", iptr->id, domain);
+#ifdef SS_IOC_BACKEND_RAM
+    HASH_FIND_STR(ss_conf->domain_table, iptr->value, hiptr);
+    if (hiptr == NULL) {
+        HASH_ADD_STR(ss_conf->domain_table, value, iptr);
+    }
+    else {
+        fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, iptr->value);
+    }
+#elif SS_IOC_BACKEND_DISK
+    key.mv_size   = strlen(iptr->value);
+    key.mv_data   = iptr->value;
+    value.mv_size = sizeof(*iptr);
+    value.mv_data = iptr;
+    rv = mdb_put(txn, ss_conf->domain_dbi, &key, &value, 0);
+    if (rv) {
+        fprintf(stderr, "ioc id %lu: could not insert in domain_dbi: %s\n", iptr->id, mdb_strerror(rv));
+        return -1;
+    }
+#endif
+    return 0;
+}
+
+int ss_ioc_chain_optimize_url(ss_ioc_entry_t* iptr) {
+    char   tvalue[SS_DNS_NAME_MAX];
+    char*  header;
+    size_t offset;
+#ifdef SS_IOC_BACKEND_RAM
+    ss_ioc_entry_t* hiptr = NULL;
+#endif
+    // insert in domain and url hashes
+    // (for DNS and HTTP interception)
+    header = strcasestr(iptr->value, SS_IOC_HTTP_URL);
+    offset = strlen(SS_IOC_HTTP_URL);
+    if (header == NULL || header != iptr->value) {
+        header = strcasestr(iptr->value, SS_IOC_HTTPS_URL);
+        offset = strlen(SS_IOC_HTTPS_URL);
+    }
+
+    if (header == NULL || header != iptr->value) {
+        fprintf(stderr, "ioc %lu has corrupt url: %s\n", iptr->id, iptr->value);
+        return -1;
+    }
+    // NOTE: convert names to canonical form (trailing '.')
+    strlcpy(tvalue, iptr->value + offset, sizeof(tvalue) - 2);
+    for (int i = 0; ; ++i) {
+        if (tvalue[i] == '/' || tvalue[i] == '\0') {
+            tvalue[i] = '.';
+            tvalue[i+1] = '\0';
+            break;
+        }
+    }
+    strlcpy(iptr->dns, tvalue, sizeof(iptr->dns));
+    //fprintf(stderr, "ioc %lu extracted url domain: %s\n", iptr->id, tvalue);
+#ifdef SS_IOC_BACKEND_RAM
+    HASH_FIND_STR(ss_conf->domain_table, iptr->dns, hiptr);
+    if (hiptr == NULL) {
+        HASH_ADD_STR(ss_conf->domain_table, dns, iptr);
+    }
+    else {
+        fprintf(stderr, "ioc id %lu: skipping duplicate dns: %s\n", iptr->id, iptr->dns);
+    }
+    HASH_FIND(hh_full, ss_conf->url_table, &iptr->value, strlen(iptr->value), hiptr);
+    if (hiptr == NULL) {
+        HASH_ADD(hh_full, ss_conf->url_table, value, strlen(iptr->value), iptr);
+    }
+    else {
+        fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, iptr->value);
+    }
+#elif SS_IOC_BACKEND_DISK
+    key.mv_size   = strlen(iptr->dns);
+    key.mv_data   = iptr->dns;
+    value.mv_size = sizeof(*iptr);
+    value.mv_data = iptr;
+    rv = mdb_put(txn, ss_conf->domain_dbi, &key, &value, 0);
+    if (rv) {
+        fprintf(stderr, "ioc id %lu: could not insert in domain_dbi: %s\n", iptr->id, mdb_strerror(rv));
+        return -1;
+    }
+    key.mv_size   = strlen(iptr->value);
+    key.mv_data   = iptr->value;
+    value.mv_size = sizeof(*iptr);
+    value.mv_data = iptr;
+    rv = mdb_put(txn, ss_conf->url_dbi, &key, &value, 0);
+    if (rv) {
+        fprintf(stderr, "ioc id %lu: could not insert in url_dbi: %s\n", iptr->id, mdb_strerror(rv));
+        return -1;
+    }
+#endif
+    return 0;
+}
+
+int ss_ioc_chain_optimize_email(ss_ioc_entry_t* iptr) {
+    char   tvalue[SS_DNS_NAME_MAX];
+    char*  header;
+    size_t offset;
+#ifdef SS_IOC_BACKEND_RAM
+    ss_ioc_entry_t* hiptr = NULL;
+#endif
+    // insert in domain and email hashes
+    // (for DNS and SMTP interception)
+    char* domain = strstr(iptr->value, "@");
+    if (domain == NULL || domain + 0 == '\0' || domain + 1 == '\0') {
+        fprintf(stderr, "ioc %lu has corrupt email: %s\n", iptr->id, iptr->value);
+        return -1;
+    }
+    // move forward to first byte after first '@'
+    domain += 1;
+    // NOTE: convert names to canonical form (trailing '.')
+    offset = strlcpy(tvalue, domain, sizeof(tvalue) - 2);
+    if (tvalue[offset] != '.') {
+        tvalue[offset] = '.';
+        tvalue[offset + 1] = '\0';
+    }
+    strlcpy(iptr->dns, tvalue, sizeof(iptr->dns));
+    fprintf(stderr, "ioc %lu extracted email domain: %s\n", iptr->id, tvalue);
+#ifdef SS_IOC_BACKEND_RAM
+    HASH_FIND_STR(ss_conf->domain_table, iptr->dns, hiptr);
+    if (hiptr == NULL) {
+        HASH_ADD_STR(ss_conf->domain_table, dns, iptr);
+    }
+    else {
+        fprintf(stderr, "ioc id %lu: skipping duplicate dns: %s\n", iptr->id, iptr->dns);
+    }
+    HASH_FIND(hh_full, ss_conf->email_table, &iptr->value, strlen(iptr->value), hiptr);
+    if (hiptr == NULL) {
+        HASH_ADD(hh_full, ss_conf->email_table, value, strlen(iptr->value), iptr);
+    }
+    else {
+        fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, iptr->value);
+    }
+#elif SS_IOC_BACKEND_DISK
+    key.mv_size   = strlen(iptr->dns);
+    key.mv_data   = iptr->dns;
+    value.mv_size = sizeof(*iptr);
+    value.mv_data = iptr;
+    rv = mdb_put(txn, ss_conf->domain_dbi, &key, &value, 0);
+    if (rv) {
+        fprintf(stderr, "ioc id %lu: could not insert in domain_dbi: %s\n", iptr->id, mdb_strerror(rv));
+        return -1;
+    }
+    key.mv_size   = strlen(iptr->value);
+    key.mv_data   = iptr->value;
+    value.mv_size = sizeof(*iptr);
+    value.mv_data = iptr;
+    rv = mdb_put(txn, ss_conf->email_dbi, &key, &value, 0);
+    if (rv) {
+        fprintf(stderr, "ioc id %lu: could not insert in email_dbi: %s\n", iptr->id, mdb_strerror(rv));
+        return -1;
+    }
+#endif
+    return 0;
+}
+
+int ss_ioc_chain_optimize_md5(ss_ioc_entry_t* iptr) {
+#ifdef SS_IOC_BACKEND_RAM
+    ss_ioc_entry_t* hiptr = NULL;
+#endif
+    fprintf(stderr, "ioc %lu is unsupported md5 type\n", iptr->id);
+    return 0;
+}
+
+int ss_ioc_chain_optimize_sha256(ss_ioc_entry_t* iptr) {
+#ifdef SS_IOC_BACKEND_RAM
+    ss_ioc_entry_t* hiptr = NULL;
+#endif
+    fprintf(stderr, "ioc %lu is unsupported sha256 type\n", iptr->id);
+    return 0;
+}
+
 int ss_ioc_chain_optimize() {
     ss_ioc_entry_t* iptr;
     ss_ioc_entry_t* itmp;
     char*  header;
     char   tvalue[SS_DNS_NAME_MAX];
     size_t offset;
-#ifdef SS_IOC_BACKEND_RAM
-    ss_ioc_entry_t* hiptr;
-#elif SS_IOC_BACKEND_DISK
+#ifdef SS_IOC_BACKEND_DISK
     int   rv;
     MDB_txn* txn = NULL;
     MDB_val  key, value;
@@ -458,212 +752,26 @@ int ss_ioc_chain_optimize() {
     fprintf(stderr, "optimizing IOCs...\n");
 
     uint64_t indicators = 0;
-    next_ioc: TAILQ_FOREACH_SAFE(iptr, &ss_conf->ioc_chain.ioc_list, entry, itmp) {
+    TAILQ_FOREACH_SAFE(iptr, &ss_conf->ioc_chain.ioc_list, entry, itmp) {
         switch (iptr->type) {
             case SS_IOC_TYPE_IP: {
-                const char* result = ss_inet_ntop(&iptr->ip, tvalue, sizeof(tvalue));
-                if (result == NULL) {
-                    fprintf(stderr, "ioc id %lu: could not parse ip value\n", iptr->id);
-                    goto next_ioc;
-                }
-                //fprintf(stderr, "ioc id %lu, extracted ip value: %s\n", iptr->id, tvalue);
-                switch (iptr->ip.family) {
-                    case SS_AF_INET4: {
-#ifdef SS_IOC_BACKEND_RAM
-                        HASH_FIND_INT(ss_conf->ip4_table, &iptr->ip.ip4_addr, hiptr);
-                        if (hiptr == NULL) {
-                            HASH_ADD_INT(ss_conf->ip4_table, ip.ip4_addr, iptr);
-                        }
-                        else {
-                            fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
-                        }
-#elif SS_IOC_BACKEND_DISK
-                        key.mv_size   = sizeof(iptr->ip.ip4_addr);
-                        key.mv_data   = &iptr->ip.ip4_addr;
-                        value.mv_size = sizeof(*iptr);
-                        value.mv_data = iptr;
-                        rv = mdb_put(txn, ss_conf->ip4_dbi, &key, &value, 0);
-                        if (rv) {
-                            fprintf(stderr, "ioc id %lu: could not insert in ip4_dbi: %s\n", iptr->id, mdb_strerror(rv));
-                            goto next_ioc;
-                        }
-#endif
-                        break;
-                    }
-                    case SS_AF_INET6: {
-#ifdef SS_IOC_BACKEND_RAM
-                        HASH_FIND(hh, ss_conf->ip6_table, &iptr->ip.ip6_addr, sizeof(iptr->ip.ip6_addr), hiptr);
-                        if (hiptr == NULL) {
-                            HASH_ADD(hh, ss_conf->ip6_table, ip.ip6_addr, sizeof(iptr->ip.ip6_addr), iptr);
-                        }
-                        else {
-                            fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
-                        }
-#elif SS_IOC_BACKEND_DISK
-                        key.mv_size   = sizeof(iptr->ip.ip6_addr);
-                        key.mv_data   = &iptr->ip.ip6_addr;
-                        value.mv_size = sizeof(*iptr);
-                        value.mv_data = iptr;
-                        rv = mdb_put(txn, ss_conf->ip6_dbi, &key, &value, 0);
-                        if (rv) {
-                            fprintf(stderr, "ioc id %lu: could not insert in ip6_dbi: %s\n", iptr->id, mdb_strerror(rv));
-                            goto next_ioc;
-                        }
-#endif
-                        break;
-                    }
-                    default: {
-                        fprintf(stderr, "ioc id %lu: could not parse ip value: %s\n", iptr->id, tvalue);
-                        goto next_ioc;
-                    }
-                }
+                ss_ioc_chain_optimize_ip(iptr);
+                break;
+            }
+            case SS_IOC_TYPE_CIDR: {
+                ss_ioc_chain_optimize_cidr(iptr);
                 break;
             }
             case SS_IOC_TYPE_DOMAIN: {
-                // NOTE: convert names to canonical form (trailing '.')
-                offset = strlcpy(tvalue, iptr->value, sizeof(tvalue));
-                if (tvalue[offset] != '.') {
-                    tvalue[offset] = '.';
-                    tvalue[offset + 1] = '\0';
-                }
-                strlcpy(iptr->value, tvalue, sizeof(iptr->value));
-                //fprintf(stderr, "ioc %lu extracted dns domain: %s\n", iptr->id, domain);
-#ifdef SS_IOC_BACKEND_RAM
-                HASH_FIND_STR(ss_conf->domain_table, iptr->value, hiptr);
-                if (hiptr == NULL) {
-                    HASH_ADD_STR(ss_conf->domain_table, value, iptr);
-                }
-                else {
-                    fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, iptr->value);
-                }
-#elif SS_IOC_BACKEND_DISK
-                key.mv_size   = strlen(iptr->value);
-                key.mv_data   = iptr->value;
-                value.mv_size = sizeof(*iptr);
-                value.mv_data = iptr;
-                rv = mdb_put(txn, ss_conf->domain_dbi, &key, &value, 0);
-                if (rv) {
-                    fprintf(stderr, "ioc id %lu: could not insert in domain_dbi: %s\n", iptr->id, mdb_strerror(rv));
-                    goto next_ioc;
-                }
-#endif
+                ss_ioc_chain_optimize_domain(iptr);
                 break;
             }
             case SS_IOC_TYPE_URL: {
-                // insert in domain and url hashes
-                // (for DNS and HTTP interception)
-                header = strcasestr(iptr->value, SS_IOC_HTTP_URL);
-                offset = strlen(SS_IOC_HTTP_URL);
-                if (header == NULL || header != iptr->value) {
-                    header = strcasestr(iptr->value, SS_IOC_HTTPS_URL);
-                    offset = strlen(SS_IOC_HTTPS_URL);
-                }
-                
-                if (header == NULL || header != iptr->value) {
-                    fprintf(stderr, "ioc %lu has corrupt url: %s\n", iptr->id, iptr->value);
-                    goto next_ioc;
-                }
-                // NOTE: convert names to canonical form (trailing '.')
-                strlcpy(tvalue, iptr->value + offset, sizeof(tvalue) - 2);
-                for (int i = 0; ; ++i) {
-                    if (tvalue[i] == '/' || tvalue[i] == '\0') {
-                        tvalue[i] = '.';
-                        tvalue[i+1] = '\0';
-                        break;
-                    }
-                }
-                strlcpy(iptr->dns, tvalue, sizeof(iptr->dns));
-                //fprintf(stderr, "ioc %lu extracted url domain: %s\n", iptr->id, tvalue);
-#ifdef SS_IOC_BACKEND_RAM
-                HASH_FIND_STR(ss_conf->domain_table, iptr->dns, hiptr);
-                if (hiptr == NULL) {
-                    HASH_ADD_STR(ss_conf->domain_table, dns, iptr);
-                }
-                else {
-                    fprintf(stderr, "ioc id %lu: skipping duplicate dns: %s\n", iptr->id, iptr->dns);
-                }
-                HASH_FIND(hh_full, ss_conf->url_table, &iptr->value, strlen(iptr->value), hiptr);
-                if (hiptr == NULL) {
-                    HASH_ADD(hh_full, ss_conf->url_table, value, strlen(iptr->value), iptr);
-                }
-                else {
-                    fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, iptr->value);
-                }
-#elif SS_IOC_BACKEND_DISK
-                key.mv_size   = strlen(iptr->dns);
-                key.mv_data   = iptr->dns;
-                value.mv_size = sizeof(*iptr);
-                value.mv_data = iptr;
-                rv = mdb_put(txn, ss_conf->domain_dbi, &key, &value, 0);
-                if (rv) {
-                    fprintf(stderr, "ioc id %lu: could not insert in domain_dbi: %s\n", iptr->id, mdb_strerror(rv));
-                    goto next_ioc;
-                }
-                key.mv_size   = strlen(iptr->value);
-                key.mv_data   = iptr->value;
-                value.mv_size = sizeof(*iptr);
-                value.mv_data = iptr;
-                rv = mdb_put(txn, ss_conf->url_dbi, &key, &value, 0);
-                if (rv) {
-                    fprintf(stderr, "ioc id %lu: could not insert in url_dbi: %s\n", iptr->id, mdb_strerror(rv));
-                    goto next_ioc;
-                }
-#endif
+                ss_ioc_chain_optimize_url(iptr);
                 break;
             }
             case SS_IOC_TYPE_EMAIL: {
-                // insert in domain and email hashes
-                // (for DNS and SMTP interception)
-                char* domain = strstr(iptr->value, "@");
-                if (domain == NULL || domain + 0 == '\0' || domain + 1 == '\0') {
-                    fprintf(stderr, "ioc %lu has corrupt email: %s\n", iptr->id, iptr->value);
-                    goto next_ioc;
-                }
-                // move forward to first byte after first '@'
-                domain += 1;
-                // NOTE: convert names to canonical form (trailing '.')
-                offset = strlcpy(tvalue, domain, sizeof(tvalue) - 2);
-                if (tvalue[offset] != '.') {
-                    tvalue[offset] = '.';
-                    tvalue[offset + 1] = '\0';
-                }
-                strlcpy(iptr->dns, tvalue, sizeof(iptr->dns));
-                fprintf(stderr, "ioc %lu extracted email domain: %s\n", iptr->id, tvalue);
-#ifdef SS_IOC_BACKEND_RAM
-                HASH_FIND_STR(ss_conf->domain_table, iptr->dns, hiptr);
-                if (hiptr == NULL) {
-                    HASH_ADD_STR(ss_conf->domain_table, dns, iptr);
-                }
-                else {
-                    fprintf(stderr, "ioc id %lu: skipping duplicate dns: %s\n", iptr->id, iptr->dns);
-                }
-                HASH_FIND(hh_full, ss_conf->email_table, &iptr->value, strlen(iptr->value), hiptr);
-                if (hiptr == NULL) {
-                    HASH_ADD(hh_full, ss_conf->email_table, value, strlen(iptr->value), iptr);
-                }
-                else {
-                    fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, iptr->value);
-                }
-#elif SS_IOC_BACKEND_DISK
-                key.mv_size   = strlen(iptr->dns);
-                key.mv_data   = iptr->dns;
-                value.mv_size = sizeof(*iptr);
-                value.mv_data = iptr;
-                rv = mdb_put(txn, ss_conf->domain_dbi, &key, &value, 0);
-                if (rv) {
-                    fprintf(stderr, "ioc id %lu: could not insert in domain_dbi: %s\n", iptr->id, mdb_strerror(rv));
-                    goto next_ioc;
-                }
-                key.mv_size   = strlen(iptr->value);
-                key.mv_data   = iptr->value;
-                value.mv_size = sizeof(*iptr);
-                value.mv_data = iptr;
-                rv = mdb_put(txn, ss_conf->email_dbi, &key, &value, 0);
-                if (rv) {
-                    fprintf(stderr, "ioc id %lu: could not insert in email_dbi: %s\n", iptr->id, mdb_strerror(rv));
-                    goto next_ioc;
-                }
-#endif
+                ss_ioc_chain_optimize_email(iptr);
                 break;
             }
             case SS_IOC_TYPE_MD5: {
