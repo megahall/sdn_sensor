@@ -67,7 +67,7 @@ int ss_cidr_parse(const char* input, ip_addr_t* ip_addr) {
     /* convert the network prefix */
     prefix_start = strrchr(ip_str, '/');
     if (prefix_start == NULL) {
-        ip_addr->prefix = 0;
+        ip_addr->cidr = 0;
     }
     else {
         *prefix_start = '\0';
@@ -77,17 +77,17 @@ int ss_cidr_parse(const char* input, ip_addr_t* ip_addr) {
         if (errno || (*prefix_end != '\0') || prefix < 0) {
             return -1;
         }
-        ip_addr->prefix = (uint8_t) prefix;
+        ip_addr->cidr = (uint8_t) prefix;
     }
-    
+
     /* convert the IP addr */
     /* IPv6 */
     if (strchr(ip_str, ':') &&
         ss_inet_pton(SS_AF_INET6, ip_str, ip_addr) == 1 &&
         prefix <= SS_V6_PREFIX_MAX) {
         ip_addr->family = SS_AF_INET6;
-        if (ip_addr->prefix == 0) {
-            ip_addr->prefix = SS_V6_PREFIX_MAX;
+        if (ip_addr->cidr == 0) {
+            ip_addr->cidr = SS_V6_PREFIX_MAX;
         }
         rv = 1;
     }
@@ -95,8 +95,8 @@ int ss_cidr_parse(const char* input, ip_addr_t* ip_addr) {
              ss_inet_pton(SS_AF_INET4, ip_str, ip_addr) == 1 &&
              prefix <= SS_V4_PREFIX_MAX) {
         ip_addr->family = SS_AF_INET4;
-        if (ip_addr->prefix == 0) {
-            ip_addr->prefix = SS_V4_PREFIX_MAX;
+        if (ip_addr->cidr == 0) {
+            ip_addr->cidr = SS_V4_PREFIX_MAX;
         }
         rv = 1;
     }
@@ -106,6 +106,15 @@ int ss_cidr_parse(const char* input, ip_addr_t* ip_addr) {
     }
 
     return rv;
+}
+
+int ss_cidr_is_empty(ip_addr_t* ip_addr) {
+    uint8_t* byte = (uint8_t*) ip_addr;
+    size_t size = sizeof(ip_addr_t);
+    for (size_t i = 0; i < size; ++i) {
+        if (byte[i] != 0) return 0;
+    }
+    return 1;
 }
 
 /* int
@@ -318,6 +327,12 @@ const char* ss_inet_ntop(const ip_addr_t* src, char* dst, unsigned int size) {
     }
 }
 
+static __thread char inet_ntop_buf[SS_INET6_ADDRSTRLEN];
+const char* ss_inet_ntop_tls(const ip_addr_t* src) {
+    memset(inet_ntop_buf, 0, sizeof(inet_ntop_buf));
+    return ss_inet_ntop(src, inet_ntop_buf, SS_INET6_ADDRSTRLEN);
+}
+
 /* char*
  * ss_inet_ntop(af, src, dst, size)
  *      convert a raw network format address to presentation format.
@@ -347,7 +362,7 @@ const char* ss_inet_ntop_raw(const uint8_t family, const uint8_t* src, char* dst
  *      `dst' (as a const)
  * notes:
  *      (1) uses no statics
- *      (2) takes a u_char* not an in_addr as input
+ *      (2) takes a uint8_t* not an in_addr as input
  * author:
  *      Paul Vixie, 1996.
  */
@@ -460,4 +475,15 @@ const char* ss_inet_ntop6(const uint8_t* src, char* dst, size_t size) {
         return (NULL);
     }
     return strcpy(dst, tmp);
+}
+
+int comp_with_mask(void* addr, void* dest, uint mask) {
+    if ( /* mask/8 == 0 || */ memcmp (addr, dest, mask / 8) == 0) {
+        int n = mask / 8;
+        int m = ((-1) << (8 - (mask % 8)));
+
+        if (mask % 8 == 0 || (((uint8_t*)addr)[n] & m) == (((uint8_t*)dest)[n] & m))
+            return (1);
+    }
+    return (0);
 }

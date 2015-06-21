@@ -377,20 +377,14 @@ int ss_dns_chain_remove_name(char* name) {
 ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_json) {
     ss_cidr_table_t* cidr_table = NULL;
     
-    struct rte_lpm6_config lpm6_info = {
-        .max_rules    = SS_LPM_RULE_MAX,
-        .number_tbl8s = SS_LPM_TBL8S_MAX,
-        .flags        = 0,
-    };
-    
     cidr_table = je_calloc(1, sizeof(ss_cidr_table_t));
     if (cidr_table == NULL) {
         fprintf(stderr, "could not allocate cidr table\n");
         goto error_out;
     }
     
-    cidr_table->cidr4 = rte_lpm_create("cidr4", 0, SS_LPM_RULE_MAX, 0);
-    cidr_table->cidr6 = rte_lpm6_create("cidr6", 0, &lpm6_info);
+    cidr_table->radix4 = ss_radix_tree_create(SS_V4_PREFIX_MAX);
+    cidr_table->radix6 = ss_radix_tree_create(SS_V6_PREFIX_MAX);
     
     return cidr_table;
     
@@ -400,29 +394,13 @@ ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_json) {
 }
 
 int ss_cidr_table_destroy(ss_cidr_table_t* cidr_table) {
-    ss_cidr_entry_t* cptr;
-    ss_cidr_entry_t* ctmp;
-    
     if (!cidr_table) return 0;
     
-    if (cidr_table->hash4) {
-        HASH_ITER(hh, cidr_table->hash4, cptr, ctmp) {
-            HASH_DEL(cidr_table->hash4, cptr);
-            if (cptr) ss_cidr_entry_destroy(cptr);
-        }
+    if (cidr_table->radix4) {
+        ss_radix_tree_clear(cidr_table->radix4, NULL);
     }
-    if (cidr_table->hash6) {
-        HASH_ITER(hh, cidr_table->hash6, cptr, ctmp) {
-            HASH_DEL(cidr_table->hash6, cptr);
-            if (cptr) ss_cidr_entry_destroy(cptr);
-        }
-    }
-    
-    if (cidr_table->cidr4) {
-        rte_lpm_delete_all(cidr_table->cidr4);
-    }
-    if (cidr_table->cidr6) {
-        rte_lpm6_delete_all(cidr_table->cidr6);
+    if (cidr_table->radix6) {
+        ss_radix_tree_clear(cidr_table->radix6, NULL);
     }
     
     return 0;
@@ -439,7 +417,7 @@ ss_cidr_entry_t* ss_cidr_entry_create(json_object* cidr_json) {
     
     cidr_entry->name = ss_json_string_get(cidr_json, "name");
     if (cidr_entry->name == NULL) {
-        fprintf(stderr, "pcap_entry name is null\n");
+        fprintf(stderr, "cidr name is null\n");
         goto error_out;
     }
     

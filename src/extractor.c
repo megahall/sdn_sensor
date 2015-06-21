@@ -202,14 +202,14 @@ int ss_extract_dns_atype(ss_answer_t* result, dns_answer_t* aptr) {
         case RR_A: {
             result->type = SS_TYPE_IP;
             ip->family   = SS_AF_INET4;
-            ip->prefix   = 32;
+            ip->cidr     = 32;
             ip->ip4_addr.addr = aptr->a.address;
             break;
         }
         case RR_AAAA: {
             result->type = SS_TYPE_IP;
             ip->family   = SS_AF_INET6;
-            ip->prefix   = 128;
+            ip->cidr     = 128;
             rte_memcpy(ip->ip6_addr.addr, &aptr->aaaa.address, sizeof(ip->ip6_addr.addr));
             break;
         }

@@ -311,11 +311,12 @@ ss_ioc_entry_t* ss_ioc_entry_create(ss_ioc_file_t* ioc_file, char* ioc_str) {
     strlcpy(ioc->threat_type, field, sizeof(ioc->threat_type));
 
     field = strsep(&sepptr, SS_IOC_FIELD_DELIMITERS);
-    rv = ss_cidr_parse(field, &ioc->ip);
-    if (rv != 1) {
-        fprintf(stderr, "ioc id: %lu: ip was corrupt: %s\n",
-            ioc->id, field);
-        goto error_out;
+    if (strlen(field)) {
+        rv = ss_cidr_parse(field, &ioc->ip);
+        if (rv != 1) {
+            fprintf(stderr, "ioc id: %lu: ip not valid: %s\n",
+                ioc->id, field);
+        }
     }
 
     field = strsep(&sepptr, SS_IOC_FIELD_DELIMITERS);
@@ -323,7 +324,15 @@ ss_ioc_entry_t* ss_ioc_entry_create(ss_ioc_file_t* ioc_file, char* ioc_str) {
 
     field = strsep(&sepptr, SS_IOC_FIELD_DELIMITERS);
     strlcpy(ioc->value, field, sizeof(ioc->value));
-    
+    if (ioc->type == SS_IOC_TYPE_CIDR) {
+        rv = ss_cidr_parse(field, &ioc->ip);
+        if (rv != 1) {
+            fprintf(stderr, "ioc id: %lu: cidr not valid: %s\n",
+                ioc->id, field);
+            goto error_out;
+        }
+    }
+
     je_free(freeptr); freeptr = NULL;
     return ioc;
 
@@ -369,6 +378,7 @@ int ss_ioc_entry_dump_dpdk(ss_ioc_entry_t* ioc) {
 
 ss_ioc_type_t ss_ioc_type_load(const char* ioc_type) {
     if (!strcasecmp(ioc_type, "ip"))     return SS_IOC_TYPE_IP;
+    if (!strcasecmp(ioc_type, "cidr"))   return SS_IOC_TYPE_CIDR;
     if (!strcasecmp(ioc_type, "domain")) return SS_IOC_TYPE_DOMAIN;
     if (!strcasecmp(ioc_type, "url"))    return SS_IOC_TYPE_URL;
     if (!strcasecmp(ioc_type, "email"))  return SS_IOC_TYPE_EMAIL;
@@ -380,6 +390,7 @@ ss_ioc_type_t ss_ioc_type_load(const char* ioc_type) {
 const char* ss_ioc_type_dump(ss_ioc_type_t ioc_type) {
     switch (ioc_type) {
         case SS_IOC_TYPE_IP:     return "IP";
+        case SS_IOC_TYPE_CIDR:   return "CIDR";
         case SS_IOC_TYPE_DOMAIN: return "DOMAIN";
         case SS_IOC_TYPE_URL:    return "URL";
         case SS_IOC_TYPE_EMAIL:  return "EMAIL";
@@ -436,16 +447,16 @@ int ss_ioc_chain_optimize() {
     int   rv;
     MDB_txn* txn = NULL;
     MDB_val  key, value;
-    
+
     rv = mdb_txn_begin(ss_conf->mdb_env, NULL, 0, &txn);
     if (rv) {
         fprintf(stderr, "could not begin ioc optimization mdb transaction: %s\n", mdb_strerror(rv));
         return -1;
     }
 #endif
-    
+
     fprintf(stderr, "optimizing IOCs...\n");
-    
+
     uint64_t indicators = 0;
     next_ioc: TAILQ_FOREACH_SAFE(iptr, &ss_conf->ioc_chain.ioc_list, entry, itmp) {
         switch (iptr->type) {
@@ -656,16 +667,16 @@ int ss_ioc_chain_optimize() {
                 break;
             }
             case SS_IOC_TYPE_MD5: {
-                fprintf(stderr, "ioc %lu is unsupported md5 type\n", iptr->id);
-                goto next_ioc;
+                ss_ioc_chain_optimize_md5(iptr);
+                break;
             }
             case SS_IOC_TYPE_SHA256: {
-                fprintf(stderr, "ioc %lu is unsupported sha256 type\n", iptr->id);
-                goto next_ioc;
+                ss_ioc_chain_optimize_sha256(iptr);
+                break;
             }
             default: {
                 fprintf(stderr, "ioc %lu is unknown type %d\n", iptr->id, iptr->type);
-                goto next_ioc;
+                //goto next_ioc;
             }
         }
         ++indicators;

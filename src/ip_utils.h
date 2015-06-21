@@ -41,7 +41,7 @@ typedef struct ip6_addr_s ip6_addr_t;
 
 struct ip_addr_s {
     uint8_t family;
-    uint8_t prefix;
+    uint8_t cidr;
     union {
         ip4_addr_t ip4;
         ip6_addr_t ip6;
@@ -51,6 +51,15 @@ struct ip_addr_s {
 #define ip6_addr addr.ip6
 
 typedef struct ip_addr_s ip_addr_t;
+
+struct ip_addr_bytes_s {
+    union {
+        ip4_addr_t ip4;
+        ip6_addr_t ip6;
+    } addr;    
+};
+
+typedef struct ip_addr_bytes_s ip_addr_bytes_t;
 
 /* BEGIN PROTOTYPES */
 

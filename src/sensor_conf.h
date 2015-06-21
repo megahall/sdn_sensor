@@ -54,13 +54,18 @@ struct ss_conf_s {
     ss_ioc_entry_t* domain_table;
     ss_ioc_entry_t* url_table;
     ss_ioc_entry_t* email_table;
-    
+
+    ss_radix_tree_t* radix4;
+    ss_radix_tree_t* radix6;    
+
+#ifdef SS_IOC_BACKEND_DISK    
     MDB_env* mdb_env;
     MDB_dbi  ip4_dbi;
     MDB_dbi  ip6_dbi;
     MDB_dbi  domain_dbi;
     MDB_dbi  url_dbi;
     MDB_dbi  email_dbi;
+#endif
 } __rte_cache_aligned;
 
 typedef struct ss_conf_s ss_conf_t;

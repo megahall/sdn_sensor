@@ -340,15 +340,11 @@ struct ss_cidr_entry_s {
 typedef struct ss_cidr_entry_s ss_cidr_entry_t;
 
 struct ss_cidr_table_s {
-    uint64_t hash4_matches;
-    uint64_t hash6_matches;
-    uint64_t cidr4_matches;
-    uint64_t cidr6_matches;
+    uint64_t radix4_matches;
+    uint64_t radix6_matches;
     
-    ss_cidr_entry_t* hash4;
-    ss_cidr_entry_t* hash6;
-    rte_lpm4_t* cidr4;
-    rte_lpm6_t* cidr6;
+    ss_radix_tree_t* radix4;
+    ss_radix_tree_t* radix6;
 } __rte_cache_aligned;
 
 typedef struct ss_cidr_table_s ss_cidr_table_t;

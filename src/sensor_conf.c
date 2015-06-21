@@ -557,7 +557,9 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         fprintf(stderr, "could not initialize mdb: %s\n", mdb_strerror(rv));
         is_ok = 0; goto error_out;
     }
-    // XXX: init more objects here
+
+    ss_conf->radix4 = ss_radix_tree_create(SS_V4_PREFIX_MAX);
+    ss_conf->radix6 = ss_radix_tree_create(SS_V6_PREFIX_MAX);
     
     items = json_object_object_get(json_conf, "network");
     if (items == NULL) {
