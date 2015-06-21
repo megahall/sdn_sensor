@@ -349,6 +349,7 @@ int ss_ioc_entry_destroy(ss_ioc_entry_t* ioc_entry) {
 // typically during configuration file parsing
 int ss_ioc_entry_dump(ss_ioc_entry_t* ioc) {
     char ip_str[SS_ADDR_STR_MAX];
+    memset(ip_str, 0, sizeof(ip_str));
     ss_inet_ntop(&ioc->ip, ip_str, sizeof(ip_str));
     fprintf(stderr, "ioc entry: id: %lu type: %s threat_type: %s ip: %s dns: %s value: %s\n",
         ioc->id, ss_ioc_type_dump(ioc->type), ioc->threat_type, ip_str, ioc->dns, ioc->value);
@@ -359,6 +360,7 @@ int ss_ioc_entry_dump(ss_ioc_entry_t* ioc) {
 // typically during runtime when ioc matches are found
 int ss_ioc_entry_dump_dpdk(ss_ioc_entry_t* ioc) {
     char ip_str[SS_ADDR_STR_MAX];
+    memset(ip_str, 0, sizeof(ip_str));
     ss_inet_ntop(&ioc->ip, ip_str, sizeof(ip_str));
     RTE_LOG(NOTICE, IOC, "ioc entry: id: %lu type: %s threat_type: %s ip: %s dns: %s value: %s\n",
         ioc->id, ss_ioc_type_dump(ioc->type), ioc->threat_type, ip_str, ioc->dns, ioc->value);

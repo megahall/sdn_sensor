@@ -177,6 +177,7 @@ int ss_metadata_prepare_ioc(const char* source, const char* rule, nn_queue_t* nn
     if (type == NULL) goto error_out;
     threat_type = json_object_new_string(iptr->threat_type);
     if (threat_type == NULL) goto error_out;
+    memset(ip_str, 0, sizeof(ip_str));
     result = ss_inet_ntop(&iptr->ip, ip_str, sizeof(ip_str));
     if (result != NULL) {
         ip = json_object_new_string(ip_str);

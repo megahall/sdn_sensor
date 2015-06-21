@@ -94,6 +94,8 @@ int ss_flow_key_dump(const char* message, ss_flow_key_t* key) {
         // XXX: now panic and freak out?
         return -1;
     }
+    memset(sip, 0, sizeof(sip));
+    memset(dip, 0, sizeof(dip));
     ss_inet_ntop_raw(family, key->sip, sip, sizeof(sip));
     ss_inet_ntop_raw(family, key->dip, dip, sizeof(dip));
 
