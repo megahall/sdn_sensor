@@ -26,6 +26,7 @@
 #include "common.h"
 #include "ioc.h"
 #include "json.h"
+#include "patricia.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 
@@ -383,8 +384,14 @@ ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_json) {
         goto error_out;
     }
     
-    cidr_table->radix4 = ss_radix_tree_create(SS_V4_PREFIX_MAX);
-    cidr_table->radix6 = ss_radix_tree_create(SS_V6_PREFIX_MAX);
+    cidr_table->radix4 = patricia_create();
+    if (cidr_table->radix4 == NULL) {
+        fprintf(stderr, "could not allocate cidr radix4\n");
+    }
+    cidr_table->radix6 = patricia_create();
+    if (cidr_table->radix6 == NULL) {
+        fprintf(stderr, "could not allocate cidr radix6\n");
+    }
     
     return cidr_table;
     
@@ -396,12 +403,7 @@ ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_json) {
 int ss_cidr_table_destroy(ss_cidr_table_t* cidr_table) {
     if (!cidr_table) return 0;
     
-    if (cidr_table->radix4) {
-        ss_radix_tree_clear(cidr_table->radix4, NULL);
-    }
-    if (cidr_table->radix6) {
-        ss_radix_tree_clear(cidr_table->radix6, NULL);
-    }
+    // XXX: what do we do to empty it out?
     
     return 0;
 }
