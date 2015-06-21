@@ -9,7 +9,6 @@
 
 #include "common.h"
 #include "ip_utils.h"
-#include "netflow_addr.h"
 
 /* CONSTANTS */
 
@@ -58,6 +57,7 @@ struct ss_ioc_chain_s {
 
 typedef struct ss_ioc_chain_s ss_ioc_chain_t;
 
+struct xaddr;
 struct store_flow_complete;
 
 /* BEGIN PROTOTYPES */
