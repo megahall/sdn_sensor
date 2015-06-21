@@ -14,7 +14,7 @@
 #include "common.h"
 #include "ip_utils.h"
 #include "ioc.h"
-#include "radix.h"
+#include "patricia.h"
 #include "re_utils.h"
 
 typedef enum json_type json_type_t;
@@ -54,9 +54,9 @@ struct ss_conf_s {
     ss_ioc_entry_t* domain_table;
     ss_ioc_entry_t* url_table;
     ss_ioc_entry_t* email_table;
-
-    ss_radix_tree_t* radix4;
-    ss_radix_tree_t* radix6;    
+    
+    patricia_trie_t* radix4;
+    patricia_trie_t* radix6;
 
 #ifdef SS_IOC_BACKEND_DISK    
     MDB_env* mdb_env;
