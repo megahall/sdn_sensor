@@ -42,7 +42,7 @@ sub update_prototypes {
     die "header file $h->{'header_path'} did not compile" if $?;
     my @prototypes = split("\n", $prototypes, -1);
     shift(@prototypes);
-    @prototypes    = map { s/ \*/* /g; $_; } (@prototypes);
+    @prototypes    = map { s/ (\*+)/$1 /g; $_; } (@prototypes);
     $prototypes    = join("\n", @prototypes);
     
     my $inside_prototypes = 0;
