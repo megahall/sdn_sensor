@@ -77,7 +77,7 @@ int ss_frame_find_l4_header(ss_frame_t* rx_buf, uint8_t ip_protocol) {
     }
 
     switch (ip_protocol) {
-        case IPPROTO_ICMP: {
+        case IPPROTO_ICMPV4: {
             rx_buf->icmp4 = (icmp4_hdr_t*) (l3_pointer + l3_size);
             return 0;
         }
