@@ -26,7 +26,6 @@
 
 #include "ip_utils.h"
 #include "nn_queue.h"
-#include "radix.h"
 
 /* MACROS */
 
@@ -339,12 +338,14 @@ struct ss_cidr_entry_s {
 
 typedef struct ss_cidr_entry_s ss_cidr_entry_t;
 
+struct patricia_trie_s;
+
 struct ss_cidr_table_s {
     uint64_t radix4_matches;
     uint64_t radix6_matches;
     
-    ss_radix_tree_t* radix4;
-    ss_radix_tree_t* radix6;
+    struct patricia_trie_s* radix4;
+    struct patricia_trie_s* radix6;
 } __rte_cache_aligned;
 
 typedef struct ss_cidr_table_s ss_cidr_table_t;
