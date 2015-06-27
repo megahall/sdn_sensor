@@ -20,17 +20,17 @@ export EXTRA_CFLAGS="-g -O2 -fPIC -msse4"
 
 cd "${RTE_SDK}"
 
-#make clean || true
-
 if [[ ! -f ${RTE_SDK_BIN}/.config ]]; then
     mkdir -p "${RTE_SDK_BIN}"
-    #make config T="${RTE_TARGET}"
+    make config T="${RTE_TARGET}"
     cp "${script_directory}/dpdk-config.txt" "${RTE_SDK_BIN}/.config"
 fi
 
-make -j "${thread_count}"
-make -j "${thread_count}" -C examples "RTE_SDK=${RTE_SDK}" "RTE_TARGET=build" "RTE_SDK_BIN=${RTE_SDK}/build"
+make clean || true
+
+make -j "${thread_count}" "RTE_OUTPUT=${RTE_SDK_BIN}"
 make -j "${thread_count}" -C app/test "RTE_SDK=${RTE_SDK}" "RTE_TARGET=build" "RTE_SDK_BIN=${RTE_SDK}/build"
+make -j "${thread_count}" -C examples "RTE_SDK=${RTE_SDK}" "RTE_TARGET=build" "RTE_SDK_BIN=${RTE_SDK}/build"
 
 sudo mkdir -p /lib/modules/$(uname -r)/kernel/drivers/uio
 sudo cp build/build/lib/librte_eal/linuxapp/igb_uio/igb_uio.ko /lib/modules/$(uname -r)/kernel/drivers/uio/igb_uio.ko
