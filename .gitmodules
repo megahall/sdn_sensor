@@ -19,3 +19,6 @@
 [submodule "external/jnano"]
 	path = external/jnano
 	url = https://github.com/megahall/jnano.git
+[submodule "external/re2"]
+	path = external/re2
+	url = https://github.com/google/re2.git
