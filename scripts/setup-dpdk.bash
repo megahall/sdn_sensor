@@ -16,7 +16,7 @@ export RTE_TARGET="x86_64-native-linuxapp-clang"
 export RTE_ARCH="x86_64"
 export RTE_INCLUDE="${RTE_SDK_BIN}/include"
 
-export EXTRA_CFLAGS="-g -O2 -fPIC -msse4"
+export EXTRA_CFLAGS="-g -O2 -fPIC -msse4.2"
 
 cd "${RTE_SDK}"
 
@@ -26,11 +26,11 @@ if [[ ! -f ${RTE_SDK_BIN}/.config ]]; then
     cp "${script_directory}/dpdk-config.txt" "${RTE_SDK_BIN}/.config"
 fi
 
-make clean || true
+#make clean || true
 
 make -j "${thread_count}" "RTE_OUTPUT=${RTE_SDK_BIN}"
 make -j "${thread_count}" -C app/test "RTE_SDK=${RTE_SDK}" "RTE_TARGET=build" "RTE_SDK_BIN=${RTE_SDK}/build"
-make -j "${thread_count}" -C examples "RTE_SDK=${RTE_SDK}" "RTE_TARGET=build" "RTE_SDK_BIN=${RTE_SDK}/build"
+#make -j "${thread_count}" -C examples "RTE_SDK=${RTE_SDK}" "RTE_TARGET=build" "RTE_SDK_BIN=${RTE_SDK}/build"
 
 sudo mkdir -p /lib/modules/$(uname -r)/kernel/drivers/uio
 sudo cp build/build/lib/librte_eal/linuxapp/igb_uio/igb_uio.ko /lib/modules/$(uname -r)/kernel/drivers/uio/igb_uio.ko
