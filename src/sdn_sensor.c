@@ -331,11 +331,7 @@ int main(int argc, char* argv[]) {
     if (rv) {
         rte_exit(EXIT_FAILURE, "could not initialize tcp protocol\n");
     }
-/*
-    if (rte_eal_pci_probe() < 0) {
-        rte_exit(EXIT_FAILURE, "could not initialize pci bus / ethernet nics\n");
-    }
-*/
+
     lcore_count = (uint16_t) rte_lcore_count();
     port_count = rte_eth_dev_count();
     RTE_LOG(NOTICE, SS, "port_count %d\n", port_count);
