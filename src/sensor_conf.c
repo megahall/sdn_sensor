@@ -698,3 +698,56 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
     
     return ss_conf;
 }
+
+int ss_conf_ioc_file_parse() {
+    int is_ok          = 1;
+    int rv             = 0;
+    json_object* items = NULL;
+    json_object* item  = NULL;
+
+    struct rte_lpm6_config lpm6_info = {
+        .max_rules    = SS_LPM_RULE_MAX,
+        .number_tbl8s = SS_LPM_TBL8S_MAX,
+        .flags        = 0,
+    };
+
+    ss_conf->cidr4 = rte_lpm_create("cidr4", 0, SS_LPM_RULE_MAX, 0);
+    ss_conf->cidr6 = rte_lpm6_create("cidr6", 0, &lpm6_info);
+    if (ss_conf->cidr4 == NULL) {
+        fprintf(stderr, "could not allocate cidr4\n");
+        return -1;
+    }
+    if (ss_conf->cidr6 == NULL) {
+        fprintf(stderr, "could not allocate cidr6\n");
+        return -1;
+    }
+
+    items = json_object_object_get(ss_conf->json, "ioc_files");
+    if (!items) return 0;
+
+    is_ok = json_object_is_type(items, json_type_array);
+    if (!is_ok) {
+        fprintf(stderr, "ioc_files is not an array\n");
+        return -1;
+    }
+    int length = json_object_array_length(items);
+    if (length > SS_IOC_FILE_MAX) {
+        fprintf(stderr, "ioc_file_count %d greater than %d, only parsing files below limit\n", length, SS_IOC_FILE_MAX);
+        length = SS_IOC_FILE_MAX;
+    }
+    for (int i = 0; i < length; ++i) {
+        item = json_object_array_get_idx(items, i);
+        rv = ss_ioc_file_load(item);
+        if (rv) {
+            fprintf(stderr, "ioc_file index %d could not be loaded\n", i);
+            is_ok = 0;
+            return -1;
+        }
+    }
+    
+    ss_ioc_chain_dump(20);
+    ss_ioc_chain_optimize();
+    ss_ioc_tables_dump(5);
+    
+    return 0;
+}
