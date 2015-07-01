@@ -23,8 +23,8 @@ RTE_SDK ?= $(SDN_SENSOR_BASE)/external/dpdk
 #
 WARNINGS = \
 -Wall -Wextra -Weverything \
--Wno-language-extension-token -Wno-disabled-macro-expansion \
--Wno-cast-align -Wno-bad-function-cast -Wno-padded -Wno-packed \
+-Wno-language-extension-token -Wno-disabled-macro-expansion -Wno-reserved-id-macro \
+-Wno-cast-align -Wno-bad-function-cast -Wno-cast-qual -Wno-padded -Wno-packed \
 -Wno-unused-parameter -Wno-unused-label -Wno-switch-enum -Wno-extra-semi \
 -Wno-gcc-compat -Wno-documentation-unknown-command
 
