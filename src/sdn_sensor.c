@@ -327,6 +327,11 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    rv = ss_conf_ioc_file_parse();
+    if (rv) {
+        rte_exit(EXIT_FAILURE, "could not initialize ioc files\n");
+    }
+
     rv = ss_tcp_init();
     if (rv) {
         rte_exit(EXIT_FAILURE, "could not initialize tcp protocol\n");
