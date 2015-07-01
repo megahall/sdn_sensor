@@ -17,6 +17,8 @@
 #include <rte_ether.h>
 #include <rte_hash.h>
 #include <rte_log.h>
+#include <rte_lpm.h>
+#include <rte_lpm6.h>
 #include <rte_memory.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
@@ -61,6 +63,9 @@
 #define SS_DNS_NAME_MAX      96
 #define SS_DNS_RESULT_MAX     8
 
+#define SS_LPM_RULE_MAX    4096
+#define SS_LPM_TBL8S_MAX   (1 << 16)
+
 #define SS_PCRE_MATCH_MAX  (16 * 3)
 
 #define ETHER_TYPE_IPV4 ETHER_TYPE_IPv4
@@ -95,6 +100,9 @@ typedef struct rte_mbuf    rte_mbuf_t;
 typedef struct rte_mempool rte_mempool_t;
 
 typedef struct rte_hash    rte_hash_t;
+
+typedef struct rte_lpm     rte_lpm4_t;
+typedef struct rte_lpm6    rte_lpm6_t;
 
 typedef struct ether_addr  eth_addr_t;
 typedef struct ether_hdr   eth_hdr_t;
@@ -338,14 +346,17 @@ struct ss_cidr_entry_s {
 
 typedef struct ss_cidr_entry_s ss_cidr_entry_t;
 
-struct patricia_trie_s;
+typedef struct ss_ioc_entry_s ss_ioc_entry_t;
 
 struct ss_cidr_table_s {
-    uint64_t radix4_matches;
-    uint64_t radix6_matches;
-    
-    struct patricia_trie_s* radix4;
-    struct patricia_trie_s* radix6;
+    uint64_t cidr4_matches;
+    uint64_t cidr6_matches;
+
+    ss_ioc_entry_t* hop4[SS_LPM_RULE_MAX];
+    ss_ioc_entry_t* hop6[SS_LPM_RULE_MAX];
+
+    rte_lpm4_t* cidr4;
+    rte_lpm6_t* cidr6;
 } __rte_cache_aligned;
 
 typedef struct ss_cidr_table_s ss_cidr_table_t;
