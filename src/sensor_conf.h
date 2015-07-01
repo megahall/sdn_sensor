@@ -14,7 +14,6 @@
 #include "common.h"
 #include "ip_utils.h"
 #include "ioc.h"
-#include "patricia.h"
 #include "re_utils.h"
 
 typedef enum json_type json_type_t;
@@ -40,6 +39,8 @@ struct ss_conf_s {
     
     wordexp_t eal_vector;
     
+    json_object* json;
+    
     ss_pcap_chain_t pcap_chain;
     ss_cidr_table_t cidr_table;
     ss_dns_chain_t dns_chain;
@@ -55,8 +56,12 @@ struct ss_conf_s {
     ss_ioc_entry_t* url_table;
     ss_ioc_entry_t* email_table;
     
-    patricia_trie_t* radix4;
-    patricia_trie_t* radix6;
+    rte_lpm4_t* cidr4;
+    rte_lpm6_t* cidr6;
+    uint32_t hop4_id;
+    uint32_t hop6_id;
+    ss_ioc_entry_t* hop4[SS_LPM_RULE_MAX];
+    ss_ioc_entry_t* hop6[SS_LPM_RULE_MAX];
 
 #ifdef SS_IOC_BACKEND_DISK    
     MDB_env* mdb_env;
@@ -80,5 +85,6 @@ char* ss_conf_file_read(char* conf_path);
 int ss_conf_network_parse(json_object* items);
 int ss_conf_dpdk_parse(json_object* items);
 ss_conf_t* ss_conf_file_parse(char* conf_path);
+int ss_conf_ioc_file_parse(void);
 
 /* END PROTOTYPES */
