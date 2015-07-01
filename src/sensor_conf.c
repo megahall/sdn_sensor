@@ -691,37 +691,10 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         }
     }
     
-    items = json_object_object_get(json_conf, "ioc_files");
-    if (items) {
-        is_ok = json_object_is_type(items, json_type_array);
-        if (!is_ok) {
-            fprintf(stderr, "ioc_files is not an array\n");
-            goto error_out;
-        }
-        int length = json_object_array_length(items);
-        if (length > SS_IOC_FILE_MAX) {
-            fprintf(stderr, "ioc_file_count %d greater than %d, only parsing files below limit\n", length, SS_IOC_FILE_MAX);
-            length = SS_IOC_FILE_MAX;
-        }
-        for (int i = 0; i < length; ++i) {
-            item = json_object_array_get_idx(items, i);
-            rv = ss_ioc_file_load(item);
-            if (rv) {
-                fprintf(stderr, "ioc_file index %d could not be loaded\n", i);
-                is_ok = 0; goto error_out;
-            }
-        }
-        
-        ss_ioc_chain_dump(20);
-        ss_ioc_chain_optimize();
-        ss_ioc_tables_dump(5);
-    }
-    
     // XXX: do more stuff
     error_out:
-    if (conf_buffer)       { je_free(conf_buffer);       conf_buffer = NULL; }
-    if (json_conf)         { json_object_put(json_conf); json_conf   = NULL; }
-    if (!is_ok && ss_conf) { ss_conf_destroy();          ss_conf     = NULL; }
+    if (conf_buffer)        { je_free(conf_buffer);       conf_buffer = NULL; }
+    if (!is_ok && ss_conf)  { ss_conf_destroy();          ss_conf     = NULL; }
     
     return ss_conf;
 }
