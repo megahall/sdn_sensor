@@ -20,13 +20,14 @@
 #include <rte_config.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
+#include <rte_lpm.h>
+#include <rte_lpm6.h>
 
 #include <uthash.h>
 
 #include "common.h"
 #include "ioc.h"
 #include "json.h"
-#include "patricia.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 
@@ -377,6 +378,12 @@ int ss_dns_chain_remove_name(char* name) {
 
 ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_json) {
     ss_cidr_table_t* cidr_table = NULL;
+
+    struct rte_lpm6_config lpm6_info = {
+        .max_rules    = SS_LPM_RULE_MAX,
+        .number_tbl8s = SS_LPM_TBL8S_MAX,
+        .flags        = 0,
+    };
     
     cidr_table = je_calloc(1, sizeof(ss_cidr_table_t));
     if (cidr_table == NULL) {
@@ -384,13 +391,13 @@ ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_json) {
         goto error_out;
     }
     
-    cidr_table->radix4 = patricia_create();
-    if (cidr_table->radix4 == NULL) {
-        fprintf(stderr, "could not allocate cidr radix4\n");
+    cidr_table->cidr4 = rte_lpm_create("cidr4", 0, SS_LPM_RULE_MAX, 0);
+    cidr_table->cidr6 = rte_lpm6_create("cidr6", 0, &lpm6_info);
+    if (cidr_table->cidr4 == NULL) {
+        fprintf(stderr, "could not allocate cidr4\n");
     }
-    cidr_table->radix6 = patricia_create();
-    if (cidr_table->radix6 == NULL) {
-        fprintf(stderr, "could not allocate cidr radix6\n");
+    if (cidr_table->cidr6 == NULL) {
+        fprintf(stderr, "could not allocate cidr6\n");
     }
     
     return cidr_table;
@@ -402,8 +409,13 @@ ss_cidr_table_t* ss_cidr_table_create(json_object* cidr_json) {
 
 int ss_cidr_table_destroy(ss_cidr_table_t* cidr_table) {
     if (!cidr_table) return 0;
-    
-    // XXX: what do we do to empty it out?
+
+    if (cidr_table->cidr4) {
+        rte_lpm_delete_all(cidr_table->cidr4);
+    }
+    if (cidr_table->cidr6) {
+        rte_lpm6_delete_all(cidr_table->cidr6);
+    }
     
     return 0;
 }
