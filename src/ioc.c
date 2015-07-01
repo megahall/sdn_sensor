@@ -20,6 +20,8 @@
 #include <json-c/json_object_private.h>
 
 #include <rte_log.h>
+#include <rte_lpm.h>
+#include <rte_lpm6.h>
 
 #include "ioc.h"
 
@@ -30,7 +32,6 @@
 #include "netflow_addr.h"
 #include "netflow_format.h"
 #include "nn_queue.h"
-#include "patricia.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 
@@ -505,7 +506,7 @@ int ss_ioc_chain_optimize_cidr(ss_ioc_entry_t* iptr) {
     memset(tvalue, 0, sizeof(tvalue));
     const char* result = ss_inet_ntop(&iptr->ip, tvalue, sizeof(tvalue));
 #ifdef SS_IOC_BACKEND_RAM
-    patricia_trie_t* node;
+    int rv;
 #endif
     if (result == NULL) {
         fprintf(stderr, "ioc id %lu: could not parse ip value\n", iptr->id);
@@ -515,30 +516,12 @@ int ss_ioc_chain_optimize_cidr(ss_ioc_entry_t* iptr) {
     switch (iptr->ip.family) {
         case SS_AF_INET4: {
 #ifdef SS_IOC_BACKEND_RAM
-            ip_addr_radix_t key;
-            memset(&key, 0, sizeof(key));
-            memcpy(&key.ip4, &iptr->ip.ip4_addr, IPV4_ALEN);
-            node = patricia_get(key.key, ss_conf->radix4);
-            if (node == NULL || !patricia_match_key_node(key.key, node)) {
-                node = je_malloc(sizeof(patricia_trie_t));
-                if (node == NULL) {
-                    fprintf(stderr, "could not allocate radix4 node\n");
-                    return -1;
-                }
-                memset(node, 0, sizeof(patricia_trie_t));
-                node->p_m = je_malloc(sizeof(patricia_mask_t));
-                if (node->p_m == NULL) {
-                    fprintf(stderr, "could not allocate radix4 mask\n");
-                    return -1;
-                }
-                node->p_m->pm_data = iptr;
-                node->p_key = key.key;
-                node->p_m->pm_mask = iptr->ip.cidr;
-                patricia_trie_t* inserted = patricia_put(node, ss_conf->radix4);
-                if (inserted == NULL) {
-                    fprintf(stderr, "could not insert radix4 node\n");
-                    return -1;
-                }
+            uint32_t next_hop;
+            rv = rte_lpm_is_rule_present(ss_conf->cidr4, rte_bswap32(iptr->ip.ip4_addr.addr), iptr->ip.cidr, &next_hop);
+            if (rv == 0) {
+                ss_conf->hop4[ss_conf->hop4_id] = iptr;
+                rv = rte_lpm_add(ss_conf->cidr4, rte_bswap32(iptr->ip.ip4_addr.addr), iptr->ip.cidr, ss_conf->hop4_id);
+                ss_conf->hop4_id++;
             }
             else {
                 fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
@@ -549,9 +532,12 @@ int ss_ioc_chain_optimize_cidr(ss_ioc_entry_t* iptr) {
         }
         case SS_AF_INET6: {
 #ifdef SS_IOC_BACKEND_RAM
-            node = ss_radix_search_best(ss_conf->radix6, &iptr->ip, 1);
-            if (node == NULL) {
-                ss_radix_lookup(ss_conf->radix6, &iptr->ip);
+            uint32_t next_hop;
+            rv = rte_lpm6_is_rule_present(ss_conf->cidr6, iptr->ip.ip6_addr.addr, iptr->ip.cidr, &next_hop);
+            if (rv == 0) {
+                ss_conf->hop6[ss_conf->hop6_id] = iptr;
+                rv = rte_lpm6_add(ss_conf->cidr6, iptr->ip.ip6_addr.addr, iptr->ip.cidr, ss_conf->hop6_id);
+                ss_conf->hop6_id++;
             }
             else {
                 fprintf(stderr, "ioc id %lu: skipping duplicate value: %s\n", iptr->id, result);
@@ -829,8 +815,9 @@ int ss_ioc_chain_optimize() {
 ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md) {
     ss_ioc_entry_t* iptr = NULL;
     uint32_t ip;
+    int      rv;
+    uint32_t next_hop;
 #ifdef SS_IOC_BACKEND_DISK
-    int   rv;
     MDB_txn* txn = NULL;
     MDB_val  key, value;
 
@@ -846,6 +833,12 @@ ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md) {
 #ifdef SS_IOC_BACKEND_RAM
         HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
         if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm_lookup(ss_conf->cidr4, rte_bswap32(ip), &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop4[next_hop];
+            goto out;
+        }
 #elif SS_IOC_BACKEND_DISK
         key.mv_size = sizeof(uint32_t);
         key.mv_data = (uint32_t*) &md->sip;
@@ -860,6 +853,12 @@ ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md) {
 #ifdef SS_IOC_BACKEND_RAM
         HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
         if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm_lookup(ss_conf->cidr4, rte_bswap32(ip), &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop4[next_hop];
+            goto out;
+        }
 #elif SS_IOC_BACKEND_DISK
         key.mv_size = sizeof(uint32_t);
         key.mv_data = (uint32_t*) &md->dip;
@@ -874,6 +873,12 @@ ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md) {
 #ifdef SS_IOC_BACKEND_RAM
         HASH_FIND(hh, ss_conf->ip6_table, &md->sip, sizeof(md->sip), iptr);
         if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm6_lookup(ss_conf->cidr6, (uint8_t*) &md->sip, &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop6[next_hop];
+            goto out;
+        }
 #elif SS_IOC_BACKEND_DISK
         key.mv_size = sizeof(md->sip);
         key.mv_data = &md->sip;
@@ -887,6 +892,12 @@ ss_ioc_entry_t* ss_ioc_metadata_match(ss_metadata_t* md) {
 #ifdef SS_IOC_BACKEND_RAM
         HASH_FIND(hh, ss_conf->ip6_table, &md->dip, sizeof(md->dip), iptr);
         if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm6_lookup(ss_conf->cidr6, (uint8_t*) &md->dip, &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop6[next_hop];
+            goto out;
+        }
 #elif SS_IOC_BACKEND_DISK
         key.mv_size = sizeof(md->dip);
         key.mv_data = &md->dip;
@@ -1065,8 +1076,8 @@ ss_ioc_entry_t* ss_ioc_syslog_match(const char* ioc, ss_ioc_type_t ioc_type) {
 
 ss_ioc_entry_t* ss_ioc_ip_match(ip_addr_t* ip) {
     ss_ioc_entry_t* iptr = NULL;
+    int rv;
 #ifdef SS_IOC_BACKEND_DISK
-    int   rv;
     MDB_txn* txn = NULL;
     MDB_val  key, value;
 
@@ -1083,6 +1094,12 @@ ss_ioc_entry_t* ss_ioc_ip_match(ip_addr_t* ip) {
             uint32_t iip = *(uint32_t*) &ip->ip4_addr;
             HASH_FIND_INT(ss_conf->ip4_table, &iip, iptr);
             if (iptr) goto out;
+            uint32_t next_hop = 0;
+            rv = rte_lpm_lookup(ss_conf->cidr4, rte_bswap32(iip), &next_hop);
+            if (!rv) {
+                iptr = ss_conf->hop4[next_hop];
+                goto out;
+            }
 #elif SS_IOC_BACKEND_DISK
             key.mv_size   = sizeof(uint32_t);
             key.mv_data   = (uint32_t*) &ip->ip4_addr;
@@ -1098,6 +1115,12 @@ ss_ioc_entry_t* ss_ioc_ip_match(ip_addr_t* ip) {
 #ifdef SS_IOC_BACKEND_RAM
             HASH_FIND(hh, ss_conf->ip6_table, &ip->ip6_addr, sizeof(ip->ip6_addr), iptr);
             if (iptr) goto out;
+            uint32_t next_hop = 0;
+            rv = rte_lpm6_lookup(ss_conf->cidr6, (uint8_t*) &ip->ip6_addr.addr, &next_hop);
+            if (!rv) {
+                iptr = ss_conf->hop6[next_hop];
+                goto out;
+            }
 #elif SS_IOC_BACKEND_DISK
             key.mv_size   = sizeof(ip->ip6_addr);
             key.mv_data   = &ip->ip6_addr;
@@ -1123,8 +1146,8 @@ ss_ioc_entry_t* ss_ioc_ip_match(ip_addr_t* ip) {
 ss_ioc_entry_t* ss_ioc_xaddr_match(struct xaddr* addr) {
     ss_ioc_entry_t* iptr = NULL;
     uint32_t ip;
+    int rv;
 #ifdef SS_IOC_BACKEND_DISK
-    int   rv;
     MDB_txn* txn = NULL;
     MDB_val  key, value;
 
@@ -1139,6 +1162,12 @@ ss_ioc_entry_t* ss_ioc_xaddr_match(struct xaddr* addr) {
         ip = *(uint32_t*) &addr->v4.s_addr;
 #ifdef SS_IOC_BACKEND_RAM
         HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
+        uint32_t next_hop = 0;
+        rv = rte_lpm_lookup(ss_conf->cidr4, rte_bswap32(ip), &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop4[next_hop];
+            goto out;
+        }
 #elif SS_IOC_BACKEND_DISK
         key.mv_size   = sizeof(uint32_t);
         key.mv_data   = &ip;
@@ -1152,6 +1181,12 @@ ss_ioc_entry_t* ss_ioc_xaddr_match(struct xaddr* addr) {
     else if (addr->af == SS_AF_INET6) {
 #ifdef SS_IOC_BACKEND_RAM
         HASH_FIND(hh, ss_conf->ip6_table, addr->v6.s6_addr, sizeof(addr->v6.s6_addr), iptr);
+        uint32_t next_hop = 0;
+        rv = rte_lpm6_lookup(ss_conf->cidr6, addr->v6.s6_addr, &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop6[next_hop];
+            goto out;
+        }
 #elif SS_IOC_BACKEND_DISK
         key.mv_size   = sizeof(addr->v6.s6_addr);
         key.mv_data   = addr->v6.s6_addr;
