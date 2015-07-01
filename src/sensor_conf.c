@@ -27,7 +27,6 @@
 
 #include "common.h"
 #include "ip_utils.h"
-#include "patricia.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
 
@@ -47,6 +46,11 @@ static uint64_t ss_conf_tsc_hz;
 int ss_conf_destroy() {
     // XXX: destroy everything in ss_conf_t
     wordfree(&ss_conf->eal_vector);
+
+    if (ss_conf->json) {
+        json_object_put(ss_conf->json);
+        ss_conf->json = NULL;
+    }
 
     ss_pcap_chain_destroy();
     ss_cidr_table_destroy(&ss_conf->cidr_table);
@@ -520,7 +524,6 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
     int rv;
     char* conf_buffer            = NULL;
     json_object* json_underlying = NULL;
-    json_object* json_conf       = NULL;
     json_object* items           = NULL;
     json_object* item            = NULL;
     json_error_t json_error      = json_tokener_success;
@@ -538,22 +541,23 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         is_ok = 0; goto error_out;
     }
     
-    json_conf       = json_object_get(json_underlying);
-    is_ok           = json_object_is_type(json_conf, json_type_object);
+    ss_conf = je_calloc(1, sizeof(ss_conf_t));
+    if (ss_conf == NULL) {
+        fprintf(stderr, "could not allocate sdn_sensor configuration\n");
+        is_ok = 0; goto error_out;
+    }
+
+    ss_conf->json = json_object_get(json_underlying);
+    is_ok         = json_object_is_type(ss_conf->json, json_type_object);
     if (!is_ok) {
         is_ok = 0;
         fprintf(stderr, "json configuration root is not object\n");
         is_ok = 0; goto error_out;
     }
     
-    //const char* content = json_object_to_json_string_ext(json_conf, JSON_C_TO_STRING_PRETTY);
+    //const char* content = json_object_to_json_string_ext(ss_conf->json, JSON_C_TO_STRING_PRETTY);
     //fprintf(stderr, "json configuration:\n%s\n", content);
-    
-    ss_conf = je_calloc(1, sizeof(ss_conf_t));
-    if (ss_conf == NULL) {
-        fprintf(stderr, "could not allocate sdn_sensor configuration\n");
-        is_ok = 0; goto error_out;
-    }
+
     TAILQ_INIT(&ss_conf->re_chain.re_list);
     TAILQ_INIT(&ss_conf->pcap_chain.pcap_list);
     TAILQ_INIT(&ss_conf->dns_chain.dns_list);
@@ -566,17 +570,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         is_ok = 0; goto error_out;
     }
 #endif
-
-    ss_conf->radix4 = patricia_create();
-    if (ss_conf->radix4 == NULL) {
-        fprintf(stderr, "could not allocate ioc radix4\n");
-    }
-    ss_conf->radix6 = patricia_create();
-    if (ss_conf->radix6 == NULL) {
-        fprintf(stderr, "could not allocate ioc radix6\n");
-    }
-    
-    items = json_object_object_get(json_conf, "network");
+    items = json_object_object_get(ss_conf->json, "network");
     if (items == NULL) {
         fprintf(stderr, "could not load network configuration\n");
         is_ok = 0; goto error_out;
@@ -592,7 +586,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         is_ok = 0; goto error_out;
     }
     
-    items = json_object_object_get(json_conf, "dpdk");
+    items = json_object_object_get(ss_conf->json, "dpdk");
     if (items == NULL) {
         fprintf(stderr, "could not load dpdk configuration\n");
         is_ok = 0; goto error_out;
@@ -608,7 +602,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         is_ok = 0; goto error_out;
     }
     
-    items = json_object_object_get(json_conf, "re_chain");
+    items = json_object_object_get(ss_conf->json, "re_chain");
     if (items) {
         is_ok = json_object_is_type(items, json_type_array);
         if (!is_ok) {
@@ -635,7 +629,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         }
     }
 
-    items = json_object_object_get(json_conf, "pcap_chain");
+    items = json_object_object_get(ss_conf->json, "pcap_chain");
     if (items) {
         is_ok = json_object_is_type(items, json_type_array);
         if (!is_ok) {
@@ -655,7 +649,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         }
     }
     
-    items = json_object_object_get(json_conf, "dns_chain");
+    items = json_object_object_get(ss_conf->json, "dns_chain");
     if (items) {
         is_ok = json_object_is_type(items, json_type_array);
         if (!is_ok) {
@@ -675,7 +669,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         }
     }
 
-    items = json_object_object_get(json_conf, "cidr_table");
+    items = json_object_object_get(ss_conf->json, "cidr_table");
     if (items) {
         is_ok = json_object_is_type(items, json_type_array);
         if (!is_ok) {
