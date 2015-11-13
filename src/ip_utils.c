@@ -312,7 +312,7 @@ int ss_inet_pton6(const char* src, uint8_t* dst) {
  *      Paul Vixie, 1996.
  */
 // XXX: combine duplicate logic with ss_inet_ntop_raw
-const char* ss_inet_ntop(const ip_addr_t* src, char* dst, unsigned int size) {
+const char* ss_inet_ntop(const ip_addr_t* src, char* dst, size_t size) {
     switch (src->family) {
         case SS_AF_INET4: {
             return (ss_inet_ntop4((uint8_t*) &src->ip4_addr, dst, size));
@@ -339,7 +339,7 @@ const char* ss_inet_ntop_tls(const ip_addr_t* src) {
  * return:
  *      pointer to presentation format address (`dst'), or NULL (see errno).
  */
-const char* ss_inet_ntop_raw(const uint8_t family, const uint8_t* src, char* dst, unsigned int size) {
+const char* ss_inet_ntop_raw(const uint8_t family, const uint8_t* src, char* dst, size_t size) {
     switch (family) {
         case SS_AF_INET4: {
             return (ss_inet_ntop4(src, dst, size));
