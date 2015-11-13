@@ -107,6 +107,32 @@ int ss_tcp_key_dump(const char* message, ss_tcp_key_t* key) {
     return 0;
 }
 
+int sflow_key_dump(const char* message, sflow_key_t* key) {
+    uint8_t family;
+    const char* protocol;
+    char agent_ip[SS_ADDR_STR_MAX];
+
+    if (key->protocol == L4_SFLOW4) {
+        family = SS_AF_INET4;
+        protocol = "L4_SFLOW4";
+    }
+    else if (key->protocol == L4_SFLOW6) {
+        family = SS_AF_INET6;
+        protocol = "L4_SFLOW6";
+    }
+    else {
+        // XXX: now panic and freak out?
+        return -1;
+    }
+    memset(agent_ip, 0, sizeof(agent_ip));
+    ss_inet_ntop_raw(family, key->agent_ip, agent_ip, sizeof(agent_ip));
+
+    RTE_LOG(INFO, L3L4, "%s: sflow key: %s: %s:%u --> sflow_collector\n",
+        message, protocol, agent_ip, key->agent_sub_id);
+
+    return 0;
+}
+
 #define SS_TCP_FLAGS_STR_MAX 32
 static __thread char tcp_flags_strings[SS_TCP_FLAGS_STR_MAX];
 
