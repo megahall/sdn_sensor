@@ -33,6 +33,7 @@
 #include "re_utils.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"
+#include "sflow_cb.h"
 #include "tcp.h"
 
 /* GLOBAL VARIABLES */
@@ -157,6 +158,7 @@ static void ss_timer_callback(uint16_t lcore_id, uint64_t* timer_tsc) {
     ss_port_stats_print(port_statistics, rte_eth_dev_count());
     
     ss_tcp_timer_callback();
+    sflow_timer_callback();
     
     *timer_tsc = 0;
 }
@@ -335,6 +337,11 @@ int main(int argc, char* argv[]) {
     rv = ss_tcp_init();
     if (rv) {
         rte_exit(EXIT_FAILURE, "could not initialize tcp protocol\n");
+    }
+
+    rv = sflow_init();
+    if (rv) {
+        rte_exit(EXIT_FAILURE, "could not initialize sflow protocol\n");
     }
 
     lcore_count = (uint16_t) rte_lcore_count();
