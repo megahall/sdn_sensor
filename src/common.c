@@ -73,7 +73,7 @@ const char* ss_direction_dump(ss_direction_t direction) {
     }
 }
 
-int ss_flow_key_dump(const char* message, ss_flow_key_t* key) {
+int ss_tcp_key_dump(const char* message, ss_tcp_key_t* key) {
     uint8_t family;
     const char* protocol;
     char sip[SS_ADDR_STR_MAX];
