@@ -253,7 +253,7 @@ typedef struct ss_frame_s ss_frame_t;
 
 /* TCP SUPPORT */
 
-struct ss_flow_key_s {
+struct ss_tcp_key_s {
     uint8_t  sip[IPV6_ALEN];
     uint8_t  dip[IPV6_ALEN];
     uint16_t sport;
@@ -261,7 +261,7 @@ struct ss_flow_key_s {
     uint8_t  protocol;
 } __attribute__((packed));
 
-typedef struct ss_flow_key_s ss_flow_key_t;
+typedef struct ss_tcp_key_s ss_tcp_key_t;
 
 enum ss_tcp_state_e {
     SS_TCP_CLOSED   = 0,
@@ -276,7 +276,7 @@ typedef enum ss_tcp_state_e ss_tcp_state_t;
 
 // RFC 793, RFC 1122
 struct ss_tcp_socket_s {
-    ss_flow_key_t  key;
+    ss_tcp_key_t key;
     uint64_t id;
     
     rte_spinlock_recursive_t lock;
@@ -294,6 +294,28 @@ struct ss_tcp_socket_s {
 typedef struct ss_tcp_socket_s ss_tcp_socket_t;
 
 #define TH_PSH TH_PUSH
+
+/* SFLOW SUPPORT */
+
+struct sflow_key_s {
+    uint8_t  agent_ip[IPV6_ALEN];
+    uint32_t agent_sub_id;
+    uint8_t  protocol;
+} __attribute__((packed));
+
+typedef struct sflow_key_s sflow_key_t;
+
+struct sflow_socket_s {
+    sflow_key_t key;
+    uint64_t id;
+
+    rte_spinlock_recursive_t lock;
+
+    uint64_t rx_ticks;
+    uint32_t last_seq;
+} __rte_cache_aligned;
+
+typedef struct sflow_socket_s sflow_socket_t;
 
 /* PCAP CHAIN */
 
@@ -379,7 +401,8 @@ typedef struct ss_cidr_table_s ss_cidr_table_t;
 int ss_metadata_prepare(ss_frame_t* fbuf);
 ss_direction_t ss_direction_load(const char* direction);
 const char* ss_direction_dump(ss_direction_t direction);
-int ss_flow_key_dump(const char* message, ss_flow_key_t* key);
+int ss_tcp_key_dump(const char* message, ss_tcp_key_t* key);
+int sflow_key_dump(const char* message, sflow_key_t* key);
 const char* ss_tcp_flags_dump(uint8_t tcp_flags);
 const char* ss_ether_addr_dump(struct ether_addr* addr);
 int ss_pcap_chain_destroy(void);
