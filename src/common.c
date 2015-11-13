@@ -101,17 +101,17 @@ int ss_tcp_key_dump(const char* message, ss_tcp_key_t* key) {
     ss_inet_ntop_raw(family, key->sip, sip, sizeof(sip));
     ss_inet_ntop_raw(family, key->dip, dip, sizeof(dip));
 
-    RTE_LOG(INFO, L3L4, "%s: flow key: %s: %s:%hu --> %s:%hu\n",
+    RTE_LOG(INFO, L3L4, "%s: tcp key: %s: %s:%hu --> %s:%hu\n",
         message, protocol, sip, sport, dip, dport);
 
     return 0;
 }
 
 #define SS_TCP_FLAGS_STR_MAX 32
-static char tcp_flags_strings[RTE_MAX_LCORE][SS_TCP_FLAGS_STR_MAX];
+static __thread char tcp_flags_strings[SS_TCP_FLAGS_STR_MAX];
 
 const char* ss_tcp_flags_dump(uint8_t tcp_flags) {
-    char* flags = &tcp_flags_strings[rte_lcore_id()][0];
+    char* flags = &tcp_flags_strings[0];
     memset(flags, 0, SS_TCP_FLAGS_STR_MAX);
     if (tcp_flags & TH_URG) strcat(flags, "URG ");
     if (tcp_flags & TH_ACK) strcat(flags, "ACK ");
@@ -122,11 +122,10 @@ const char* ss_tcp_flags_dump(uint8_t tcp_flags) {
     return flags;
 }
 
-#define SS_ETHER_STR_MAX 18
-static char ether_addr_strings[RTE_MAX_LCORE][SS_ETHER_STR_MAX];
+static __thread char ether_addr_strings[SS_ETHER_STR_MAX];
 
 const char* ss_ether_addr_dump(struct ether_addr* addr) {
-    char* saddr = &ether_addr_strings[rte_lcore_id()][0];
+    char* saddr = &ether_addr_strings[0];
     snprintf(saddr, SS_ETHER_STR_MAX, "%02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx",
         addr->addr_bytes[0], addr->addr_bytes[1], addr->addr_bytes[2],
         addr->addr_bytes[3], addr->addr_bytes[4], addr->addr_bytes[5]);
