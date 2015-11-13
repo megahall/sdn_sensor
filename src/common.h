@@ -45,7 +45,7 @@
 
 /* CONSTANTS */
 
-#define RTE_LOGTYPE_SS RTE_LOGTYPE_USER1
+#define RTE_LOGTYPE_SS        RTE_LOGTYPE_USER1
 
 #define RTE_LOGTYPE_CONF      RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_UTILS     RTE_LOGTYPE_USER2
@@ -58,7 +58,8 @@
 
 #define SS_INT16_SIZE         2
 
-#define ETH_ALEN              6
+#define ETHER_ALEN            6
+#define SS_ETHER_STR_MAX     18
 
 #define SS_DNS_NAME_MAX      96
 #define SS_DNS_RESULT_MAX     8
@@ -70,6 +71,11 @@
 
 #define ETHER_TYPE_IPV4 ETHER_TYPE_IPv4
 #define ETHER_TYPE_IPV6 ETHER_TYPE_IPv6
+
+#define ETHER_TYPE_MIN   0x0600
+#define ETHER_TYPE_VLAN  0x8100
+#define ETHER_TYPE_PUP_1 0x0200
+#define ETHER_TYPE_PUP_2 0x0201
 
 #define IPPROTO_ICMPV4 IPPROTO_ICMP
 
@@ -93,6 +99,13 @@
 
 #define L4_TCP4 4
 #define L4_TCP6 6
+
+#define L4_SFLOW_HASH_SIZE          2048
+#define L4_SFLOW_BUCKET_SIZE           4
+#define L4_SFLOW_EXPIRED_SECONDS     600
+
+#define L4_SFLOW4 4
+#define L4_SFLOW6 6
 
 /* TYPEDEFS */
 
@@ -127,9 +140,9 @@ typedef struct eth_vhdr_s eth_vhdr_t;
 
 struct ether_arp {
     struct  arphdr ea_hdr;         /* fixed-size header */
-    uint8_t arp_sha[ETH_ALEN];     /* sender hardware address */
+    uint8_t arp_sha[ETHER_ALEN];   /* sender hardware address */
     uint8_t arp_spa[IPV4_ALEN];    /* sender protocol address */
-    uint8_t arp_tha[ETH_ALEN];     /* target hardware address */
+    uint8_t arp_tha[ETHER_ALEN];   /* target hardware address */
     uint8_t arp_tpa[IPV4_ALEN];    /* target protocol address */
 };
 #define arp_hrd ea_hdr.ar_hrd
