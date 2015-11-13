@@ -42,7 +42,7 @@ static struct rte_hash_parameters tcp_hash_params = {
     .name               = "tcp_hash_socket_0",
     .entries            = L4_TCP_HASH_SIZE,
     .bucket_entries     = L4_TCP_BUCKET_SIZE,
-    .key_len            = sizeof(ss_flow_key_t),
+    .key_len            = sizeof(ss_tcp_key_t),
     .hash_func          = rte_hash_crc,
     .hash_func_init_val = 0,
     .socket_id          = 0,
@@ -94,7 +94,7 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     
     SS_CHECK_SELF(rx_buf, 0);    
     
-    ss_flow_key_t key;
+    ss_tcp_key_t key;
     memset(&key, 0, sizeof(key));
 
     ss_frame_layer_off_len_get(rx_buf, rx_buf->tcp, sizeof(tcp_hdr_t), &rx_buf->l4_offset, &rx_buf->data.l4_length);
@@ -117,8 +117,8 @@ int ss_frame_handle_tcp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     rx_buf->l4_offset      = (uint8_t*) rx_buf->tcp + hdr_length;
     rx_buf->data.l4_length = tcp_data_len;
 
-    // XXX: eliminate flow_key copy / duplication later
-    // XXX: instead store the flow_key in the ss_metadata_t
+    // XXX: eliminate tcp_key copy / duplication later
+    // XXX: instead store the tcp_key in the ss_metadata_t
     key.sport              = rx_buf->tcp->source;
     key.dport              = rx_buf->tcp->dest;
     key.protocol           = rx_buf->data.eth_type == ETHER_TYPE_IPV4 ? L4_TCP4 : L4_TCP6;
@@ -269,7 +269,7 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
         char message[256];
         snprintf(message, sizeof(message), "syslog_tcp: truncate message at %hu bytes due to buffer limit",
             socket->rx_length);
-        ss_flow_key_dump(message, &socket->key);
+        ss_tcp_key_dump(message, &socket->key);
 
         //ss_buffer_dump("truncated message", socket->rx_data, socket->rx_length);
         // process full message, XXX: check return value
@@ -282,18 +282,18 @@ int ss_tcp_extract_syslog(ss_tcp_socket_t* socket, ss_frame_t* rx_buf) {
     return 0;
 }
 
-int ss_tcp_socket_init(ss_flow_key_t* key, ss_tcp_socket_t* socket) {
+int ss_tcp_socket_init(ss_tcp_key_t* key, ss_tcp_socket_t* socket) {
     memset(socket, 0, sizeof(ss_tcp_socket_t));
-    rte_memcpy(&socket->key, key, sizeof(ss_flow_key_t));
+    rte_memcpy(&socket->key, key, sizeof(ss_tcp_key_t));
     rte_spinlock_recursive_init(&socket->lock);
     socket->state = SS_TCP_CLOSED;
     return 0;
 }
 
-ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf) {
+ss_tcp_socket_t* ss_tcp_socket_create(ss_tcp_key_t* key, ss_frame_t* rx_buf) {
     int is_error = 0;
     
-    ss_flow_key_dump("create socket for key", key);
+    ss_tcp_key_dump("create socket for key", key);
     // XXX: should these be allocated from jemalloc or RTE alloc?
     ss_tcp_socket_t* socket = je_calloc(1, sizeof(ss_tcp_socket_t));
     if (socket == NULL) { is_error = 1; goto error_out; }
@@ -331,8 +331,8 @@ ss_tcp_socket_t* ss_tcp_socket_create(ss_flow_key_t* key, ss_frame_t* rx_buf) {
     return socket;
 }
 
-int ss_tcp_socket_delete(ss_flow_key_t* key, int is_locked) {
-    ss_flow_key_dump("delete socket for key", key);
+int ss_tcp_socket_delete(ss_tcp_key_t* key, bool is_locked) {
+    ss_tcp_key_dump("delete socket for key", key);
 
     if (likely(!is_locked)) rte_rwlock_write_lock(&tcp_hash_lock);
     int32_t socket_id = rte_hash_del_key(tcp_hash, key);
@@ -348,8 +348,8 @@ int ss_tcp_socket_delete(ss_flow_key_t* key, int is_locked) {
     return 0;
 }
 
-ss_tcp_socket_t* ss_tcp_socket_lookup(ss_flow_key_t* key) {
-    ss_flow_key_dump("find socket for key", key);
+ss_tcp_socket_t* ss_tcp_socket_lookup(ss_tcp_key_t* key) {
+    ss_tcp_key_dump("find socket for key", key);
     rte_rwlock_read_lock(&tcp_hash_lock);
     int32_t socket_id = rte_hash_lookup(tcp_hash, key);
     rte_rwlock_read_unlock(&tcp_hash_lock);
