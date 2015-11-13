@@ -556,7 +556,6 @@ int ss_ioc_chain_optimize_cidr(ss_ioc_entry_t* iptr) {
 
 int ss_ioc_chain_optimize_domain(ss_ioc_entry_t* iptr) {
     char   tvalue[SS_DNS_NAME_MAX];
-    char*  header;
     size_t offset;
 #ifdef SS_IOC_BACKEND_RAM
     ss_ioc_entry_t* hiptr = NULL;
@@ -662,7 +661,6 @@ int ss_ioc_chain_optimize_url(ss_ioc_entry_t* iptr) {
 
 int ss_ioc_chain_optimize_email(ss_ioc_entry_t* iptr) {
     char   tvalue[SS_DNS_NAME_MAX];
-    char*  header;
     size_t offset;
 #ifdef SS_IOC_BACKEND_RAM
     ss_ioc_entry_t* hiptr = NULL;
@@ -741,9 +739,6 @@ int ss_ioc_chain_optimize_sha256(ss_ioc_entry_t* iptr) {
 int ss_ioc_chain_optimize() {
     ss_ioc_entry_t* iptr;
     ss_ioc_entry_t* itmp;
-    char*  header;
-    char   tvalue[SS_DNS_NAME_MAX];
-    size_t offset;
 #ifdef SS_IOC_BACKEND_DISK
     int   rv;
     MDB_txn* txn = NULL;
