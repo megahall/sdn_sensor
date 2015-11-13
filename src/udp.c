@@ -22,6 +22,7 @@
 #include "l4_utils.h"
 #include "netflow.h"
 #include "re_utils.h"
+#include "sflow_cb.h"
 
 int ss_frame_handle_udp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
     int rv = 0;
@@ -48,6 +49,9 @@ int ss_frame_handle_udp(ss_frame_t* rx_buf, ss_frame_t* tx_buf) {
         case L4_PORT_SFLOW: {
             RTE_LOG(DEBUG, L3L4, "rx udp sFlow packet\n");
             SS_CHECK_SELF(rx_buf, 0);
+
+            rte_hexdump(stderr, "sflow_bytes", rte_pktmbuf_mtod(rx_buf->mbuf, uint8_t*), rte_pktmbuf_pkt_len(rx_buf->mbuf));
+            sflow_frame_handle(rx_buf);
             break;
         }
         case L4_PORT_NETFLOW_1:
