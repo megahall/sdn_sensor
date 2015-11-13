@@ -26,7 +26,7 @@ WARNINGS = \
 -Wno-language-extension-token -Wno-disabled-macro-expansion -Wno-reserved-id-macro \
 -Wno-cast-align -Wno-bad-function-cast -Wno-cast-qual -Wno-padded -Wno-packed \
 -Wno-unused-parameter -Wno-unused-label -Wno-switch-enum -Wno-extra-semi \
--Wno-gcc-compat -Wno-documentation-unknown-command
+-Wno-gcc-compat -Wno-documentation-unknown-command -Wno-missing-noreturn
 
 SS_VERSION := $(shell echo `date "+%Y%m%d-%H%M%S"`-`git rev-parse --short HEAD`)
 
