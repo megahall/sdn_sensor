@@ -5,16 +5,25 @@
 #include <time.h>
 #include <sys/types.h>
 
-#include <jemalloc/jemalloc.h>
-
 #include <rte_byteorder.h>
 #include <rte_cycles.h>
 #include <rte_hash_crc.h>
 #include <rte_log.h>
 #include <rte_rwlock.h>
 
+#include <jemalloc/jemalloc.h>
+
+#include <json-c/json.h>
+#include <json-c/json_object_private.h>
+
 #include "common.h"
+#include "ioc.h"
 #include "ip_utils.h"
+#include "je_utils.h"
+#include "json.h"
+#include "metadata.h"
+#include "nn_queue.h"
+#include "sdn_sensor.h"
 #include "sflow.h"
 #include "sflow_cb.h"
 #include "sflow_utils.h"
@@ -76,7 +85,7 @@ int sflow_timer_callback() {
 }
 
 int sflow_frame_handle(ss_frame_t* rx_buf) {
-    uint16_t ether_type = rx_buf->data.eth_type;
+    uint16_t eth_type = rx_buf->data.eth_type;
 
     sflow_sample_t sample;
     memset(&sample, 0, sizeof(sample));
@@ -84,13 +93,13 @@ int sflow_frame_handle(ss_frame_t* rx_buf) {
     sample.raw_sample = rx_buf->l4_offset;
     sample.raw_sample_len = rx_buf->data.l4_length;
 
-    size_t source_ip_size = ether_type == ETHER_TYPE_IPV4 ? IPV4_ALEN : IPV6_ALEN;
+    size_t source_ip_size = eth_type == ETHER_TYPE_IPV4 ? IPV4_ALEN : IPV6_ALEN;
     memcpy(&sample.source_ip.ipv6, rx_buf->data.sip, source_ip_size);
 
-    if (ether_type == ETHER_TYPE_IPV4) {
+    if (eth_type == ETHER_TYPE_IPV4) {
         sample.source_ip.type = SFLOW_ADDRESS_TYPE_IP_V4;
     }
-    else if (ether_type == ETHER_TYPE_IPV6) {
+    else if (eth_type == ETHER_TYPE_IPV6) {
         sample.source_ip.type = SFLOW_ADDRESS_TYPE_IP_V6;
     }
     sflow_datagram_receive(&sample);
@@ -176,7 +185,7 @@ int sflow_prepare_rx(ss_frame_t* rx_buf, sflow_socket_t* socket) {
 }
 
 void sflow_sample_callback(sflow_sample_t* sample, uint32_t s_index, uint32_t e_index) {
-    char agent_ip[SS_INET6_ADDRSTRLEN];
+    char agent_ip[SS_IPV6_STR_MAX];
     sflow_ip_string(&sample->agent_ip, agent_ip, sizeof(agent_ip));
     char* sample_type = sflow_sample_type_dump(sample->sample_type);
     char* data_format = sflow_sample_format_dump(sample->sample_type, sample->data_format);
@@ -184,30 +193,25 @@ void sflow_sample_callback(sflow_sample_t* sample, uint32_t s_index, uint32_t e_
 
     RTE_LOG(INFO, EXTRACTOR, "sample_meta %u/%u:\n"
            "    agent_ip %s sub_id %u\n"
-           "    packet_seq_no %u\n"
+           "    packet_seq_num %u\n"
            "    sys_up_time %u\n"
            "    sample_type %s\n"
            "    data_format %s\n"
-           "    sample_seq_no %u\n"
+           "    sample_seq_num %u\n"
            "    ds_type %s\n"
            "    ds_index %u\n",
         s_index, e_index,
         agent_ip, sample->agent_sub_id,
-        sample->packet_seq_no,
+        sample->packet_seq_num,
         sample->sys_up_time / 1000,
         sample_type,
         data_format,
-        sample->sample_seq_no,
+        sample->sample_seq_num,
         ds_type,
         sample->ds_index);
 
     if (sample->sample_type == SFLOW_FLOW_SAMPLE ||
         sample->sample_type == SFLOW_FLOW_SAMPLE_EXPANDED) {
-        if (sample->flow_type != SFLOW_FLOW_HEADER) {
-            RTE_LOG(NOTICE, EXTRACTOR, "skip flow_type: %s\n",
-                sflow_flow_format_dump(sample->flow_type));
-            return;
-        }
         sflow_sampled_header_t* header = &sample->header;
         sflow_flow_sample_callback(sample, header, s_index, e_index);
     }
@@ -230,6 +234,16 @@ void sflow_sample_callback(sflow_sample_t* sample, uint32_t s_index, uint32_t e_
 }
 
 void sflow_flow_sample_callback(sflow_sample_t* sample, sflow_sampled_header_t* header, uint32_t s_index, uint32_t e_index) {
+    ss_ioc_entry_t* iptr;
+    uint8_t* metadata = NULL;
+    size_t mlength = 0;
+    int rv = 0;
+
+    char src_ip[SS_IPV6_STR_MAX];
+    char dst_ip[SS_IPV6_STR_MAX];
+    char nat_src_ip[SS_IPV6_STR_MAX];
+    char nat_dst_ip[SS_IPV6_STR_MAX];
+
     RTE_LOG(INFO, EXTRACTOR, "flow_sample_meta %u/%u:\n"
            "    sample_rate %u\n"
            "    sample_pool %u\n"
@@ -255,10 +269,6 @@ void sflow_flow_sample_callback(sflow_sample_t* sample, sflow_sampled_header_t* 
         header->header_size);
     // XXX: print bytes?
     
-    char src_ip[SS_INET6_ADDRSTRLEN];
-    char dst_ip[SS_INET6_ADDRSTRLEN];
-    char nat_src_ip[SS_INET6_ADDRSTRLEN];
-    char nat_dst_ip[SS_INET6_ADDRSTRLEN];
     sflow_ip_string(&sample->src_ip, src_ip, sizeof(src_ip));
     sflow_ip_string(&sample->dst_ip, dst_ip, sizeof(dst_ip));
     sflow_ip_string(&sample->nat_src_ip, nat_src_ip, sizeof(nat_src_ip));
@@ -269,7 +279,7 @@ void sflow_flow_sample_callback(sflow_sample_t* sample, sflow_sampled_header_t* 
            "    dmac %s\n"
            "    rx_vlan %u\n"
            "    tx_vlan %u\n"
-           "    ether_type 0x%04x\n"
+           "    eth_type 0x%04x\n"
            "    ether_len %u\n"
            "    sip %s\n"
            "    dip %s\n"
@@ -290,8 +300,8 @@ void sflow_flow_sample_callback(sflow_sample_t* sample, sflow_sampled_header_t* 
          sflow_mac_string(sample->dst_eth),
          sample->rx_vlan,
          sample->tx_vlan,
-         sample->ether_type,
-         sample->ether_len,
+         sample->eth_type,
+         sample->eth_len,
          src_ip,
          dst_ip,
          nat_src_ip,
@@ -306,6 +316,249 @@ void sflow_flow_sample_callback(sflow_sample_t* sample, sflow_sampled_header_t* 
          sample->tcp_flags,
          sample->udp_len,
          sample->src_user, sample->dst_user);
+
+    iptr = ss_ioc_sflow_match(sample);
+    if (iptr) {
+        // match
+        RTE_LOG(NOTICE, EXTRACTOR, "successful sflow ioc match from sample\n");
+        ss_ioc_entry_dump_dpdk(iptr);
+        nn_queue_t* nn_queue = &ss_conf->ioc_files[iptr->file_id].nn_queue;
+        // XXX: fill in something useful in rule field
+        metadata = ss_metadata_prepare_sflow("sflow_ioc", NULL, nn_queue, sample, iptr);
+        // XXX: for now assume the output is C char*
+        mlength = strlen((char*) metadata);
+        //printf("metadata: %s\n", metadata);
+        rv = ss_nn_queue_send(nn_queue, metadata, (uint16_t) mlength);
+    }
+}
+
+int ss_metadata_prepare_sflow_mac(
+    json_object* jobject, const char* field_name, uint8_t* m) {
+    char*        mac  = sflow_mac_string(m);
+    json_object* item = NULL;
+    item = json_object_new_string(mac);
+    if (item == NULL) return -1;
+    json_object_object_add(jobject, field_name, item);
+    return 0;
+}
+
+int ss_metadata_prepare_sflow_ip(
+    json_object* jobject, const char* field_name, sflow_ip_t* i) {
+    char*        ip      = sflow_ip_string(i, NULL, 0);
+    json_object* item    = NULL;
+    item = json_object_new_string(ip);
+    if (item == NULL) return -1;
+    json_object_object_add(jobject, field_name, item);
+    return 0;
+}
+
+uint8_t* ss_metadata_prepare_sflow(
+    const char* source, const char* rule, nn_queue_t* nn_queue,
+    sflow_sample_t* sample, ss_ioc_entry_t* iptr) {
+    int          irv;
+    json_object* jobject = NULL;
+    json_object* item    = NULL;
+    uint8_t*     rv      = NULL;
+    uint8_t*     jstring = NULL;
+
+    jobject = json_object_new_object();
+    if (jobject == NULL) {
+        RTE_LOG(ERR, EXTRACTOR, "could not allocate sflow json object\n");
+        goto error_out;
+    }
+
+    item = json_object_new_string(source);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "source", item);
+
+    item = json_object_new_int64((int64_t) __sync_add_and_fetch(&nn_queue->tx_messages, 1));
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "seq_num", item);
+
+    irv = ss_metadata_prepare_sflow_ip(jobject, "source_ip", &sample->source_ip);
+    if (irv) goto error_out;
+    irv = ss_metadata_prepare_sflow_ip(jobject, "agent_ip", &sample->agent_ip);
+    if (irv) goto error_out;
+
+    item = json_object_new_int((int32_t) sample->agent_sub_id);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "agent_sub_id", item);
+
+    item = json_object_new_int((int32_t) sample->packet_seq_num);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "packet_seq_num", item);
+
+    item = json_object_new_double(sample->sys_up_time / 1000.0);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "sys_up_time", item);
+
+    item = json_object_new_string(sflow_sample_type_dump(sample->sample_type));
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "sample_type", item);
+    
+    item = json_object_new_string(sflow_sample_format_dump(sample->sample_type, sample->data_format));
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "sample_format", item);
+
+    item = json_object_new_int((int32_t) sample->sample_seq_num);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "sample_seq_num", item);
+
+    item = json_object_new_string(sflow_ds_type_dump(sample->ds_type));
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "ds_type", item);
+
+    item = json_object_new_int((int32_t) sample->ds_index);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "ds_index", item);
+
+    item = json_object_new_int((int32_t) sample->sample_rate);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "sample_rate", item);
+
+    item = json_object_new_int((int32_t) sample->sample_pool);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "sample_pool", item);
+
+    item = json_object_new_int((int32_t) sample->drop_count);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "drop_count", item);
+
+    item = json_object_new_string(sflow_port_id_dump(sample->input_port_format, sample->input_port));
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "input_port", item);
+
+    item = json_object_new_string(sflow_port_id_dump(sample->output_port_format, sample->output_port));
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "output_port", item);
+
+    item = json_object_new_string(sflow_header_protocol_dump(sample->header.protocol));
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "sample_protocol", item);
+    
+    item = json_object_new_int((int32_t) sample->header.packet_size);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "packet_length", item);
+    
+    item = json_object_new_int((int32_t) sample->header.stripped_size);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "stripped_length", item);
+    
+    item = json_object_new_int((int32_t) sample->header.header_size);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "header_length", item);
+
+    item = json_object_new_int((int32_t) sample->eth_type);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "eth_type", item);
+
+    irv = ss_metadata_prepare_sflow_mac(jobject, "smac", (uint8_t*) &sample->src_eth);
+    if (irv) goto error_out;
+
+    irv = ss_metadata_prepare_sflow_mac(jobject, "dmac", (uint8_t*) &sample->src_eth);
+    if (irv) goto error_out;
+
+    item = json_object_new_int((int32_t) sample->rx_vlan);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "rx_vlan", item);
+    item = json_object_new_int((int32_t) sample->tx_vlan);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "tx_vlan", item);
+    
+    irv = ss_metadata_prepare_sflow_ip(jobject, "sip", &sample->src_ip);
+    if (irv == -1) goto error_out;
+    irv = ss_metadata_prepare_sflow_ip(jobject, "dip", &sample->dst_ip);
+    if (irv == -1) goto error_out;
+    irv = ss_metadata_prepare_sflow_ip(jobject, "natsip", &sample->nat_src_ip);
+    if (irv == -1) goto error_out;
+    irv = ss_metadata_prepare_sflow_ip(jobject, "natdip", &sample->nat_dst_ip);
+    if (irv == -1) goto error_out;
+
+    item = json_object_new_int((int32_t) sample->ip_protocol);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "ip_protocol", item);
+
+    item = json_object_new_int((int32_t) sample->ip_tot_len);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "ip_length", item);
+
+    item = json_object_new_int((int32_t) sample->ip_ttl);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "ttl", item);
+
+    // XXX: fix this field
+    item = json_object_new_int((int32_t) sample->udp_len);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "l4_length", item);
+
+    if (sample->ip_protocol == IPPROTO_ICMP || sample->ip_protocol == IPPROTO_ICMPV6) {
+        item = json_object_new_int((int32_t) sample->src_port);
+        if (item == NULL) goto error_out;
+        json_object_object_add(jobject, "icmp_type", item);
+
+        item = json_object_new_int((int32_t) sample->dst_port);
+        if (item == NULL) goto error_out;
+        json_object_object_add(jobject, "icmp_code", item);
+    }
+    else {
+        item = json_object_new_int((int32_t) sample->src_port);
+        if (item == NULL) goto error_out;
+        json_object_object_add(jobject, "sport", item);
+
+        item = json_object_new_int((int32_t) sample->dst_port);
+        if (item == NULL) goto error_out;
+        json_object_object_add(jobject, "dport", item);
+    }
+
+    item = json_object_new_int((int32_t) sample->nat_src_port);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "natsport", item);
+
+    item = json_object_new_int((int32_t) sample->nat_dst_port);
+    if (item == NULL) goto error_out;
+    json_object_object_add(jobject, "natdport", item);
+
+    if (sample->ip_protocol == IPPROTO_TCP) {
+        item = json_object_new_int((int32_t) sample->tcp_flags);
+        if (item == NULL) goto error_out;
+        json_object_object_add(jobject, "tcp_flags", item);
+    }
+
+    if (sample->src_user[0]) {
+        item = json_object_new_string(sample->src_user);
+        if (item == NULL) goto error_out;
+        json_object_object_add(jobject, "src_user", item);
+    }
+    
+    if (sample->dst_user[0]) {
+        item = json_object_new_string(sample->dst_user);
+        if (item == NULL) goto error_out;
+        json_object_object_add(jobject, "dst_user", item);
+    }
+
+    if (iptr) {
+        irv = ss_metadata_prepare_ioc(source, rule, nn_queue, iptr, jobject);
+        if (irv) goto error_out;
+    }
+
+    item = NULL;
+
+    // XXX: NOTE: String pointer is internal to JSON object.
+    jstring = (uint8_t*) json_object_to_json_string_ext(jobject, JSON_C_TO_STRING_SPACED);
+    rv = (uint8_t*) je_strdup((char*)jstring);
+    if (!rv) goto error_out;
+
+    json_object_put(jobject); jobject = NULL;
+    
+    return rv;
+    
+    error_out:
+    fprintf(stderr, "could not serialize sflow metadata\n");
+    if (rv)      { je_free(rv); rv = NULL; }
+    if (jobject) { json_object_put(jobject); jobject = NULL; }
+    if (item)    { json_object_put(item);    item = NULL;    }
+
+    return NULL;
 }
 
 void sflow_counter_sample_callback(sflow_sample_t* sample, sflow_if_counters_t* if_counters, uint32_t s_index, uint32_t e_index) {
@@ -339,7 +592,6 @@ void sflow_counter_sample_callback(sflow_sample_t* sample, sflow_if_counters_t* 
     c.ifOutDiscards      = be32(if_counters->ifOutDiscards);
     c.ifOutErrors        = be32(if_counters->ifOutErrors);
     c.ifPromiscuousMode  = be32(if_counters->ifPromiscuousMode);
-
 
     RTE_LOG(FINE, EXTRACTOR, "if_counters %u/%u:\n"
            "    ifIndex %u\n"
@@ -388,7 +640,7 @@ void sflow_log(sflow_sample_t* sample, char* fmt, ...) __attribute__ ((__format_
     printf("%s %u %u %u:%u %s %s ",
             "mhall",// sflow_ip_string(&sample->agent_ip),
             sample->agent_sub_id,
-            sample->packet_seq_no,
+            sample->packet_seq_num,
             sample->ds_type,
             sample->ds_index,
             sflow_tag_dump(sample->sample_type),
