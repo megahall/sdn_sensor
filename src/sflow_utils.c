@@ -27,54 +27,13 @@ char sflow_nybble_to_hex(char x) {
     return (x < 10) ? ('0' + x) : ('A' - 10 + x);
 }
 
-int sflow_dump_hex(uint8_t* a, size_t len, char* buf, ptrdiff_t buf_len, size_t marker, size_t bytes_per_line) {
-    int b = 0;
-    size_t i = 0;
-    for (; i < len; i++) {
-        uint8_t byte;
-        if (b > (buf_len - 10)) break;
-        if (marker > 0 && i == marker) {
-            buf[b++] = '<';
-            buf[b++] = '*';
-            buf[b++] = '>';
-            buf[b++] = '-';
-        }
-        byte = a[i];
-        buf[b++] = sflow_nybble_to_hex(byte >> 4);
-        buf[b++] = sflow_nybble_to_hex(byte & 0x0f);
-        if (i > 0 && (i % bytes_per_line) == 0) buf[b++] = '\n';
-        else {
-            // separate the bytes with a dash
-            if (i < (len - 1)) buf[b++] = '-';
-        }
-    }
-    buf[b] = '\0';
-    return b;
-}
-
 #define SFLOW_UUID_LENGTH_MAX 37
-static __thread char uuid_buf[37 + 1];
+static __thread char uuid_buf[SFLOW_UUID_LENGTH_MAX];
 
-char* sflow_print_uuid(uint8_t* uuid) {
-    int i, b = 0;
-    b += sflow_dump_hex(uuid +  0, 4, uuid_buf + b, SFLOW_UUID_LENGTH_MAX - b, 0, 100);
-    uuid_buf[b++] = '-';
-    b += sflow_dump_hex(uuid +  4, 2, uuid_buf + b, SFLOW_UUID_LENGTH_MAX - b, 0, 100);
-    uuid_buf[b++] = '-';
-    b += sflow_dump_hex(uuid +  6, 2, uuid_buf + b, SFLOW_UUID_LENGTH_MAX - b, 0, 100);
-    uuid_buf[b++] = '-';
-    b += sflow_dump_hex(uuid +  8, 2, uuid_buf + b, SFLOW_UUID_LENGTH_MAX - b, 0, 100);
-    uuid_buf[b++] = '-';
-    b += sflow_dump_hex(uuid + 10, 6, uuid_buf + b, SFLOW_UUID_LENGTH_MAX - b, 0, 100);
-
-    // should really be lowercase hex - fix that here
-    for (i = 0; i < b; i++) {
-        uuid_buf[i] = (char) tolower(uuid_buf[i]);
-    }
-
-    // add NUL termination
-    uuid_buf[b] = '\0';
-
+char* sflow_print_uuid(uint8_t* u) {
+    snprintf(uuid_buf, sizeof(uuid_buf), "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+        u[0],  u[1],  u[2],  u[3],  u[4],  u[5],  u[6],  u[7],
+        u[8],  u[9], u[10], u[11], u[12], u[13], u[14], u[15]);
     return uuid_buf;
 }
 
