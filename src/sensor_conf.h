@@ -8,9 +8,6 @@
 #include <json-c/json.h>
 #include <json-c/json_object_private.h>
 
-#define MDB_MAXKEYSIZE 1023
-#include <lmdb.h>
-
 #include "common.h"
 #include "ip_utils.h"
 #include "ioc.h"
@@ -62,15 +59,6 @@ struct ss_conf_s {
     uint32_t hop6_id;
     ss_ioc_entry_t* hop4[SS_LPM_RULE_MAX];
     ss_ioc_entry_t* hop6[SS_LPM_RULE_MAX];
-
-#ifdef SS_IOC_BACKEND_DISK    
-    MDB_env* mdb_env;
-    MDB_dbi  ip4_dbi;
-    MDB_dbi  ip6_dbi;
-    MDB_dbi  domain_dbi;
-    MDB_dbi  url_dbi;
-    MDB_dbi  email_dbi;
-#endif
 } __rte_cache_aligned;
 
 typedef struct ss_conf_s ss_conf_t;

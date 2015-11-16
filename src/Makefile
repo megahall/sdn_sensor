@@ -34,7 +34,7 @@ SS_VERSION := $(shell echo `date "+%Y%m%d-%H%M%S"`-`git rev-parse --short HEAD`)
 FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -fno-omit-frame-pointer -pthread -m64 -march=native -msse4 -std=gnu11
 DEFINES        = -D__SSE3__ -D__SSSE3__ -D__SSE4_1__ -D__SSE4_2__ -DSS_VERSION="\"$(SS_VERSION)\""
 INCLUDE_FILES  = -include $(RTE_SDK)/build/include/rte_config.h
-INCLUDE_PATHS  = -isystem$(RTE_SDK)/build/include -I$(SDN_SENSOR_BASE)/external/spcdns/src -isystem/usr/local/jemalloc/include -I/usr/local/lmdb/include
+INCLUDE_PATHS  = -isystem$(RTE_SDK)/build/include -I$(SDN_SENSOR_BASE)/external/spcdns/src -isystem/usr/local/jemalloc/include
 CPROTO_PATHS   = $(subst -isystem,-I,$(INCLUDE_PATHS))
 CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) $(DEFINES)
 IWYU_CFLAGS   := $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) $(DEFINES)
@@ -78,9 +78,9 @@ endif
 #-Wl,--end-group -Wl,--no-whole-archive
 
 DPDK_LINK = -Wl,--whole-archive -Wl,--start-group -lintel_dpdk -Wl,--end-group -Wl,--no-whole-archive
-STATIC_LINK = -Wl,-Bstatic -lbsd -lcre2 -lre2 -llzma -ljson-c -llmdb -lnanomsg -lanl -lpcap -lpcre -lspcdns -lspcdnsmisc -Wl,-Bdynamic
+STATIC_LINK = -Wl,-Bstatic -lbsd -lcre2 -lre2 -llzma -ljson-c -lnanomsg -lanl -lpcap -lpcre -lspcdns -lspcdnsmisc -Wl,-Bdynamic
 
-LDFLAGS = -L$(RTE_SDK)/build/lib -Wl,-rpath,$(RTE_SDK)/build/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built -L/usr/local/jemalloc/lib -Wl,-rpath,/usr/local/jemalloc/lib -L/usr/local/lmdb/lib -Wl,-rpath,/usr/local/jemalloc/lib
+LDFLAGS = -L$(RTE_SDK)/build/lib -Wl,-rpath,$(RTE_SDK)/build/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built -L/usr/local/jemalloc/lib -Wl,-rpath,/usr/local/jemalloc/lib
 
 HEADERS = $(wildcard *.h)
 SOURCES = $(wildcard *.c)

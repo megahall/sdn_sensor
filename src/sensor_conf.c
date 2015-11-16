@@ -33,11 +33,6 @@
 #define PROGRAM_PATH "/proc/self/exe"
 #define CONF_PATH "/../conf/sdn_sensor.json"
 
-#ifdef SS_IOC_BACKEND_DISK
-#define MDB_SIZE_4_GB 4294967296
-#define MDB_COUNT_32  32
-#endif
-
 #define SS_NS_PER_SEC 1E9
 #define SS_NS_PER_HALF_SEC 5E8
 
@@ -59,10 +54,6 @@ int ss_conf_destroy() {
     ss_ioc_chain_destroy();
 
     // XXX: destroy ss_ioc_entry_t* tables
-
-#ifdef SS_IOC_BACKEND_DISK
-    mdb_env_close(ss_conf->mdb_env);
-#endif
 
     je_free(ss_conf);
 
@@ -433,92 +424,6 @@ int ss_conf_dpdk_parse(json_object* items) {
     return 0;
 }
 
-#ifdef SS_IOC_BACKEND_DISK
-int ss_conf_mdb_init() {
-    int rv;
-    MDB_txn* mdb_txn = NULL;
-
-    rv = mdb_env_create(&ss_conf->mdb_env);
-    if (rv) {
-        fprintf(stderr, "could not create mdb environment: %s\n", mdb_strerror(rv));
-        goto error_out;
-    }
-    
-    rv = mdb_env_set_mapsize(ss_conf->mdb_env, MDB_SIZE_4_GB);
-    if (rv) {
-        fprintf(stderr, "could not set mdb map size: %s\n", mdb_strerror(rv));
-        goto error_out;
-    }
-    
-    rv = mdb_env_set_maxdbs(ss_conf->mdb_env, MDB_COUNT_32);
-    if (rv) {
-        fprintf(stderr, "could not set mdb db count: %s\n", mdb_strerror(rv));
-        goto error_out;
-    }
-    
-    rv = mkdir("/tmp/sdn_sensor_lmdb", 0755);
-    if (rv && errno != EEXIST) {
-        fprintf(stderr, "could not create mdb directory: %s\n", strerror(errno));
-        goto error_out;
-    }
-    
-    rv = mdb_env_open(ss_conf->mdb_env, "/tmp/sdn_sensor_lmdb", 0, 0644);
-    if (rv) {
-        fprintf(stderr, "could not open mdb environment: %s\n", mdb_strerror(rv));
-        goto error_out;
-    }
-    
-    rv = mdb_txn_begin(ss_conf->mdb_env, NULL, 0, &mdb_txn);
-    if (rv) {
-        fprintf(stderr, "could not begin mdb transaction: %s\n", mdb_strerror(rv));
-        goto error_out;
-    }
-
-    rv = mdb_dbi_open(mdb_txn, "ip4_dbi",    MDB_CREATE, &ss_conf->ip4_dbi);
-    if (rv) {
-        fprintf(stderr, "could not open mdb ip4_table: %s\n", mdb_strerror(rv));
-        goto error_out;
-    }
-
-    rv = mdb_dbi_open(mdb_txn, "ip6_dbi",    MDB_CREATE, &ss_conf->ip6_dbi);
-    if (rv) {
-        fprintf(stderr, "could not open mdb ip6_table: %s\n", mdb_strerror(rv));
-        goto error_out;
-    }
-
-    rv = mdb_dbi_open(mdb_txn, "domain_dbi", MDB_CREATE, &ss_conf->domain_dbi);
-    if (rv) {
-        fprintf(stderr, "could not open mdb domain_table: %s\n", mdb_strerror(rv));
-        goto error_out;
-    }
-
-    rv = mdb_dbi_open(mdb_txn, "url_dbi",    MDB_CREATE, &ss_conf->url_dbi);
-    if (rv) {
-        fprintf(stderr, "could not open mdb url_table: %s\n", mdb_strerror(rv));
-        goto error_out;
-    }
-
-    rv = mdb_dbi_open(mdb_txn, "email_dbi",  MDB_CREATE, &ss_conf->email_dbi);
-    if (rv) {
-        fprintf(stderr, "could not open mdb email_table: %s\n", mdb_strerror(rv));
-        goto error_out;
-    }
-
-    rv = mdb_txn_commit(mdb_txn);
-    if (rv) {
-        fprintf(stderr, "could not commit mdb table creation transaction: %s\n", mdb_strerror(rv));
-        goto error_out;
-    }
-    mdb_txn = NULL;
-    return 0;
-    
-    error_out:
-    if (ss_conf->mdb_env) { mdb_env_close(ss_conf->mdb_env); ss_conf->mdb_env = NULL; }
-    if (mdb_txn)          { mdb_txn_abort(mdb_txn); mdb_txn = NULL; }
-    return -1;
-}
-#endif
-
 ss_conf_t* ss_conf_file_parse(char* conf_path) {
     int is_ok = 1;
     int rv;
@@ -563,13 +468,6 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
     TAILQ_INIT(&ss_conf->dns_chain.dns_list);
     TAILQ_INIT(&ss_conf->ioc_chain.ioc_list);
 
-#ifdef SS_IOC_BACKEND_DISK
-    rv = ss_conf_mdb_init();
-    if (rv) {
-        fprintf(stderr, "could not initialize mdb: %s\n", mdb_strerror(rv));
-        is_ok = 0; goto error_out;
-    }
-#endif
     items = json_object_object_get(ss_conf->json, "network");
     if (items == NULL) {
         fprintf(stderr, "could not load network configuration\n");
