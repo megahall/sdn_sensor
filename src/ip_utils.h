@@ -6,14 +6,23 @@
 
 /* CONSTANTS */
 
-#define SS_PF_INET   2          /* IPv4 */
-#define SS_PF_INET4  2          /* IPv4 */
-#define SS_PF_INET6 10          /* IPv6 */
-#define SS_AF_INET  SS_PF_INET
-#define SS_AF_INET4 SS_PF_INET4
-#define SS_AF_INET6 SS_PF_INET6
+enum ss_pf_e {
+    SS_PF_INET  =  2,
+    SS_PF_INET4 =  2,
+    SS_PF_INET6 = 10,
+};
 
-#define SS_INET6_ADDRSTRLEN  46
+typedef enum ss_pf_e ss_pf_t;
+
+enum ss_af_e {
+    SS_AF_INET  = SS_PF_INET,
+    SS_AF_INET4 = SS_PF_INET4,
+    SS_AF_INET6 = SS_PF_INET6,
+};
+
+typedef enum ss_af_e ss_af_t;
+
+#define SS_IPV6_STR_MAX  46
 
 /* enough to hold [max_ipv6]/128 plus a bit extra */
 #define SS_ADDR_STR_MAX      64

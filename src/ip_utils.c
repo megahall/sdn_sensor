@@ -48,7 +48,7 @@ int ss_cidr_dump(FILE* fd, const char* label, ip_addr_t* ip_addr) {
 int ss_cidr_parse(const char* input, ip_addr_t* ip_addr) {
     size_t input_len = 0;
     int rv = -1;
-    char ip_str[SS_INET6_ADDRSTRLEN+4+1]; /* '+4' is for prefix (if any) */
+    char ip_str[SS_IPV6_STR_MAX+4+1]; /* '+4' is for prefix (if any) */
     char* prefix_start;
     char* prefix_end;
     long prefix = 0;
@@ -59,7 +59,7 @@ int ss_cidr_parse(const char* input, ip_addr_t* ip_addr) {
     input_len = strlen(input);
 
     /* if token is too big... */
-    if (input_len >= SS_INET6_ADDRSTRLEN+4)
+    if (input_len >= SS_IPV6_STR_MAX+4)
         return -1;
 
     snprintf(ip_str, input_len+1, "%s", input);
@@ -327,10 +327,10 @@ const char* ss_inet_ntop(const ip_addr_t* src, char* dst, size_t size) {
     }
 }
 
-static __thread char inet_ntop_buf[SS_INET6_ADDRSTRLEN];
+static __thread char inet_ntop_buf[SS_IPV6_STR_MAX];
 const char* ss_inet_ntop_tls(const ip_addr_t* src) {
     memset(inet_ntop_buf, 0, sizeof(inet_ntop_buf));
-    return ss_inet_ntop(src, inet_ntop_buf, SS_INET6_ADDRSTRLEN);
+    return ss_inet_ntop(src, inet_ntop_buf, SS_IPV6_STR_MAX);
 }
 
 /* char*
