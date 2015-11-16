@@ -95,14 +95,15 @@ int ss_metadata_prepare_ip(const char* source, const char* rule, nn_queue_t* nn_
             *(uint16_t*) &fbuf->data.sip[12], *(uint16_t*) &fbuf->data.sip[14]);
         sip = json_object_new_string(tmp);
         snprintf(tmp, sizeof(tmp), "%hx:%hx:%hx:%hx:%hx:%hx:%hx:%hx",
-            *(uint16_t*) &fbuf->data.sip[0],  *(uint16_t*) &fbuf->data.sip[2],
-            *(uint16_t*) &fbuf->data.sip[4],  *(uint16_t*) &fbuf->data.sip[6],
-            *(uint16_t*) &fbuf->data.sip[8],  *(uint16_t*) &fbuf->data.sip[10],
-            *(uint16_t*) &fbuf->data.sip[12], *(uint16_t*) &fbuf->data.sip[14]);
+            *(uint16_t*) &fbuf->data.dip[0],  *(uint16_t*) &fbuf->data.dip[2],
+            *(uint16_t*) &fbuf->data.dip[4],  *(uint16_t*) &fbuf->data.dip[6],
+            *(uint16_t*) &fbuf->data.dip[8],  *(uint16_t*) &fbuf->data.dip[10],
+            *(uint16_t*) &fbuf->data.dip[12], *(uint16_t*) &fbuf->data.dip[14]);
         dip = json_object_new_string(tmp);
     }
     else {
         fprintf(stderr, "could not extract IP addresses\n");
+        goto error_out;
     }
     
     ip_protocol = json_object_new_int(fbuf->data.ip_protocol);
