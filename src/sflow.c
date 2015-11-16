@@ -136,7 +136,7 @@ void sflow_decode_link_layer(sflow_sample_t* sample) {
     }
 
     // assume type_len is an EtherType now
-    sample->ether_type = type_len;
+    sample->eth_type = type_len;
 
     if (type_len == ETHER_TYPE_IPV4) {
         // IPV4
@@ -772,12 +772,13 @@ void sflow_read_header(sflow_sample_t* sample) {
 }
 
 void sflow_read_ethernet(sflow_sample_t* sample, char* prefix) {
-    sample->ether_len = sflow_get_data_32(sample);
+    sample->eth_len = sflow_get_data_32(sample);
+    sample->header.packet_size = sample->eth_len;
     memcpy(sample->src_eth, sample->offset32, ETHER_ALEN);
     sflow_skip_bytes(sample, ETHER_ALEN);
     memcpy(sample->dst_eth, sample->offset32, ETHER_ALEN);
     sflow_skip_bytes(sample, ETHER_ALEN);
-    sample->ether_type = sflow_get_data_32(sample);
+    sample->eth_type = sflow_get_data_32(sample);
 }
 
 void sflow_read_ipv4(sflow_sample_t* sample, char* prefix) {
@@ -1016,7 +1017,7 @@ void sflow_read_flow_sample(sflow_sample_t* sample, bool is_expanded, uint32_t s
 
     sample_length = sflow_get_data_32(sample);
     sample_start = sample->offset8;
-    sample->sample_seq_no = sflow_get_data_32(sample);
+    sample->sample_seq_num = sflow_get_data_32(sample);
 
     if (is_expanded) {
         sample->ds_type = sflow_get_data_32(sample);
@@ -1050,7 +1051,8 @@ void sflow_read_flow_sample(sflow_sample_t* sample, bool is_expanded, uint32_t s
 
     elements = sflow_get_data_32(sample);
 
-    for (uint32_t e_index = 0; e_index < elements; e_index++) {
+    uint32_t e_index = 0;
+    for (; e_index < elements; e_index++) {
         RTE_LOG(FINE, EXTRACTOR, "read flow element %u/%u\n", e_index + 1, elements);
         sample->data_format = sflow_get_data_32(sample);
         uint32_t length = sflow_get_data_32(sample);
@@ -1108,7 +1110,7 @@ void sflow_read_flow_sample(sflow_sample_t* sample, bool is_expanded, uint32_t s
     // called once after all sample elements are processed
     if (sflow_sample_cb) {
         RTE_LOG(FINER, EXTRACTOR, "invoke sflow_sample_cb on flow sample id: %02d\n", s_index);
-        sflow_sample_cb(sample, s_index, (uint32_t) -1);
+        sflow_sample_cb(sample, s_index, e_index);
     }
 
     // XXX: make sure sflow_log_clf is called when sample->client is valid
@@ -1386,7 +1388,7 @@ void sflow_read_counters_sample(sflow_sample_t* sample, bool is_expanded, uint32
 
     sample_length = sflow_get_data_32(sample);
     sample_start = sample->offset8;
-    sample->sample_seq_no = sflow_get_data_32(sample);
+    sample->sample_seq_num = sflow_get_data_32(sample);
 
     if (is_expanded) {
         sample->ds_type = sflow_get_data_32(sample);
@@ -1478,7 +1480,7 @@ void sflow_read_datagram(sflow_sample_t* sample) {
     /* version 5 has an agent sub-id as well */
     sample->agent_sub_id = sflow_get_data_32(sample);
 
-    sample->packet_seq_no = sflow_get_data_32(sample);
+    sample->packet_seq_num = sflow_get_data_32(sample);
     sample->sys_up_time = sflow_get_data_32(sample);
     samples = sflow_get_data_32(sample);
 
