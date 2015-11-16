@@ -8,6 +8,8 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#include "ip_utils.h"
+
 #define SFLOW_DEFAULT_HEADER_SIZE 128
 #define SFLOW_DEFAULT_COLLECTOR_PORT 6343
 #define SFLOW_DEFAULT_SAMPLING_RATE 400
@@ -81,36 +83,27 @@
 
 // Packet header data
 
-struct sflow_ipv4_s {
-    uint32_t addr;
-};
-
-typedef struct sflow_ipv4_s sflow_ipv4_t;
-
-struct sflow_ipv6_s {
-    uint8_t addr[16];
-};
-
-typedef struct sflow_ipv6_s sflow_ipv6_t;
-
 union sflow_ip_value_u {
-    sflow_ipv4_t ipv4;
-    sflow_ipv6_t ipv6;
+    ip4_addr_t ipv4;
+    ip6_addr_t ipv6;
 };
 
 typedef union sflow_ip_value_u sflow_ip_value_t;
 
-enum sflow_ip_type {
+enum sflow_ip_type_e {
     SFLOW_ADDRESS_TYPE_UNDEFINED = 0,
     SFLOW_ADDRESS_TYPE_IP_V4 = 1,
     SFLOW_ADDRESS_TYPE_IP_V6 = 2
 };
 
+typedef enum sflow_ip_type_e sflow_ip_type_t;
+
 struct sflow_ip_s {
     uint32_t type;           // enum sflow_address_type
     union {
-        sflow_ipv4_t ipv4;
-        sflow_ipv6_t ipv6;
+        ip4_addr_t ipv4;
+        ip6_addr_t ipv6;
+        uint8_t addr[sizeof(ip6_addr_t)];
     };
     // sflow_ip_value_t ip;
 };
@@ -149,7 +142,7 @@ typedef enum sflow_header_protocol_e sflow_header_protocol_t;
 // raw sampled header
 
 struct sflow_sampled_header_s {
-    uint32_t protocol;      // (enum sflow_header_protocol)
+    uint32_t protocol;      // (sflow_header_protocol_t)
     uint32_t packet_size;   // Original length of packet before sampling
     uint32_t stripped_size; // header/trailer bytes stripped by sender
     uint32_t header_size;   // length of sampled header bytes to follow
@@ -174,8 +167,8 @@ typedef struct sflow_sampled_ethernet_s sflow_sampled_ethernet_t;
 struct sflow_sampled_ipv4_s {
     uint32_t len;         // The length of the IP packet excluding lower encaps
     uint32_t protocol;    // IP Protocol type (for example, TCP = 6, UDP = 17)
-    sflow_ipv4_t src_ip;  // Source IP Address
-    sflow_ipv4_t dst_ip;  // Destination IP Address
+    ip4_addr_t src_ip;  // Source IP Address
+    ip4_addr_t dst_ip;  // Destination IP Address
     uint32_t src_port;    // TCP/UDP source port number or equivalent
     uint32_t dst_port;    // TCP/UDP destination port number or equivalent
     uint32_t tcp_flags;   // TCP flags
@@ -189,8 +182,8 @@ typedef struct sflow_sampled_ipv4_s sflow_sampled_ipv4_t;
 struct sflow_sampled_ipv6_s {
     uint32_t len;          // The length of the IP packet lower layer encaps
     uint32_t protocol;     // IP Protocol type (for example, TCP = 6, UDP = 17)
-    sflow_ipv6_t src_ip;   // Source IP Address
-    sflow_ipv6_t dst_ip;   // Destination IP Address
+    ip6_addr_t src_ip;   // Source IP Address
+    ip6_addr_t dst_ip;   // Destination IP Address
     uint32_t src_port;     // TCP/UDP source port number or equivalent
     uint32_t dst_port;     // TCP/UDP destination port number or equivalent
     uint32_t tcp_flags;    // TCP flags
@@ -540,8 +533,8 @@ typedef struct sflow_extended_aggregation_s sflow_extended_aggregation_t;
 // opaque = flow_data; enterprise = 0; format = 2100
 struct sflow_extended_socket_ipv4_s {
     uint32_t protocol;      // IP Protocol (e.g. TCP = 6, UDP = 17)
-    sflow_ipv4_t local_ip;  // local IP address
-    sflow_ipv4_t remote_ip; // remote IP address
+    ip4_addr_t local_ip;  // local IP address
+    ip4_addr_t remote_ip; // remote IP address
     uint32_t local_port;    // TCP/UDP local port number or equivalent
     uint32_t remote_port;   // TCP/UDP remote port number of equivalent
 };
@@ -552,8 +545,8 @@ typedef struct sflow_extended_socket_ipv4_s sflow_extended_socket_ipv4_t;
 // opaque = flow_data; enterprise = 0; format = 2101
 struct sflow_extended_socket_ipv6_s {
     uint32_t protocol;      // IP Protocol (e.g. TCP = 6, UDP = 17)
-    sflow_ipv6_t local_ip;  // local IP address
-    sflow_ipv6_t remote_ip; // remote IP address
+    ip6_addr_t local_ip;  // local IP address
+    ip6_addr_t remote_ip; // remote IP address
     uint32_t local_port;    // TCP/UDP local port number or equivalent
     uint32_t remote_port;   // TCP/UDP remote port number of equivalent
 };
@@ -1782,7 +1775,7 @@ struct sflow_sample_s {
     sflow_ip_t source_ip;
     sflow_ip_t agent_ip;
     uint32_t agent_sub_id;
-    uint32_t packet_seq_no;
+    uint32_t packet_seq_num;
     uint32_t sys_up_time;
 
     // the raw pdu
@@ -1803,7 +1796,7 @@ struct sflow_sample_s {
         sflow_flow_type_tag_t flow_type;
     };
 
-    uint32_t sample_seq_no;
+    uint32_t sample_seq_num;
     uint32_t ds_type;
     uint32_t ds_index;
     uint32_t sample_rate;
@@ -1830,8 +1823,8 @@ struct sflow_sample_s {
     size_t payload_offset;
     
     // ethernet
-    uint32_t ether_type;
-    uint32_t ether_len;
+    uint32_t eth_type;
+    uint32_t eth_len;
     uint8_t src_eth[ETHER_ALEN];
     uint8_t dst_eth[ETHER_ALEN];
 
@@ -1893,7 +1886,7 @@ struct sflow_sample_s {
     char dst_user[SA_MAX_EXTENDED_USER_LEN+1];
 
     // URL
-    char client[SS_INET6_ADDRSTRLEN];
+    char client[SS_IPV6_STR_MAX];
     uint32_t url_direction;
     uint32_t url_len;
     char url[SA_MAX_EXTENDED_URL_LEN+1];
