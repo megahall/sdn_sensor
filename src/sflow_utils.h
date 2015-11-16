@@ -1,11 +1,11 @@
 #ifndef __SFLOW_UTILS_H__
 #define __SFLOW_UTILS_H__
 
+#include "ip_utils.h"
 
 /* BEGIN PROTOTYPES */
 
 char sflow_nybble_to_hex(char x);
-int sflow_dump_hex(uint8_t* a, size_t len, char* buf, ptrdiff_t buf_len, size_t marker, size_t bytes_per_line);
 char* sflow_print_uuid(uint8_t* uuid);
 char* sflow_url_encode(char* in, char* out, size_t out_len);
 char* sflow_mac_string(uint8_t* m);
@@ -33,7 +33,7 @@ char* sflow_counters_format_dump(uint32_t sample_format);
 char* sflow_counters_direction_dump(uint32_t ifDirection);
 char* sflow_counters_status_dump(uint32_t ifStatus);
 void sflow_skip_tlv(sflow_sample_t* sample, uint32_t tag, uint32_t len, char* description);
-int is_ip4_mapped_ip(sflow_ipv6_t* ip6, sflow_ipv4_t* ip4);
+int is_ip4_mapped_ip(ip6_addr_t* ip6, ip4_addr_t* ip4);
 
 /* END PROTOTYPES */
 

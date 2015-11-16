@@ -415,7 +415,7 @@ char* sflow_counters_direction_dump(uint32_t ifDirection) {
 }
 
 // XXX: no clue what the maximum status length is
-static __thread char status_buf[SS_INET6_ADDRSTRLEN + 1];
+static __thread char status_buf[SS_IPV6_STR_MAX + 1];
 char* sflow_counters_status_dump(uint32_t ifStatus) {
     uint32_t ifAdminStatus = ifStatus & 0x00000001;
     uint32_t ifOperStatus  = ifStatus & 0x00000002;
@@ -436,7 +436,7 @@ void sflow_skip_tlv(sflow_sample_t* sample, uint32_t tag, uint32_t len, char *de
 static uint8_t mapped_prefix[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF };
 static uint8_t compat_prefix[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-int is_ip4_mapped_ip(sflow_ipv6_t* ip6, sflow_ipv4_t* ip4) {
+int is_ip4_mapped_ip(ip6_addr_t* ip6, ip4_addr_t* ip4) {
     if (!memcmp(ip6->addr, mapped_prefix, 12) ||
             !memcmp(ip6->addr, compat_prefix, 12)) {
         memcpy(ip4, ip6->addr + 12, 4);
