@@ -57,8 +57,7 @@ extern struct peers netflow_peers;
 /* NetFlow v.9 specific function */
 
 void peer_nf9_template_delete(struct peer_nf9_source* nf9src,
-    struct peer_nf9_template* template)
-{
+    struct peer_nf9_template* template) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     TAILQ_REMOVE(&nf9src->templates, template, lp);
     if (template->records != NULL)
@@ -69,8 +68,7 @@ void peer_nf9_template_delete(struct peer_nf9_source* nf9src,
 }
 
 void peer_nf9_source_delete(struct peer_state* peer,
-    struct peer_nf9_source* nf9src)
-{
+    struct peer_nf9_source* nf9src) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf9_template* nf9tmpl;
 
@@ -82,8 +80,7 @@ void peer_nf9_source_delete(struct peer_state* peer,
     rte_spinlock_recursive_unlock(&netflow_peers.peers_lock);
 }
 
-void peer_nf9_delete(struct peer_state* peer)
-{
+void peer_nf9_delete(struct peer_state* peer) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf9_source* nf9src;
 
@@ -92,8 +89,7 @@ void peer_nf9_delete(struct peer_state* peer)
     rte_spinlock_recursive_unlock(&netflow_peers.peers_lock);
 }
 
-struct peer_nf9_source* peer_nf9_lookup_source(struct peer_state* peer, u_int32_t source_id)
-{
+struct peer_nf9_source* peer_nf9_lookup_source(struct peer_state* peer, u_int32_t source_id) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf9_source* nf9src;
 
@@ -107,8 +103,7 @@ struct peer_nf9_source* peer_nf9_lookup_source(struct peer_state* peer, u_int32_
     return (NULL);
 }
 
-struct peer_nf9_template* peer_nf9_lookup_template(struct peer_nf9_source* nf9src, u_int16_t template_id)
-{
+struct peer_nf9_template* peer_nf9_lookup_template(struct peer_nf9_source* nf9src, u_int16_t template_id) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf9_template* nf9tmpl;
 
@@ -124,8 +119,7 @@ struct peer_nf9_template* peer_nf9_lookup_template(struct peer_nf9_source* nf9sr
 }
 
 struct peer_nf9_template* peer_nf9_find_template(struct peer_state* peer,
-    u_int32_t source_id, u_int16_t template_id)
-{
+    u_int32_t source_id, u_int16_t template_id) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf9_source* nf9src;
     struct peer_nf9_template* nf9tmpl;
@@ -166,8 +160,7 @@ struct peer_nf9_template* peer_nf9_find_template(struct peer_state* peer,
 
 void
 peer_nf9_template_update(struct peer_state* peer, u_int32_t source_id,
-    u_int16_t template_id)
-{
+    u_int16_t template_id) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf9_source* nf9src;
     struct peer_nf9_template* nf9tmpl;
@@ -208,8 +201,7 @@ peer_nf9_template_update(struct peer_state* peer, u_int32_t source_id,
     rte_spinlock_recursive_unlock(&netflow_peers.peers_lock);
 }
 
-struct peer_nf9_source* peer_nf9_new_source(struct peer_state* peer, u_int32_t source_id)
-{
+struct peer_nf9_source* peer_nf9_new_source(struct peer_state* peer, u_int32_t source_id) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf9_source* nf9src;
 
@@ -238,8 +230,7 @@ struct peer_nf9_source* peer_nf9_new_source(struct peer_state* peer, u_int32_t s
     return (nf9src);
 }
 
-struct peer_nf9_template* peer_nf9_new_template(struct peer_state* peer, u_int32_t source_id, u_int16_t template_id)
-{
+struct peer_nf9_template* peer_nf9_new_template(struct peer_state* peer, u_int32_t source_id, u_int16_t template_id) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf9_source* nf9src;
     struct peer_nf9_template* nf9tmpl;
@@ -284,8 +275,7 @@ struct peer_nf9_template* peer_nf9_new_template(struct peer_state* peer, u_int32
 /* NetFlow v.10 specific function */
 
 void peer_nf10_template_delete(struct peer_nf10_source* nf10src,
-    struct peer_nf10_template* template)
-{
+    struct peer_nf10_template* template) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     TAILQ_REMOVE(&nf10src->templates, template, lp);
     if (template->records != NULL)
@@ -296,8 +286,7 @@ void peer_nf10_template_delete(struct peer_nf10_source* nf10src,
 }
 
 void peer_nf10_source_delete(struct peer_state* peer,
-    struct peer_nf10_source* nf10src)
-{
+    struct peer_nf10_source* nf10src) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf10_template* nf10tmpl;
 
@@ -309,8 +298,7 @@ void peer_nf10_source_delete(struct peer_state* peer,
     rte_spinlock_recursive_unlock(&netflow_peers.peers_lock);
 }
 
-void peer_nf10_delete(struct peer_state* peer)
-{
+void peer_nf10_delete(struct peer_state* peer) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf10_source* nf10src;
 
@@ -319,8 +307,7 @@ void peer_nf10_delete(struct peer_state* peer)
     rte_spinlock_recursive_unlock(&netflow_peers.peers_lock);
 }
 
-struct peer_nf10_source* peer_nf10_lookup_source(struct peer_state* peer, u_int32_t source_id)
-{
+struct peer_nf10_source* peer_nf10_lookup_source(struct peer_state* peer, u_int32_t source_id) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf10_source* nf10src;
 
@@ -334,8 +321,7 @@ struct peer_nf10_source* peer_nf10_lookup_source(struct peer_state* peer, u_int3
     return (NULL);
 }
 
-struct peer_nf10_template* peer_nf10_lookup_template(struct peer_nf10_source* nf10src, u_int16_t template_id)
-{
+struct peer_nf10_template* peer_nf10_lookup_template(struct peer_nf10_source* nf10src, u_int16_t template_id) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf10_template* nf10tmpl;
 
@@ -354,8 +340,7 @@ struct peer_nf10_template* peer_nf10_lookup_template(struct peer_nf10_source* nf
 
 struct peer_nf10_template*
 peer_nf10_find_template(struct peer_state* peer,
-    u_int32_t source_id, u_int16_t template_id)
-{
+    u_int32_t source_id, u_int16_t template_id) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf10_source* nf10src;
     struct peer_nf10_template* nf10tmpl;
@@ -395,8 +380,7 @@ peer_nf10_find_template(struct peer_state* peer,
 
 void
 peer_nf10_template_update(struct peer_state* peer, u_int32_t source_id,
-    u_int16_t template_id)
-{
+    u_int16_t template_id) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf10_source* nf10src;
     struct peer_nf10_template* nf10tmpl;
@@ -437,8 +421,7 @@ peer_nf10_template_update(struct peer_state* peer, u_int32_t source_id,
     rte_spinlock_recursive_unlock(&netflow_peers.peers_lock);
 }
 
-struct peer_nf10_source* peer_nf10_new_source(struct peer_state* peer, u_int32_t source_id)
-{
+struct peer_nf10_source* peer_nf10_new_source(struct peer_state* peer, u_int32_t source_id) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf10_source* nf10src;
 
@@ -467,8 +450,7 @@ struct peer_nf10_source* peer_nf10_new_source(struct peer_state* peer, u_int32_t
     return (nf10src);
 }
 
-struct peer_nf10_template* peer_nf10_new_template(struct peer_state* peer, u_int32_t source_id, u_int16_t template_id)
-{
+struct peer_nf10_template* peer_nf10_new_template(struct peer_state* peer, u_int32_t source_id, u_int16_t template_id) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_nf10_source* nf10src;
     struct peer_nf10_template* nf10tmpl;
@@ -510,8 +492,7 @@ struct peer_nf10_template* peer_nf10_new_template(struct peer_state* peer, u_int
 }
 
 /* General peer state housekeeping functions */
-int peer_compare(struct peer_state* a, struct peer_state* b)
-{
+int peer_compare(struct peer_state* a, struct peer_state* b) {
     return (addr_cmp(&a->from, &b->from));
 }
 
@@ -561,8 +542,7 @@ struct peer_state* new_peer(struct xaddr* addr) {
     return (peer);
 }
 
-void update_peer(struct peer_state* peer, u_int nflows, u_int netflow_version)
-{
+void update_peer(struct peer_state* peer, u_int nflows, u_int netflow_version) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     /* Push peer to front of LRU queue, if it isn't there already */
     if (peer != TAILQ_FIRST(&netflow_peers.peer_list)) {
@@ -579,8 +559,7 @@ void update_peer(struct peer_state* peer, u_int nflows, u_int netflow_version)
     rte_spinlock_recursive_unlock(&netflow_peers.peers_lock);
 }
 
-struct peer_state* find_peer(struct xaddr* addr)
-{
+struct peer_state* find_peer(struct xaddr* addr) {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_state tmp;
     struct peer_state* peer;
@@ -598,8 +577,7 @@ struct peer_state* find_peer(struct xaddr* addr)
     return (peer);
 }
 
-void dump_peers()
-{
+void dump_peers() {
     rte_spinlock_recursive_lock(&netflow_peers.peers_lock);
     struct peer_state* peer;
     u_int i;

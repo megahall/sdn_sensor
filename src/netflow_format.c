@@ -147,7 +147,7 @@ uint8_t* ss_metadata_prepare_netflow(
         goto error_out;
     }
 
-    item = json_object_new_string("netflow_ioc");
+    item = json_object_new_string(source);
     if (item == NULL) goto error_out;
     json_object_object_add(jobject, "source", item);
     item = json_object_new_int64((int64_t)__sync_add_and_fetch(&nn_queue->tx_messages, 1));

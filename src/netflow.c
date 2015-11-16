@@ -88,22 +88,19 @@ struct flow_packet {
 };
 
 /* Allocate a new packet (XXX: make this use a pool of preallocated entries) */
-struct flow_packet* flow_packet_alloc(void)
-{
+struct flow_packet* flow_packet_alloc(void) {
     return (je_calloc(1, sizeof(struct flow_packet)));
 }
 
 /* Deallocate a flow packet (XXX: change to return entry to freelist) */
-void flow_packet_dealloc(struct flow_packet* f)
-{
+void flow_packet_dealloc(struct flow_packet* f) {
     if (f->packet != NULL)
         je_free(f->packet);
     je_free(f);
 }
 
 /* Format data to a hex string */
-const char* data_ntoa(const u_int8_t* p, u_int len)
-{
+const char* data_ntoa(const u_int8_t* p, u_int len) {
     static char buf[2048];
     char tmp[3];
     int i;
@@ -119,9 +116,7 @@ const char* data_ntoa(const u_int8_t* p, u_int len)
 }
 
 /* Dump a packet */
-void
-dump_packet(const char* tag, const u_int8_t* p, u_int len)
-{
+void dump_packet(const char* tag, const u_int8_t* p, u_int len) {
     if (tag == NULL)
         logit(LOG_INFO, "packet len %d: %s", len, data_ntoa(p, len));
     else {
@@ -135,7 +130,7 @@ dump_packet(const char* tag, const u_int8_t* p, u_int len)
  * Match netflow metadata against ioc_entries
  * Relay matches to appropriate nm_queue
  */
-int process_flow(struct store_flow_complete* flow) {
+int ss_extract_netflow(struct store_flow_complete* flow) {
     ss_ioc_entry_t* iptr;
     uint8_t* metadata = NULL;
     size_t mlength = 0;
@@ -176,8 +171,7 @@ int process_flow(struct store_flow_complete* flow) {
     return rv;
 }
 
-void process_netflow_v1(struct flow_packet* fp, struct peer_state* peer)
-{
+void process_netflow_v1(struct flow_packet* fp, struct peer_state* peer) {
     struct NF1_HEADER* nf1_hdr = (struct NF1_HEADER*)fp->packet;
     struct NF1_FLOW* nf1_flow;
     struct store_flow_complete flow;
@@ -261,12 +255,11 @@ void process_netflow_v1(struct flow_packet* fp, struct peer_state* peer)
         flow.ftimes.flow_start = nf1_flow->flow_start;
         flow.ftimes.flow_finish = nf1_flow->flow_finish;
 
-        process_flow(&flow);
+        ss_extract_netflow(&flow);
     }
 }
 
-void process_netflow_v5(struct flow_packet* fp, struct peer_state* peer)
-{
+void process_netflow_v5(struct flow_packet* fp, struct peer_state* peer) {
     struct NF5_HEADER* nf5_hdr = (struct NF5_HEADER*)fp->packet;
     struct NF5_FLOW* nf5_flow;
     struct store_flow_complete flow;
@@ -357,12 +350,11 @@ void process_netflow_v5(struct flow_packet* fp, struct peer_state* peer)
         flow.finf.engine_id = nf5_hdr->engine_id;
         flow.finf.flow_sequence = nf5_hdr->flow_sequence;
 
-        process_flow(&flow);
+        ss_extract_netflow(&flow);
     }
 }
 
-void process_netflow_v7(struct flow_packet* fp, struct peer_state* peer)
-{
+void process_netflow_v7(struct flow_packet* fp, struct peer_state* peer) {
     struct NF7_HEADER* nf7_hdr = (struct NF7_HEADER*)fp->packet;
     struct NF7_FLOW* nf7_flow;
     struct store_flow_complete flow;
@@ -457,12 +449,11 @@ void process_netflow_v7(struct flow_packet* fp, struct peer_state* peer)
 
         flow.finf.flow_sequence = nf7_hdr->flow_sequence;
 
-        process_flow(&flow);
+        ss_extract_netflow(&flow);
     }
 }
 
-int nf9_rec_to_flow(struct peer_nf9_record* rec, struct store_flow_complete* flow, u_int8_t* data)
-{
+int nf9_rec_to_flow(struct peer_nf9_record* rec, struct store_flow_complete* flow, u_int8_t* data) {
     /* XXX: use a table-based interpreter */
     switch (rec->type) {
 
@@ -515,8 +506,7 @@ int nf9_rec_to_flow(struct peer_nf9_record* rec, struct store_flow_complete* flo
     return (0);
 }
 
-int nf9_check_rec_len(u_int type, u_int len)
-{
+int nf9_check_rec_len(u_int type, u_int len) {
     struct store_flow_complete t;
 
     /* Sanity check */
@@ -564,8 +554,7 @@ int nf9_check_rec_len(u_int type, u_int len)
 int nf9_flowset_to_store(u_int8_t* pkt, size_t len, struct timeval* tv, 
     struct xaddr* flow_source, struct NF9_HEADER* nf9_hdr,
     struct peer_nf9_template* template, u_int32_t source_id,
-    struct store_flow_complete* flow)
-{
+    struct store_flow_complete* flow) {
     u_int offset, i;
 
     if (template->total_len > len)
@@ -597,8 +586,7 @@ int nf9_flowset_to_store(u_int8_t* pkt, size_t len, struct timeval* tv,
     return (0);
 }
 
-int process_netflow_v9_template(u_int8_t* pkt, size_t len, struct peer_state* peer, u_int32_t source_id)
-{
+int process_netflow_v9_template(u_int8_t* pkt, size_t len, struct peer_state* peer, u_int32_t source_id) {
     struct NF9_FLOWSET_HEADER_COMMON* template_header;
     struct NF9_TEMPLATE_FLOWSET_HEADER* tmplh;
     struct NF9_TEMPLATE_FLOWSET_RECORD* tmplr;
@@ -706,8 +694,7 @@ int process_netflow_v9_template(u_int8_t* pkt, size_t len, struct peer_state* pe
 
 int process_netflow_v9_data(u_int8_t* pkt, size_t len, struct timeval* tv, 
     struct peer_state* peer, u_int32_t source_id, struct NF9_HEADER* nf9_hdr,
-    u_int* num_flows)
-{
+    u_int* num_flows) {
     struct store_flow_complete* flows;
     struct peer_nf9_template* template;
     struct NF9_DATA_FLOWSET_HEADER* dath;
@@ -771,15 +758,14 @@ int process_netflow_v9_data(u_int8_t* pkt, size_t len, struct timeval* tv,
     *num_flows = i;
 
     for (i = 0; i < *num_flows; i++)
-        process_flow(&flows[i]);
+        ss_extract_netflow(&flows[i]);
 
     je_free(flows);
 
     return (0);
 }
 
-void process_netflow_v9(struct flow_packet* fp, struct peer_state* peer)
-{
+void process_netflow_v9(struct flow_packet* fp, struct peer_state* peer) {
     struct NF9_HEADER* nf9_hdr = (struct NF9_HEADER*)fp->packet;
     struct NF9_FLOWSET_HEADER_COMMON* flowset;
     u_int32_t i, count, flowset_id, flowset_len, flowset_flows;
@@ -883,8 +869,7 @@ void process_netflow_v9(struct flow_packet* fp, struct peer_state* peer)
 }
 
 int nf10_rec_to_flow(struct peer_nf10_record* rec, struct store_flow_complete* flow,
-    u_int8_t* data)
-{
+    u_int8_t* data) {
     /* XXX: use a table-based interpreter */
     switch (rec->type) {
 
@@ -937,8 +922,7 @@ int nf10_rec_to_flow(struct peer_nf10_record* rec, struct store_flow_complete* f
     return (0);
 }
 
-int nf10_check_rec_len(u_int type, u_int len)
-{
+int nf10_check_rec_len(u_int type, u_int len) {
     struct store_flow_complete t;
 
     /* Sanity check */
@@ -986,8 +970,7 @@ int nf10_check_rec_len(u_int type, u_int len)
 int nf10_flowset_to_store(u_int8_t* pkt, size_t len, struct timeval* tv,
     struct xaddr* flow_source, struct NF10_HEADER* nf10_hdr,
     struct peer_nf10_template* template, u_int32_t source_id,
-    struct store_flow_complete* flow)
-{
+    struct store_flow_complete* flow) {
     u_int offset, i;
 
     if (template->total_len > len)
@@ -1019,8 +1002,7 @@ int nf10_flowset_to_store(u_int8_t* pkt, size_t len, struct timeval* tv,
     return (0);
 }
 
-int process_netflow_v10_template(u_int8_t* pkt, size_t len, struct peer_state* peer, u_int32_t source_id)
-{
+int process_netflow_v10_template(u_int8_t* pkt, size_t len, struct peer_state* peer, u_int32_t source_id) {
     struct NF10_FLOWSET_HEADER_COMMON* template_header;
     struct NF10_TEMPLATE_FLOWSET_HEADER* tmplh;
     struct NF10_TEMPLATE_FLOWSET_RECORD* tmplr;
@@ -1130,8 +1112,7 @@ int process_netflow_v10_template(u_int8_t* pkt, size_t len, struct peer_state* p
 
 int process_netflow_v10_data(u_int8_t* pkt, size_t len, struct timeval* tv,
     struct peer_state* peer, u_int32_t source_id, struct NF10_HEADER* nf10_hdr,
-    u_int* num_flows)
-{
+    u_int* num_flows) {
     struct store_flow_complete* flows;
     struct peer_nf10_template* template;
     struct NF10_DATA_FLOWSET_HEADER* dath;
@@ -1195,15 +1176,14 @@ int process_netflow_v10_data(u_int8_t* pkt, size_t len, struct timeval* tv,
     *num_flows = i;
 
     for (i = 0; i < *num_flows; i++)
-        process_flow(&flows[i]);
+        ss_extract_netflow(&flows[i]);
 
     je_free(flows);
 
     return (0);
 }
 
-void process_netflow_v10(struct flow_packet* fp, struct peer_state* peer)
-{
+void process_netflow_v10(struct flow_packet* fp, struct peer_state* peer) {
     struct NF10_HEADER* nf10_hdr = (struct NF10_HEADER*)fp->packet;
     struct NF10_FLOWSET_HEADER_COMMON* flowset;
     u_int32_t i, pktlen, flowset_id, flowset_len, flowset_flows;

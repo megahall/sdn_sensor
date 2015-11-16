@@ -92,15 +92,11 @@ static const u_int32_t crc32tab[] = {
     0xb40bbe37L, 0xc30c8ea1L, 0x5a05df1bL, 0x2d02ef8dL
 };
 
-void
-netflow_crc32_start(u_int32_t* crcp)
-{
+void netflow_crc32_start(u_int32_t* crcp) {
     *crcp = 0;
 }
 
-void
-netflow_crc32_update(const u_char* buf, u_int32_t size, u_int32_t* crcp)
-{
+void netflow_crc32_update(const u_char* buf, u_int32_t size, u_int32_t* crcp) {
     u_int32_t i, crc;
 
     crc = *crcp;
@@ -109,9 +105,7 @@ netflow_crc32_update(const u_char* buf, u_int32_t size, u_int32_t* crcp)
     *crcp = crc;
 }
 
-u_int32_t
-netflow_crc32(const u_char* buf, u_int32_t size)
-{
+u_int32_t netflow_crc32(const u_char* buf, u_int32_t size) {
     u_int32_t crc;
 
     netflow_crc32_start(&crc);
