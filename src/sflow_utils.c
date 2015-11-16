@@ -64,22 +64,28 @@ char* sflow_mac_string(uint8_t* m) {
     return mac_buf;
 }
 
-char* sflow_ip_string(sflow_ip_t* ip, char* ip_buf, size_t ip_buf_len) {
+static __thread char ip_buf[SS_IPV6_STR_MAX];
+
+char* sflow_ip_string(sflow_ip_t* ip, char* i, size_t i_len) {
+    if (i == NULL) {
+        i = ip_buf;
+        i_len = sizeof(ip_buf);
+    }
     switch (ip->type) {
         case SFLOW_ADDRESS_TYPE_IP_V4: {
-            ss_inet_ntop_raw(SS_AF_INET4, (uint8_t*) &ip->ipv4.addr, ip_buf, ip_buf_len);
+            ss_inet_ntop_raw(SS_AF_INET4, (uint8_t*) &ip->ipv4.addr, i, i_len);
             break;
         }
         case SFLOW_ADDRESS_TYPE_IP_V6: {
-            ss_inet_ntop_raw(SS_AF_INET6, (uint8_t*) &ip->ipv6.addr, ip_buf, ip_buf_len);
+            ss_inet_ntop_raw(SS_AF_INET6, (uint8_t*) &ip->ipv6.addr, i, i_len);
             break;
         }
         default: {
-            snprintf(ip_buf, ip_buf_len, "SFLOW_ADDRESS_TYPE_UNKNOWN");
+            snprintf(i, i_len, "SFLOW_ADDRESS_TYPE_UNKNOWN");
             break;
         }
     }
-    return ip_buf;
+    return i;
 }
 
 uint32_t sflow_get_data_32_nobswap(sflow_sample_t* sample) {
