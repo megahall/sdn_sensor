@@ -839,3 +839,160 @@ ss_ioc_entry_t* ss_ioc_netflow_match(struct store_flow_complete* flow) {
 
     return iptr;
 }
+
+ss_ioc_entry_t* ss_ioc_sflow_match(sflow_sample_t* sample) {
+    ss_ioc_entry_t* iptr = NULL;
+    uint32_t ip;
+    int      rv;
+    uint32_t next_hop;
+    char     tdns[SS_DNS_NAME_MAX];
+    char*    header;
+    size_t   offset;
+
+    if (sample->eth_type == ETHER_TYPE_IPV4) {
+        ip = *(uint32_t*) &sample->src_ip.ipv4.addr;
+        HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
+        if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm_lookup(ss_conf->cidr4, rte_bswap32(ip), &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop4[next_hop];
+            goto out;
+        }
+
+        ip = *(uint32_t*) &sample->dst_ip.ipv4.addr;
+        HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
+        if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm_lookup(ss_conf->cidr4, rte_bswap32(ip), &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop4[next_hop];
+            goto out;
+        }
+
+        ip = *(uint32_t*) &sample->nat_src_ip.ipv4.addr;
+        HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
+        if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm_lookup(ss_conf->cidr4, rte_bswap32(ip), &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop4[next_hop];
+            goto out;
+        }
+
+        ip = *(uint32_t*) &sample->nat_dst_ip.ipv4.addr;
+        HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
+        if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm_lookup(ss_conf->cidr4, rte_bswap32(ip), &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop4[next_hop];
+            goto out;
+        }
+
+        ip = *(uint32_t*) &sample->next_hop.ipv4.addr;
+        HASH_FIND_INT(ss_conf->ip4_table, &ip, iptr);
+        if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm_lookup(ss_conf->cidr4, rte_bswap32(ip), &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop4[next_hop];
+            goto out;
+        }
+    }
+    else if (sample->eth_type == ETHER_TYPE_IPV6) {
+        HASH_FIND(hh, ss_conf->ip6_table, &sample->src_ip, sizeof(sample->src_ip), iptr);
+        if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm6_lookup(ss_conf->cidr6, (uint8_t*) &sample->src_ip, &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop6[next_hop];
+            goto out;
+        }
+
+        HASH_FIND(hh, ss_conf->ip6_table, &sample->dst_ip, sizeof(sample->dst_ip), iptr);
+        if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm6_lookup(ss_conf->cidr6, (uint8_t*) &sample->dst_ip, &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop6[next_hop];
+            goto out;
+        }
+
+        HASH_FIND(hh, ss_conf->ip6_table, &sample->nat_src_ip, sizeof(sample->nat_src_ip), iptr);
+        if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm6_lookup(ss_conf->cidr6, (uint8_t*) &sample->nat_src_ip, &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop6[next_hop];
+            goto out;
+        }
+
+        HASH_FIND(hh, ss_conf->ip6_table, &sample->nat_dst_ip, sizeof(sample->nat_dst_ip), iptr);
+        if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm6_lookup(ss_conf->cidr6, (uint8_t*) &sample->nat_dst_ip, &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop6[next_hop];
+            goto out;
+        }
+
+        HASH_FIND(hh, ss_conf->ip6_table, &sample->next_hop, sizeof(sample->next_hop), iptr);
+        if (iptr) goto out;
+        next_hop = 0;
+        rv = rte_lpm6_lookup(ss_conf->cidr6, (uint8_t*) &sample->next_hop, &next_hop);
+        if (!rv) {
+            iptr = ss_conf->hop6[next_hop];
+            goto out;
+        }
+    }
+
+    if (sample->host[0]) {
+        // NOTE: convert names to canonical form (trailing '.')
+        offset = strlcpy(tdns, sample->host, sizeof(tdns));
+        if (tdns[offset] != '.') {
+            tdns[offset] = '.';
+            tdns[offset + 1] = '\0';
+        }
+        fprintf(stderr, "host %s extracted dns domain: %s\n", sample->host, tdns);
+        HASH_FIND_STR(ss_conf->domain_table, tdns, iptr);
+        if (iptr) goto out;
+    }
+
+    if (sample->url[0]) {
+        // check for DNS and HTTP interception
+        header = strcasestr(sample->url, SS_IOC_HTTP_URL);
+        offset = strlen(SS_IOC_HTTP_URL);
+        if (header == NULL || header != sample->url) {
+            header = strcasestr(sample->url, SS_IOC_HTTPS_URL);
+            offset = strlen(SS_IOC_HTTPS_URL);
+        }
+
+        if (header == NULL || header != sample->url) {
+            fprintf(stderr, "url is corrupt: %s\n", sample->url);
+            goto next_check;
+        }
+        // NOTE: convert names to canonical form (trailing '.')
+        strlcpy(tdns, sample->url + offset, sizeof(tdns) - 2);
+        for (int i = 0; ; ++i) {
+            if (tdns[i] == '/' || tdns[i] == '\0') {
+                tdns[i] = '.';
+                tdns[i+1] = '\0';
+                break;
+            }
+        }
+        fprintf(stderr, "url %s extracted dns domain: %s\n", sample->url, tdns);
+        HASH_FIND_STR(ss_conf->domain_table, tdns, iptr);
+        if (iptr) goto out;
+
+        HASH_FIND(hh_full, ss_conf->url_table, sample->url, strlen(sample->url), iptr);
+        if (iptr) goto out;
+    }
+
+    next_check:
+    // XXX: check values in following fields:
+    // sample->client, sample->url
+
+    out:
+    return iptr;
+}
