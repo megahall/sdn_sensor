@@ -186,29 +186,29 @@ uint32_t sflow_parse_ip(sflow_sample_t* sample, sflow_ip_t* ip) {
 }
 
 // XXX: no clue what the maximum tag length is
-static __thread char tag_buf[SS_INET6_ADDRSTRLEN + 1];
+static __thread char tag_buf[SS_IPV6_STR_MAX + 1];
 char* sflow_tag_dump(uint32_t tag) {
     snprintf(tag_buf, sizeof(tag_buf), "%u:%u", (tag >> 12), (tag & 0x00000FFF));
-    tag_buf[SS_INET6_ADDRSTRLEN - 1] = '\0';
+    tag_buf[SS_IPV6_STR_MAX - 1] = '\0';
     return tag_buf;
 }
 
 char* sflow_sample_type_dump(uint32_t sample_type) {
     switch (sample_type) {
-        case 1: return "SFLOW_FLOW_SAMPLE";
-        case 2: return "SFLOW_COUNTERS_SAMPLE";
-        case 3: return "SFLOW_FLOW_SAMPLE_EXPANDED";
-        case 4: return "SFLOW_COUNTERS_SAMPLE_EXPANDED";
-        default: return "SFLOW_SAMPLE_TYPE_UNKNOWN";
+        case SFLOW_FLOW_SAMPLE:              return "SFLOW_FLOW_SAMPLE";
+        case SFLOW_COUNTERS_SAMPLE:          return "SFLOW_COUNTERS_SAMPLE";
+        case SFLOW_FLOW_SAMPLE_EXPANDED:     return "SFLOW_FLOW_SAMPLE_EXPANDED";
+        case SFLOW_COUNTERS_SAMPLE_EXPANDED: return "SFLOW_COUNTERS_SAMPLE_EXPANDED";
+        default:                             return "SFLOW_SAMPLE_TYPE_UNKNOWN";
     }
 }
 
 char* sflow_ds_type_dump(uint32_t ds_type) {
     switch (ds_type) {
-        case 0: return "SFLOW_DS_IFINDEX";
-        case 1: return "SFLOW_DS_VLAN";
-        case 2: return "SFLOW_DS_ENTITY";
-        default: return "SFLOW_DS_UNKNOWN";
+        case SFLOW_DS_IFINDEX: return "SFLOW_DS_IFINDEX";
+        case SFLOW_DS_VLAN:    return "SFLOW_DS_VLAN";
+        case SFLOW_DS_ENTITY:  return "SFLOW_DS_ENTITY";
+        default:               return "SFLOW_DS_UNKNOWN";
     }
 }
 
@@ -278,11 +278,14 @@ char* sflow_port_id_dump(uint32_t format, uint32_t port) {
 
 char* sflow_sample_format_dump(uint32_t sample_type, uint32_t sample_format) {
     switch (sample_type) {
-        case 1:
-        case 3: return sflow_flow_format_dump(sample_format);
-        case 2:
-        case 4: return sflow_counters_format_dump(sample_format);
-        default: return "SFLOW_SAMPLE_TYPE_UNKNOWN";
+        case SFLOW_FLOW_SAMPLE:
+        case SFLOW_FLOW_SAMPLE_EXPANDED:
+            return sflow_flow_format_dump(sample_format);
+        case SFLOW_COUNTERS_SAMPLE:
+        case SFLOW_COUNTERS_SAMPLE_EXPANDED:
+            return sflow_counters_format_dump(sample_format);
+        default:
+            return "SFLOW_SAMPLE_TYPE_UNKNOWN";
     }
 }
 
