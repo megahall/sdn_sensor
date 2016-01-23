@@ -25,17 +25,16 @@
 /* On-disk storage format */
 
 #include "ioc.h"
-#include "netflow_common.h"
 #include "netflow_addr.h"
 #include "nn_queue.h"
 
 /* On-disk address formats for v4 and v6 addresses */
 struct store_addr6 {
     u_int8_t    d[16];
-} __packed;
+} __attribute__((packed));
 struct store_addr4 {
     u_int8_t    d[4];
-} __packed;
+} __attribute__((packed));
 
 #define STORE_VER_MIN_MASK    ((1 << 5) - 1)
 #define STORE_VER_MAJ_MASK    ((1 << 3) - 1)
@@ -54,7 +53,7 @@ struct store_flow {
     u_int8_t        len_words; /* len in 4 byte words not inc hdr */
     u_int16_t        reserved;
     u_int32_t        fields;
-} __packed;
+} __attribute__((packed));
 
 /*
  * Optional flow fields, specify what is stored for the flow
@@ -116,13 +115,13 @@ struct store_flow {
 /* Optional flow field - present if STORE_FIELD_TAG */
 struct store_flow_TAG {
     u_int32_t        tag; /* set by filter */
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_RECV_TIME */
 struct store_flow_RECV_TIME {
     u_int32_t        recv_sec;
     u_int32_t        recv_usec;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_PROTO_FLAGS_TOS */
 struct store_flow_PROTO_FLAGS_TOS {
@@ -130,65 +129,65 @@ struct store_flow_PROTO_FLAGS_TOS {
     u_int8_t        protocol;
     u_int8_t        tos;
     u_int8_t        pad;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_AGENT_ADDR */
 struct store_flow_AGENT_ADDR4 {
     struct store_addr4    flow_agent_addr;
-} __packed;
+} __attribute__((packed));
 struct store_flow_AGENT_ADDR6 {
     struct store_addr6    flow_agent_addr;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_SRC_ADDR4 */
 struct store_flow_SRC_ADDR4 {
     struct store_addr4    src_addr;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_DST_ADDR4 */
 struct store_flow_DST_ADDR4 {
     struct store_addr4    dst_addr;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_SRC_ADDR6 */
 struct store_flow_SRC_ADDR6 {
     struct store_addr6    src_addr;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_DST_ADDR6 */
 struct store_flow_DST_ADDR6 {
     struct store_addr6    dst_addr;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_GATEWAY_ADDR */
 struct store_flow_GATEWAY_ADDR4 {
     struct store_addr4    gateway_addr;
-} __packed;
+} __attribute__((packed));
 struct store_flow_GATEWAY_ADDR6 {
     struct store_addr6    gateway_addr;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_SRCDST_PORT */
 struct store_flow_SRCDST_PORT {
     u_int16_t        src_port;
     u_int16_t        dst_port;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_PACKETS */
 struct store_flow_PACKETS {
     u_int64_t        flow_packets;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_OCTETS */
 struct store_flow_OCTETS {
     u_int64_t        flow_octets;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_IF_INDICES */
 struct store_flow_IF_INDICES {
     u_int32_t        if_index_in;
     u_int32_t        if_index_out;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_AGENT_INFO */
 struct store_flow_AGENT_INFO {
@@ -197,13 +196,13 @@ struct store_flow_AGENT_INFO {
     u_int32_t        time_nanosec;
     u_int16_t        netflow_version;
     u_int16_t        pad;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_FLOW_TIMES */
 struct store_flow_FLOW_TIMES {
     u_int32_t        flow_start;
     u_int32_t        flow_finish;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_AS_INFO */
 struct store_flow_AS_INFO {
@@ -212,7 +211,7 @@ struct store_flow_AS_INFO {
     u_int8_t        src_mask;
     u_int8_t        dst_mask;
     u_int16_t        pad;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_FLOW_ENGINE_INFO */
 struct store_flow_FLOW_ENGINE_INFO {
@@ -220,12 +219,12 @@ struct store_flow_FLOW_ENGINE_INFO {
     u_int16_t        engine_id;
     u_int32_t        flow_sequence;
     u_int32_t        source_id;
-} __packed;
+} __attribute__((packed));
 
 /* Optional flow field - present if STORE_FIELD_CRC32 */
 struct store_flow_CRC32 {
     u_int32_t        crc32;
-} __packed;
+} __attribute__((packed));
 
 /* A abstract flow record (all fields included) */
 struct store_flow_complete {
@@ -246,7 +245,7 @@ struct store_flow_complete {
     struct store_flow_AS_INFO        asinf;
     struct store_flow_FLOW_ENGINE_INFO    finf;
     struct store_flow_CRC32            crc32;
-} __packed;
+} __attribute__((packed));
 
 typedef struct ss_ioc_entry_s ss_ioc_entry_t;
 

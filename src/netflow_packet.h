@@ -30,13 +30,13 @@
 /* Common header fields */
 struct NF_HEADER_COMMON {
     u_int16_t version, flows;
-} __packed;
+} __attribute__((packed));
 
 /* Netflow v.1 */
 struct NF1_HEADER {
     struct NF_HEADER_COMMON c;
     u_int32_t uptime_ms, time_sec, time_nanosec;
-} __packed;
+} __attribute__((packed));
 struct NF1_FLOW {
     u_int32_t src_ip, dest_ip, nexthop_ip;
     u_int16_t if_index_in, if_index_out;
@@ -50,7 +50,7 @@ struct NF1_FLOW {
 #if 0
      u_int8_t reserved2; /* XXX: no longer used */
 #endif
-} __packed;
+} __attribute__((packed));
 
 /* Maximum of 30 flows per packet */
 #define NF1_MAXFLOWS        24
@@ -63,7 +63,7 @@ struct NF5_HEADER {
     struct NF_HEADER_COMMON c;
     u_int32_t uptime_ms, time_sec, time_nanosec, flow_sequence;
     u_int8_t engine_type, engine_id, reserved1, reserved2;
-} __packed;
+} __attribute__((packed));
 struct NF5_FLOW {
     u_int32_t src_ip, dest_ip, nexthop_ip;
     u_int16_t if_index_in, if_index_out;
@@ -75,7 +75,7 @@ struct NF5_FLOW {
     u_int16_t src_as, dest_as;
     u_int8_t src_mask, dst_mask;
     u_int16_t pad2;
-} __packed;
+} __attribute__((packed));
 /* Maximum of 24 flows per packet */
 #define NF5_MAXFLOWS        30
 #define NF5_PACKET_SIZE(nflows)    (sizeof(struct NF5_HEADER) + \
@@ -87,7 +87,7 @@ struct NF7_HEADER {
     struct NF_HEADER_COMMON c;
     u_int32_t uptime_ms, time_sec, time_nanosec, flow_sequence;
     u_int32_t reserved1;
-} __packed;
+} __attribute__((packed));
 struct NF7_FLOW {
     u_int32_t src_ip, dest_ip, nexthop_ip;
     u_int16_t if_index_in, if_index_out;
@@ -100,7 +100,7 @@ struct NF7_FLOW {
     u_int8_t src_mask, dst_mask;
     u_int16_t flags2;
     u_int32_t router_sc;
-} __packed;
+} __attribute__((packed));
 /* Maximum of 24 flows per packet */
 #define NF7_MAXFLOWS        30
 #define NF7_PACKET_SIZE(nflows)    (sizeof(struct NF7_HEADER) + \
@@ -112,19 +112,19 @@ struct NF9_HEADER {
     struct NF_HEADER_COMMON c;
     u_int32_t uptime_ms, time_sec;
     u_int32_t package_sequence, source_id;
-} __packed;
+} __attribute__((packed));
 struct NF9_FLOWSET_HEADER_COMMON {
     u_int16_t flowset_id, length;
-} __packed;
+} __attribute__((packed));
 struct NF9_TEMPLATE_FLOWSET_HEADER {
     u_int16_t template_id, count;
-} __packed;
+} __attribute__((packed));
 struct NF9_TEMPLATE_FLOWSET_RECORD {
     u_int16_t type, length;
-} __packed;
+} __attribute__((packed));
 struct NF9_DATA_FLOWSET_HEADER {
     struct NF9_FLOWSET_HEADER_COMMON c;
-} __packed;
+} __attribute__((packed));
 #define NF9_TEMPLATE_FLOWSET_ID        0
 #define NF9_OPTIONS_FLOWSET_ID        1
 #define NF9_MIN_RECORD_FLOWSET_ID    256
@@ -166,19 +166,19 @@ struct NF10_HEADER {
     struct NF_HEADER_COMMON c;
     u_int32_t time_sec;
     u_int32_t package_sequence, source_id;
-} __packed;
+} __attribute__((packed));
 struct NF10_FLOWSET_HEADER_COMMON {
     u_int16_t flowset_id, length;
-} __packed;
+} __attribute__((packed));
 struct NF10_TEMPLATE_FLOWSET_HEADER {
     u_int16_t template_id, count;
-} __packed;
+} __attribute__((packed));
 struct NF10_TEMPLATE_FLOWSET_RECORD {
     u_int16_t type, length;
-} __packed;
+} __attribute__((packed));
 struct NF10_DATA_FLOWSET_HEADER {
     struct NF10_FLOWSET_HEADER_COMMON c;
-} __packed;
+} __attribute__((packed));
 #define NF10_TEMPLATE_FLOWSET_ID    2
 #define NF10_OPTIONS_FLOWSET_ID        3
 #define NF10_MIN_RECORD_FLOWSET_ID    256
