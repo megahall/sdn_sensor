@@ -655,15 +655,7 @@ int main(int argc, char* argv[]) {
 
         /* cache MAC address */
         rte_eth_macaddr_get(port_id, &port_eth_addrs[port_id]);
-        
-        /* Start port */
-        rv = rte_eth_dev_start(port_id);
-        if (rv < 0) {
-            rte_exit(EXIT_FAILURE, "rte_eth_dev_start: error: port: %u error: %d\n", (unsigned) port_id, rv);
-        }
-        
-        rte_eth_promiscuous_enable(port_id);
-        
+
         RTE_LOG(INFO, SS, "port %u: now active with mac address: %02X:%02X:%02X:%02X:%02X:%02X\n",
             (unsigned) port_id,
             port_eth_addrs[port_id].addr_bytes[0],
@@ -676,15 +668,43 @@ int main(int argc, char* argv[]) {
         /* initialize port stats */
         memset(&port_statistics, 0, sizeof(port_statistics));
     }
-    
+
+    for (lcore_id = 0; lcore_id < lcore_count; ++lcore_id) {
+        /* init power management library */
+        rv = rte_power_init(lcore_id);
+        if (rv) {
+            RTE_LOG(WARNING, SS, "librte_power is not available on lcore_id: %d\n", lcore_id);
+        }
+
+        /* init timer structures for each enabled lcore */
+        rte_timer_init(&power_timers[lcore_id]);
+        hz = rte_get_timer_hz();
+        rte_timer_reset(&power_timers[lcore_id],
+            hz / TIMER_TICKS_PER_SEC, SINGLE, lcore_id,
+            ss_power_timer_callback, NULL);
+    }
+
+    for (port_id = 0; port_id < port_count; ++port_id) {
+        /* Start port */
+        rv = rte_eth_dev_start(port_id);
+        if (rv < 0) {
+            rte_exit(EXIT_FAILURE, "rte_eth_dev_start: error: port: %u error: %d\n", (unsigned) port_id, rv);
+        }
+
+        rte_eth_promiscuous_enable(port_id);
+
+        /* initialize spinlock for each port */
+        rte_spinlock_init(&port_statistics[port_id].port_lock);
+    }
+
     //ss_port_link_status_check_all(ss_conf->port_count);
-    
+
     /* launch per-lcore init on every lcore */
-    rte_eal_mp_remote_launch(ss_launch_one_lcore, NULL, CALL_MASTER);
+    rte_eal_mp_remote_launch(ss_main_loop, NULL, CALL_MASTER);
     RTE_LCORE_FOREACH_SLAVE(lcore_id) {
         if (rte_eal_wait_lcore(lcore_id) < 0)
             return -1;
     }
-    
+
     return 0;
 }
