@@ -38,8 +38,8 @@ SS_VERSION := $(shell echo `date "+%Y%m%d-%H%M%S"`-`git rev-parse --short HEAD`)
 #FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -pthread -m64 -march=native -msse4 -std=gnu11 -ferror-limit=5
 FLAGS          = -fPIC -O0 -g -fno-strict-aliasing -fno-omit-frame-pointer -pthread -m64 -march=native -msse4 -std=gnu11
 DEFINES        = -D__SSE3__ -D__SSSE3__ -D__SSE4_1__ -D__SSE4_2__ -DSS_VERSION="\"$(SS_VERSION)\""
-INCLUDE_FILES  = -include $(RTE_SDK)/build/include/rte_config.h
-INCLUDE_PATHS  = -isystem$(RTE_SDK)/build/include -I$(SDN_SENSOR_BASE)/external/spcdns/src -isystem/usr/local/jemalloc/include
+INCLUDE_FILES  = -include $(RTE_INCLUDE)/rte_config.h
+INCLUDE_PATHS  = -isystem$(RTE_INCLUDE) -I$(SDN_SENSOR_BASE)/external/spcdns/src -isystem/usr/local/jemalloc/include
 CPROTO_PATHS   = $(subst -isystem,-I,$(INCLUDE_PATHS))
 CFLAGS        := $(WARNINGS) $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) $(DEFINES)
 IWYU_CFLAGS   := $(FLAGS) $(INCLUDE_FILES) $(INCLUDE_PATHS) $(CFLAGS) $(DEFINES)
