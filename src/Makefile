@@ -81,10 +81,10 @@ endif
 #-lrte_timer \
 #-Wl,--end-group -Wl,--no-whole-archive
 
-DPDK_LINK = -Wl,--whole-archive -Wl,--start-group -lintel_dpdk -Wl,--end-group -Wl,--no-whole-archive
+DPDK_LINK = -Wl,--whole-archive -Wl,--start-group -ldpdk -Wl,--end-group -Wl,--no-whole-archive
 STATIC_LINK = -Wl,-Bstatic -lbsd -lcre2 -lre2 -llzma -ljson-c -lnanomsg -lanl -lpcap -lpcre -lspcdns -lspcdnsmisc -Wl,-Bdynamic
 
-LDFLAGS = -L$(RTE_SDK)/build/lib -Wl,-rpath,$(RTE_SDK)/build/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built -L/usr/local/jemalloc/lib -Wl,-rpath,/usr/local/jemalloc/lib
+LDFLAGS = -L$(RTE_OUTPUT)/lib -Wl,-rpath,$(RTE_OUTPUT)/lib -L$(SDN_SENSOR_BASE)/external/spcdns/built -L/usr/local/jemalloc/lib -Wl,-rpath,/usr/local/jemalloc/lib
 
 HEADERS = $(wildcard *.h)
 SOURCES = $(wildcard *.c)
