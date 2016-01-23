@@ -39,7 +39,7 @@
 static struct rte_hash_parameters tcp_hash_params = {
     .name               = "tcp_hash_socket_0",
     .entries            = L4_TCP_HASH_SIZE,
-    .bucket_entries     = L4_TCP_BUCKET_SIZE,
+    //.bucket_entries     = L4_TCP_BUCKET_SIZE,
     .key_len            = sizeof(ss_tcp_key_t),
     .hash_func          = rte_hash_crc,
     .hash_func_init_val = 0,
