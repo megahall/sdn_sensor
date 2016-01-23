@@ -305,14 +305,26 @@ int ss_power_irq_handle() {
 int ss_main_loop(__attribute__((unused)) void* arg) __attribute__ ((noreturn)) {
     rte_mbuf_t* mbufs[BURST_PACKETS_MAX];
     rte_mbuf_t* mbuf;
-    uint16_t lcore_id, socket_id;
+    ss_queue_statistics_t queue_statistics[RTE_MAX_ETHPORTS];
+
+    uint16_t lcore_id;
+    uint16_t socket_id;
     uint64_t prev_tsc, diff_tsc, curr_tsc, timer_tsc;
+    uint64_t prev_tsc_power, curr_tsc_power, diff_tsc_power;
+    uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_USECS;
     unsigned int rx_count;
-    uint8_t i, port_id;
-    const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
+    uint8_t i;
+    uint8_t port_id;
+    int rv;
+
+    ss_freq_hint_t freq_hint;
+    uint64_t idle_count = 0;
+    uint32_t idle_hint = 0;
+    int irq_enabled = 0;
 
     prev_tsc = 0;
     timer_tsc = 0;
+    prev_tsc_power = 0;
 
     lcore_id   = (uint16_t) rte_lcore_id();
     socket_id  = (uint16_t) rte_socket_id();
