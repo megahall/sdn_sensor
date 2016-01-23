@@ -6,11 +6,18 @@
 #include "je_utils.h"
 #include "json.h"
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+struct json_object* ss_json_object_get(json_object* items, const char* key) {
+    return json_object_object_get(items, key);
+}
+#pragma clang diagnostic pop
+
 const char* ss_json_string_view(json_object* items, const char* key) {
     json_object* item;
     const char* value = NULL;
-    
-    item = json_object_object_get(items, key);
+
+    item = ss_json_object_get(items, key);
     if (item == NULL) {
         fprintf(stderr, "key %s not present\n", key);
         goto out;
@@ -24,7 +31,7 @@ const char* ss_json_string_view(json_object* items, const char* key) {
         fprintf(stderr, "value for %s is null\n", key);
         goto out;
     }
-    
+
     out:
     return value;
 }
@@ -32,7 +39,7 @@ const char* ss_json_string_view(json_object* items, const char* key) {
 char* ss_json_string_get(json_object* items, const char* key) {
     const char* value;
     char* rv = NULL;
-    
+
     value = ss_json_string_view(items, key);
     if (value == NULL) {
         fprintf(stderr, "value for %s is null\n", key);
@@ -43,7 +50,7 @@ char* ss_json_string_get(json_object* items, const char* key) {
         fprintf(stderr, "could not allocate return value for %s\n", key);
         goto out;
     }
-    
+
     out:
     return rv;
 }
@@ -51,8 +58,8 @@ char* ss_json_string_get(json_object* items, const char* key) {
 int ss_json_boolean_get(json_object* items, const char* key, int vdefault) {
     json_object* item;
     int rv = vdefault;
-    
-    item = json_object_object_get(items, key);
+
+    item = ss_json_object_get(items, key);
     if (item == NULL) {
         fprintf(stderr, "note: key %s not present, use default %d\n", key, vdefault);
         goto out;
@@ -62,7 +69,7 @@ int ss_json_boolean_get(json_object* items, const char* key, int vdefault) {
         goto out;
     }
     rv = json_object_get_boolean(item);
-    
+
     out:
     return rv;
 }
