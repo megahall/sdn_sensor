@@ -8,8 +8,9 @@ source "${script_directory}/../sdn_sensor_rc"
 # Note: RE2 uses some constructs which are forever incompatible with clang,
 # because clang refuses to add support for them.
 
-export CC="llvm-gcc"
-export CXX="llvm-g++"
+export CC="gcc"
+export CXX="g++"
+
 export CFLAGS="${CFLAGS} -std=gnu11"
 export CXXFLAGS="${CXXFLAGS} -std=gnu++11"
 
