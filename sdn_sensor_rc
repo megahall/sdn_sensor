@@ -1,25 +1,24 @@
-export CC="clang"
-export CXX="clang++"
+#export CC="clang"
+#export CXX="clang++"
+export CC="gcc"
+export CXX="g++"
 
 # options for GNU autotools builds
-export CFLAGS="-O2 -g"
-export CCFLAGS="-O2 -g"
-export CXXFLAGS="-O2 -g"
+export CFLAGS="-g -O2 -fPIC -march=native"
+export CCFLAGS="-g -O2 -fPIC -march=native"
+export CXXFLAGS="-g -O2 -fPIC -march=native"
 
-# start with g* for OS X
-# then switch to without for Linux if needed
-os=$(uname -s)
-if [[ $os == "Darwin" ]]; then
-    readlink_path=$(which greadlink)
-    mktemp_path=$(which gmktemp)
-    gsed_path=$(which gsed)
-else
-    readlink_path=$(which readlink)
-    mktemp_path=$(which mktemp)
-    gsed_path=$(which sed)
-fi
+export script_directory="$(realpath $(dirname "${BASH_SOURCE}"))"
+export build_directory="${script_directory}"
 
-current_directory="$(dirname $(${readlink_path} -f ${BASH_SOURCE}))"
-build_directory="${current_directory}"
+export SDN_SENSOR_BASE="${script_directory}"
+export RTE_SDK="${SDN_SENSOR_BASE}/external/dpdk"
 
-export LOG4C_RCPATH="${script_directory}/conf/log4crc"
+#export RTE_TARGET="x86_64-native-linuxapp-clang"
+export RTE_TARGET="x86_64-native-linuxapp-gcc"
+export RTE_ARCH="x86_64"
+
+export RTE_OUTPUT="${RTE_SDK}/build"
+#export RTE_SDK_BIN="${RTE_OUTPUT}"
+export RTE_INCLUDE="${RTE_OUTPUT}/include"
+
