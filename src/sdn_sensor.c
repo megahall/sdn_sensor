@@ -51,6 +51,10 @@ struct ether_addr port_eth_addrs[RTE_MAX_ETHPORTS];
 
 static mbuf_table_entry_t mbuf_table[RTE_MAX_ETHPORTS][RTE_MAX_LCORE];
 
+static ss_port_statistics_t port_statistics[RTE_MAX_ETHPORTS] __rte_cache_aligned;
+static ss_core_statistics_t core_statistics[RTE_MAX_LCORE] __rte_cache_aligned;
+static rte_timer_t          power_timers[RTE_MAX_LCORE] __rte_cache_aligned;
+
 static uint8_t port_count = 0;
 
 // http://www.ndsl.kaist.edu/~kyoungsoo/papers/TR-symRSS.pdf
@@ -178,6 +182,125 @@ static void ss_timer_callback(uint16_t lcore_id, uint64_t* timer_tsc) {
     sflow_timer_callback();
     
     *timer_tsc = 0;
+}
+
+void ss_power_timer_callback(struct rte_timer* timer, void* arg) {
+    uint64_t hz;
+    double sleep_ratio;
+    unsigned lcore_id = rte_lcore_id();
+
+    // collect total execution time in msecs so far
+    sleep_ratio = (double) (core_statistics[lcore_id].sleep_msecs) / (double) SCALING_PERIOD;
+
+    // scale down if the core sleeps a lot
+    if (sleep_ratio >= SCALING_TIME_RATIO) {
+        if (rte_power_freq_down) {
+            rte_power_freq_down(lcore_id);
+        }
+    }
+    else if ( (unsigned)(core_statistics[lcore_id].rx_processed /
+        core_statistics[lcore_id].loop_iterations) < BURST_PACKETS_MAX) {
+        // scale down if the core does not have large bursts
+        if (rte_power_freq_down) {
+            rte_power_freq_down(lcore_id);
+        }
+    }
+
+    // re-arm timer with current freq so it fires relatively consistently
+    hz = rte_get_timer_hz();
+    rte_timer_reset(&power_timers[lcore_id], hz / TIMER_TICKS_PER_SEC, SINGLE, lcore_id, ss_power_timer_callback, NULL);
+
+    core_statistics[lcore_id].rx_processed = 0;
+    core_statistics[lcore_id].loop_iterations = 0;
+
+    core_statistics[lcore_id].sleep_msecs = 0;
+}
+
+uint32_t ss_power_check_idle(uint64_t zero_rx) {
+    // If zero count is less than 100, sleep 1 us
+    // If zero count is less than 1000, sleep 100 us
+    // This is is the minimum latency between C3/C6 and C0
+    if (zero_rx < LCORE_SUSPEND_USECS)
+        return LCORE_SLEEP_USECS;
+    else {
+        return LCORE_SUSPEND_USECS;
+    }
+}
+
+ss_freq_hint_t ss_power_check_scale_up(uint16_t lcore_id, uint8_t port_id) {
+    if (likely(rte_eth_rx_descriptor_done(port_id, lcore_id, BURST_PACKETS_BATCH_3) > 0)) {
+        core_statistics[lcore_id].freq_trend = 0;
+        return FREQ_HIGHEST;
+    }
+    else if (likely(rte_eth_rx_descriptor_done(port_id, lcore_id, BURST_PACKETS_BATCH_2) > 0)) {
+        core_statistics[lcore_id].freq_trend += BURST_TREND_BATCH_2;
+    }
+    else if (likely(rte_eth_rx_descriptor_done(port_id, lcore_id, BURST_PACKETS_BATCH_1) > 0)) {
+        core_statistics[lcore_id].freq_trend += BURST_TREND_BATCH_1;
+    }
+
+    if (likely(core_statistics[lcore_id].freq_trend > BURST_TREND_FREQ_UP)) {
+        core_statistics[lcore_id].freq_trend = 0;
+        return FREQ_HIGHER;
+    }
+
+    return FREQ_CURRENT;
+}
+
+int ss_power_irq_register(uint16_t lcore_id) {
+    uint32_t data;
+    int rv;
+
+    for (uint8_t port_id = 0; port_id < port_count; ++port_id) {
+        data = (uint32_t) (port_id << CHAR_BIT | lcore_id);
+
+        rv = rte_eth_dev_rx_intr_ctl_q(
+            port_id, lcore_id,
+            RTE_EPOLL_PER_THREAD, RTE_INTR_EVENT_ADD,
+            (void*) ((uintptr_t) data)
+        );
+
+        if (rv) {
+            RTE_LOG(ERR, SS, "could not register irq for port_id %u lcore_id %u\n", port_id, lcore_id);
+            return rv;
+        }
+    }
+
+    return 0;
+}
+
+int ss_power_irq_enable(uint16_t lcore_id) {
+    int rv;
+    for (uint8_t port_id = 0; port_id < port_count; ++port_id) {
+        rte_spinlock_lock(&port_statistics[port_id].port_lock);
+        rv = rte_eth_dev_rx_intr_enable(port_id, lcore_id);
+        rte_spinlock_unlock(&port_statistics[port_id].port_lock);
+        if (rv) return rv;
+    }
+    return 0;
+}
+
+// force polling thread sleep until one-shot rx interrupt triggers
+int ss_power_irq_handle() {
+    struct rte_epoll_event event[port_count];
+    int rv;
+    uint8_t port_id, queue_id;
+    void *data;
+
+    RTE_LOG(INFO, SS, "lcore_id %u sleeping for irq...\n", rte_lcore_id());
+
+    rv = rte_epoll_wait(RTE_EPOLL_PER_THREAD, event, port_count, -1);
+    for (int i = 0; i < rv; i++) {
+        data = event[i].epdata.data;
+        port_id  = ((uintptr_t) data) >> CHAR_BIT & 0x0ff;
+        queue_id = ((uintptr_t) data) & RTE_LEN2MASK(CHAR_BIT, uint8_t);
+        rte_eth_dev_rx_intr_disable(port_id, queue_id);
+        RTE_LOG(INFO, SS,
+            "lcore_id %u port_id %d queue_id %d waking from irq...\n",
+            rte_lcore_id(), port_id, queue_id);
+    }
+
+    return 0;
 }
 
 /* main processing loop */
