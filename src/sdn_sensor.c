@@ -111,14 +111,12 @@ static const struct rte_eth_txconf tx_conf = {
     .txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | ETH_TXQ_FLAGS_NOOFFLOADS,
 };
 
-static struct ss_port_statistics port_statistics[RTE_MAX_ETHPORTS];
-
 /* TX burst of packets on a port */
-int ss_send_burst(uint8_t port_id, unsigned int lcore_id) {
+int ss_send_burst(uint8_t port_id, uint16_t lcore_id) {
     unsigned int count;
     rte_mbuf_t** mbufs;
     unsigned int rv;
-    
+
     count = mbuf_table[port_id][lcore_id].length;
     mbufs = (rte_mbuf_t**) mbuf_table[port_id][lcore_id].mbufs;
 
@@ -135,7 +133,7 @@ int ss_send_burst(uint8_t port_id, unsigned int lcore_id) {
 }
 
 /* Queue and prepare packets for TX in a burst */
-int ss_send_packet(rte_mbuf_t* mbuf, uint8_t port_id, unsigned int lcore_id) {
+int ss_send_packet(rte_mbuf_t* mbuf, uint8_t port_id, uint16_t lcore_id) {
     mbuf_table_entry_t* mbuf_entry;
     unsigned int length;
 
@@ -145,7 +143,7 @@ int ss_send_packet(rte_mbuf_t* mbuf, uint8_t port_id, unsigned int lcore_id) {
     length++;
 
     /* enough pkts to be sent */
-    if (unlikely(length == MAX_PKT_BURST)) {
+    if (unlikely(length == BURST_PACKETS_MAX)) {
         ss_send_burst(port_id, lcore_id);
         length = 0;
     }
@@ -156,7 +154,7 @@ int ss_send_packet(rte_mbuf_t* mbuf, uint8_t port_id, unsigned int lcore_id) {
 
 static void ss_timer_callback(uint16_t lcore_id, uint64_t* timer_tsc) {
     uint8_t port_id;
-    
+
     for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
         //RTE_LOG(INFO, SS, "attempt send for port %d\n", port_id);
         if (mbuf_table[port_id][lcore_id].length == 0) {
@@ -168,19 +166,19 @@ static void ss_timer_callback(uint16_t lcore_id, uint64_t* timer_tsc) {
         mbuf_table[port_id][lcore_id].length = 0;
     }
 
-    /* return if statistics timer is not ready yet */
+    // return if statistics timer is not ready yet
     if (likely(*timer_tsc < ss_conf->timer_cycles)) return;
-    
-    /* return if not on master lcore */
+
+    // return if not on master lcore
     if (likely(lcore_id != rte_get_master_lcore())) return;
 
     double elapsed = *timer_tsc / (double) rte_get_tsc_hz();
     RTE_LOG(NOTICE, SS, "call ss_port_stats_print after %011.6f secs.\n", elapsed);
-    ss_port_stats_print(port_statistics, rte_eth_dev_count());
-    
+    ss_port_stats_print(port_statistics, port_count);
+
     ss_tcp_timer_callback();
     sflow_timer_callback();
-    
+
     *timer_tsc = 0;
 }
 
