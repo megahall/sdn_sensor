@@ -302,8 +302,8 @@ int ss_power_irq_handle() {
 }
 
 /* main processing loop */
-void ss_main_loop(void) __attribute__ ((noreturn)) {
-    rte_mbuf_t* mbufs[MAX_PKT_BURST];
+int ss_main_loop(__attribute__((unused)) void* arg) __attribute__ ((noreturn)) {
+    rte_mbuf_t* mbufs[BURST_PACKETS_MAX];
     rte_mbuf_t* mbuf;
     uint16_t lcore_id, socket_id;
     uint64_t prev_tsc, diff_tsc, curr_tsc, timer_tsc;
