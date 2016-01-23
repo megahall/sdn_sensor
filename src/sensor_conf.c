@@ -202,7 +202,7 @@ int ss_conf_network_parse(json_object* items) {
     int64_t rv;
     json_object* item = NULL;
     
-    item = json_object_object_get(items, "promiscuous_mode");
+    item = ss_json_object_get(items, "promiscuous_mode");
     if (item) {
         if (!json_object_is_type(item, json_type_boolean)) {
             fprintf(stderr, "promiscuous_mode is not boolean\n");
@@ -210,7 +210,7 @@ int ss_conf_network_parse(json_object* items) {
         }
         ss_conf->promiscuous_mode = json_object_get_boolean(item);
     }
-    item = json_object_object_get(items, "mtu");
+    item = ss_json_object_get(items, "mtu");
     if (item) {
         if (!json_object_is_type(item, json_type_int)) {
             fprintf(stderr, "mtu is not int\n");
@@ -218,7 +218,7 @@ int ss_conf_network_parse(json_object* items) {
         }
         ss_conf->mtu = (uint16_t) json_object_get_int(item);
     }
-    item = json_object_object_get(items, "ipv4_address");
+    item = ss_json_object_get(items, "ipv4_address");
     if (item) {
         if (!json_object_is_type(item, json_type_string)) {
             fprintf(stderr, "ipv4_address is not string\n");
@@ -232,7 +232,7 @@ int ss_conf_network_parse(json_object* items) {
         }
         ss_cidr_dump(NULL, "ipv4_address", &ss_conf->ip4_address);
     }
-    item = json_object_object_get(items, "ipv4_gateway");
+    item = ss_json_object_get(items, "ipv4_gateway");
     if (item) {
         if (!json_object_is_type(item, json_type_string)) {
             fprintf(stderr, "ipv4_gateway is not string\n");
@@ -246,7 +246,7 @@ int ss_conf_network_parse(json_object* items) {
         }
         ss_cidr_dump(NULL, "ipv4_gateway", &ss_conf->ip4_gateway);
     }
-    item = json_object_object_get(items, "ipv6_address");
+    item = ss_json_object_get(items, "ipv6_address");
     if (item) {
         if (!json_object_is_type(item, json_type_string)) {
             fprintf(stderr, "ipv6_address is not string\n");
@@ -260,7 +260,7 @@ int ss_conf_network_parse(json_object* items) {
         }
         ss_cidr_dump(NULL, "ipv6_address", &ss_conf->ip6_address);
     }
-    item = json_object_object_get(items, "ipv6_gateway");
+    item = ss_json_object_get(items, "ipv6_gateway");
     if (item) {
         if (!json_object_is_type(item, json_type_string)) {
             fprintf(stderr, "ipv6_gateway is not string\n");
@@ -281,7 +281,7 @@ int ss_conf_dpdk_parse(json_object* items) {
     int64_t rv;
     json_object* item = NULL;
     
-    item = json_object_object_get(items, "eal_options");
+    item = ss_json_object_get(items, "eal_options");
     if (item) {
         if (!json_object_is_type(item, json_type_string)) {
             fprintf(stderr, "eal_options is not string\n");
@@ -302,7 +302,7 @@ int ss_conf_dpdk_parse(json_object* items) {
     }
     
     // XXX: eventually support hex numbers
-    item = json_object_object_get(items, "port_mask");
+    item = ss_json_object_get(items, "port_mask");
     if (item) {
         if (!json_object_is_type(item, json_type_int)) {
             fprintf(stderr, "port_mask is not integer\n");
@@ -314,7 +314,7 @@ int ss_conf_dpdk_parse(json_object* items) {
         ss_conf->port_mask = 0xFFFFFFFF;
     }
     
-    item = json_object_object_get(items, "rxd_count");
+    item = ss_json_object_get(items, "rxd_count");
     if (item) {
         if (!json_object_is_type(item, json_type_int)) {
             fprintf(stderr, "rxd_count is not integer\n");
@@ -326,7 +326,7 @@ int ss_conf_dpdk_parse(json_object* items) {
         ss_conf->rxd_count = 128 /* RTE_TEST_RX_DESC_DEFAULT */;
     }
     
-    item = json_object_object_get(items, "txd_count");
+    item = ss_json_object_get(items, "txd_count");
     if (item) {
         if (!json_object_is_type(item, json_type_int)) {
             fprintf(stderr, "txd_count is not integer\n");
@@ -338,7 +338,7 @@ int ss_conf_dpdk_parse(json_object* items) {
         ss_conf->txd_count = 512 /* RTE_TEST_TX_DESC_DEFAULT */;
     }
 
-    item = json_object_object_get(items, "rss_enabled");
+    item = ss_json_object_get(items, "rss_enabled");
     if (item) {
         if (!json_object_is_type(item, json_type_boolean)) {
             fprintf(stderr, "queue_count is not boolean\n");
@@ -353,15 +353,15 @@ int ss_conf_dpdk_parse(json_object* items) {
     rv = (int64_t) ss_conf_tsc_hz_get();
     if (rv == ~0) return -1;
 
-    item = json_object_object_get(items, "timer_msec");
+    item = ss_json_object_get(items, "timer_msec");
     if (item) {
         if (!json_object_is_type(item, json_type_int)) {
             fprintf(stderr, "timer_msec is not integer\n");
             return -1;
         }
         ss_conf->timer_cycles = ((u_long) json_object_get_int(item)) * ss_conf_tsc_hz / 1000;
-        if (ss_conf->timer_cycles / ss_conf_tsc_hz > MAX_TIMER_PERIOD) {
-            fprintf(stderr, "timer_msec larger than %d\n", MAX_TIMER_PERIOD);
+        if (ss_conf->timer_cycles / ss_conf_tsc_hz > TIMER_PERIOD_MAX) {
+            fprintf(stderr, "timer_msec larger than %d\n", TIMER_PERIOD_MAX);
             return -1;
         }
     }
@@ -371,7 +371,7 @@ int ss_conf_dpdk_parse(json_object* items) {
         ss_conf->timer_cycles = 10 * ss_conf_tsc_hz;
     }
     
-    item = json_object_object_get(items, "log_level");
+    item = ss_json_object_get(items, "log_level");
     if (item) {
         if (!json_object_is_type(item, json_type_string)) {
             fprintf(stderr, "log_level is not string\n");
@@ -468,7 +468,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
     TAILQ_INIT(&ss_conf->dns_chain.dns_list);
     TAILQ_INIT(&ss_conf->ioc_chain.ioc_list);
 
-    items = json_object_object_get(ss_conf->json, "network");
+    items = ss_json_object_get(ss_conf->json, "network");
     if (items == NULL) {
         fprintf(stderr, "could not load network configuration\n");
         is_ok = 0; goto error_out;
@@ -484,7 +484,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         is_ok = 0; goto error_out;
     }
     
-    items = json_object_object_get(ss_conf->json, "dpdk");
+    items = ss_json_object_get(ss_conf->json, "dpdk");
     if (items == NULL) {
         fprintf(stderr, "could not load dpdk configuration\n");
         is_ok = 0; goto error_out;
@@ -500,7 +500,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         is_ok = 0; goto error_out;
     }
     
-    items = json_object_object_get(ss_conf->json, "re_chain");
+    items = ss_json_object_get(ss_conf->json, "re_chain");
     if (items) {
         is_ok = json_object_is_type(items, json_type_array);
         if (!is_ok) {
@@ -527,7 +527,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         }
     }
 
-    items = json_object_object_get(ss_conf->json, "pcap_chain");
+    items = ss_json_object_get(ss_conf->json, "pcap_chain");
     if (items) {
         is_ok = json_object_is_type(items, json_type_array);
         if (!is_ok) {
@@ -547,7 +547,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         }
     }
     
-    items = json_object_object_get(ss_conf->json, "dns_chain");
+    items = ss_json_object_get(ss_conf->json, "dns_chain");
     if (items) {
         is_ok = json_object_is_type(items, json_type_array);
         if (!is_ok) {
@@ -567,7 +567,7 @@ ss_conf_t* ss_conf_file_parse(char* conf_path) {
         }
     }
 
-    items = json_object_object_get(ss_conf->json, "cidr_table");
+    items = ss_json_object_get(ss_conf->json, "cidr_table");
     if (items) {
         is_ok = json_object_is_type(items, json_type_array);
         if (!is_ok) {
@@ -620,7 +620,7 @@ int ss_conf_ioc_file_parse() {
         return -1;
     }
 
-    items = json_object_object_get(ss_conf->json, "ioc_files");
+    items = ss_json_object_get(ss_conf->json, "ioc_files");
     if (!items) return 0;
 
     is_ok = json_object_is_type(items, json_type_array);
