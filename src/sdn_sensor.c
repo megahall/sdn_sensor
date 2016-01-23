@@ -51,27 +51,40 @@ struct ether_addr port_eth_addrs[RTE_MAX_ETHPORTS];
 
 static mbuf_table_entry_t mbuf_table[RTE_MAX_ETHPORTS][RTE_MAX_LCORE];
 
-static unsigned int port_count = 0;
+static uint8_t port_count = 0;
+
+// http://www.ndsl.kaist.edu/~kyoungsoo/papers/TR-symRSS.pdf
+static uint8_t rss_key[] = {
+    0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a,
+    0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a,
+    0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a,
+    0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a,
+    0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a, 0x6d, 0x5a,
+};
 
 static struct rte_eth_conf port_conf = {
     .rxmode = {
         .mq_mode        = ETH_MQ_RX_RSS,
         .max_rx_pkt_len = MBUF_SIZE,
         .split_hdr_size = 0,
-        .header_split   = 0, /**< Header Split disabled */
-        .hw_ip_checksum = 0, /**< IP checksum offload disabled */
-        .hw_vlan_filter = 0, /**< VLAN filtering disabled */
-        .jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
-        .hw_strip_crc   = 0, /**< CRC stripped by hardware */
+        .header_split   = 0, // Header Split disabled
+        .hw_ip_checksum = 0, // IP checksum offload disabled
+        .hw_vlan_filter = 0, // VLAN filtering disabled
+        .jumbo_frame    = 0, // Jumbo Frame Support disabled
+        .hw_strip_crc   = 0, // CRC stripped by hardware
     },
     .rx_adv_conf = {
         .rss_conf = {
-            .rss_key    = NULL,
-            .rss_hf     = 0,
+            .rss_key    = rss_key,
+            .rss_hf     = ETH_RSS_IP,
         },
     },
     .txmode = {
         .mq_mode        = ETH_MQ_TX_NONE,
+    },
+    .intr_conf = {
+        .lsc = 1,
+        .rxq = 1,
     },
 };
 
@@ -89,8 +102,8 @@ static const struct rte_eth_txconf tx_conf = {
         .hthresh = TX_HTHRESH,
         .wthresh = TX_WTHRESH,
     },
-    .tx_free_thresh = 0, /* Use PMD default values */
-    .tx_rs_thresh = 1, /* Use PMD default values */
+    .tx_free_thresh = 0, // Use PMD default values
+    .tx_rs_thresh = 1,   // Use PMD default values
     .txq_flags = ETH_TXQ_FLAGS_NOMULTSEGS | ETH_TXQ_FLAGS_NOOFFLOADS,
 };
 
