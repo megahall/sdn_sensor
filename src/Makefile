@@ -14,7 +14,11 @@ endif
 
 MAKEFILE_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 SDN_SENSOR_BASE ?= $(shell dirname $(MAKEFILE_DIR))
+
 RTE_SDK ?= $(SDN_SENSOR_BASE)/external/dpdk
+RTE_TARGET ?= x86_64-native-linuxapp-gcc
+RTE_OUTPUT ?= $(RTE_SDK)/$(RTE_TARGET)
+RTE_INCLUDE ?= $(RTE_OUTPUT)/include
 
 # XXX: -Wunused-but-set-variable doesn't work
 # See: http://llvm.org/bugs/show_bug.cgi?id=9824
