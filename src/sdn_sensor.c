@@ -444,27 +444,40 @@ start_rx:
     //return 0;
 }
 
-void fatal_signal_handler(int signal) {
+void ss_fatal_signal_handler(int signal) {
+    int rv;
+
     fprintf(stderr, "received fatal signal %d...\n", signal);
     for (uint8_t port = 0; port < port_count; ++port) {
         fprintf(stderr, "closing dpdk port_id %d...\n", port);
         rte_eth_dev_close(port);
         fprintf(stderr, "closed dpdk port_id %d.\n", port);
     }
+    for (uint8_t lcore_id = 0; lcore_id < RTE_MAX_LCORE; ++lcore_id) {
+        if (rte_lcore_is_enabled(lcore_id) == 0) {
+            continue;
+        }
+
+        fprintf(stderr, "shutdown librte_power on lcore_id: %d\n", lcore_id);
+        rv = rte_power_exit(lcore_id);
+        if (rv) {
+            fprintf(stderr, "could not disable librte_power on lcore_id %d", lcore_id);
+        }
+    }
     ss_conf_destroy();
     kill(getpid(), signal);
 }
 
-void signal_handler_init(const char* signal_name, int signal) {
+void ss_signal_handler_init(const char* signal_name, int signal) {
     int rv;
     struct sigaction sa;
-    
+
     memset(&sa, 0, sizeof(sa));
-    
-    sa.sa_handler = &fatal_signal_handler;
+
+    sa.sa_handler = &ss_fatal_signal_handler;
     sigfillset(&sa.sa_mask);
     sa.sa_flags   = SA_RESTART | ~SA_SIGINFO;
-    
+
     rv = sigaction(SIGINT, &sa, NULL);
     if (rv) {
         fprintf(stderr, "warning: could not install %s handler: rv %d: %s\n",
