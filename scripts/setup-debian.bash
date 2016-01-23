@@ -22,9 +22,9 @@ run_aptitude install linux-generic linux-headers-generic
 
 run_aptitude install gawk strace ltrace telnet netcat-traditional tshark ssh rsync cproto cscope randomize-lines wamerican-insane sloccount aspell ntp
 
-run_aptitude install build-essential libc6-dbg clang llvm-gcc-4.7 flex bison iwyu gdb-multiarch gdb-doc valgrind autoconf automake libtool git git-man git-email subversion manpages-dev manpages-posix-dev doxygen
+run_aptitude install build-essential libc6-dbg clang llvm-gcc-4.7 flex bison iwyu gdb-multiarch gdb-doc valgrind autoconf automake libtool mk-configure git git-man git-email subversion manpages-dev manpages-posix-dev doxygen
 
-run_aptitude install uthash-dev libbsd-dev libpcre3-dev zlib1g-dev libglib2.0-dev gnulib libjson-c-dev libjson-c-doc liblog4c-dev liblog4c-doc libpcap-dev libfuse-dev libevtlog-dev libgeoip-dev geoip-bin libnet1-dev libvirt-dev
+run_aptitude install uthash-dev libbsd-dev libpcre3-dev zlib1g-dev libglib2.0-dev gnulib libjson-c-dev libjson-c-doc libpcap-dev libfuse-dev libevtlog-dev libgeoip-dev geoip-bin libnet1-dev libvirt-dev
 
 # jemalloc
 run_aptitude install libunwind-setjmp0 libunwind-setjmp0-dev libunwind8 libunwind8-dev liblzma-dev docbook-xml docbook-xsl sgml-data xsltproc
