@@ -493,9 +493,10 @@ int main(int argc, char* argv[]) {
     uint16_t lcore_count, lcore_id;
     char* conf_path = NULL;
     char pool_name[32];
-    
+    uint64_t hz;
+
     fprintf(stderr, "launching sdn_sensor version %s\n", SS_VERSION);
-    
+
     opterr = 0;
     while ((c = getopt(argc, argv, "c:")) != -1) {
         switch (c) {
@@ -516,30 +517,32 @@ int main(int argc, char* argv[]) {
             }
         }
     }
-    
+
     // NOTE: optind must be reset, since it contains hidden state,
     // otherwise rte_eal_init will fail extremely mysteriously
     optind = 1;
-    
+
     rv = ss_re_init();
     if (rv) {
         fprintf(stderr, "could not initialize regular expression libraries\n");
         exit(1);
     }
-    
+
     ss_pcap = pcap_open_dead(DLT_EN10MB, 65536);
     if (ss_pcap == NULL) {
         fprintf(stderr, "could not prepare BPF filtering code\n");
         exit(1);
     }
-    
+
     ss_conf = ss_conf_file_parse(conf_path);
     if (ss_conf == NULL) {
         fprintf(stderr, "could not parse sdn_sensor configuration\n");
         exit(1);
     }
-    
+
     /* copy over any ss_conf settings used in DPDK */
+// XXX: temp override RSS code
+/*
     if (ss_conf->rss_enabled) {
         port_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
         port_conf.rx_adv_conf.rss_conf.rss_hf = ETH_RSS_IP;
@@ -547,14 +550,16 @@ int main(int argc, char* argv[]) {
     else {
         port_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
     }
-
+*/
     /* init EAL */
     rv = rte_eal_init((int) ss_conf->eal_vector.we_wordc, ss_conf->eal_vector.we_wordv);
     if (rv < 0) {
         rte_exit(EXIT_FAILURE, "invalid dpdk eal launch arguments\n");
     }
     rte_set_log_level(ss_conf->log_level);
-    
+
+    rte_timer_subsystem_init();
+
     /* create the mbuf pool */
     for (int i = 0; i < SOCKET_COUNT; ++i) {
         snprintf(pool_name, sizeof(pool_name), "mbuf_pool_socket_%02d", i);
@@ -588,7 +593,7 @@ int main(int argc, char* argv[]) {
 
     lcore_count = (uint16_t) rte_lcore_count();
     port_count = rte_eth_dev_count();
-    RTE_LOG(NOTICE, SS, "port_count %d\n", port_count);
+    RTE_LOG(NOTICE, SS, "lcore_count %d port_count %d\n", lcore_count, port_count);
     if (port_count == 0) {
         rte_exit(EXIT_FAILURE, "could not detect any active ethernet nics or ports\n");
     }
@@ -596,24 +601,24 @@ int main(int argc, char* argv[]) {
     if (port_count > RTE_MAX_ETHPORTS) {
         port_count = RTE_MAX_ETHPORTS;
     }
-    
-    signal_handler_init("SIGHUP",  SIGHUP);
-    signal_handler_init("SIGINT",  SIGINT);
-    signal_handler_init("SIGQUIT", SIGQUIT);
-    signal_handler_init("SIGILL",  SIGILL);
-    signal_handler_init("SIGABRT", SIGABRT);
-    signal_handler_init("SIGSEGV", SIGSEGV);
-    signal_handler_init("SIGPIPE", SIGPIPE);
-    signal_handler_init("SIGTERM", SIGTERM);
-    signal_handler_init("SIGBUS",  SIGBUS);
+
+    ss_signal_handler_init("SIGHUP",  SIGHUP);
+    ss_signal_handler_init("SIGINT",  SIGINT);
+    ss_signal_handler_init("SIGQUIT", SIGQUIT);
+    ss_signal_handler_init("SIGILL",  SIGILL);
+    ss_signal_handler_init("SIGABRT", SIGABRT);
+    ss_signal_handler_init("SIGSEGV", SIGSEGV);
+    ss_signal_handler_init("SIGPIPE", SIGPIPE);
+    ss_signal_handler_init("SIGTERM", SIGTERM);
+    ss_signal_handler_init("SIGBUS",  SIGBUS);
 
     last_port = 0;
-    
+
     /* XXX: simple hard-coded lcore mapping */
     /* each lcore has 1 RX and 1 TX queue on each port */
-    for (port_id = 0; port_id < port_count; port_id++) {
+    for (port_id = 0; port_id < port_count; ++port_id) {
         rte_eth_dev_info_get(port_id, &dev_info);
-        
+
         /* Configure port */
         RTE_LOG(INFO, SS, "initializing port %u...\n", (unsigned) port_id);
         fflush(stderr);
@@ -621,13 +626,13 @@ int main(int argc, char* argv[]) {
         if (rv < 0) {
             rte_exit(EXIT_FAILURE, "cannot configure ethernet port: %u, error: %d\n", (unsigned) port_id, rv);
         }
-        
+
         for (lcore_id = 0; lcore_id < lcore_count; ++lcore_id) {
             int eth_socket_id = rte_eth_dev_socket_id(port_id);
             // XXX: work around non-NUMA socket ID bug
             if (eth_socket_id == -1) eth_socket_id = 0;
             u_int u_eth_socket_id = (u_int) eth_socket_id;
-            
+
             /* init one RX queue */
             fflush(stderr);
             rv = rte_eth_rx_queue_setup(
@@ -635,20 +640,20 @@ int main(int argc, char* argv[]) {
                 u_eth_socket_id, &rx_conf,
                 ss_pool[u_eth_socket_id]);
             if (rv < 0) {
-                rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup: error: port: %u lcore: %d error: %d\n", port_id, lcore_id, rv);
+                rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup: error: port: %u lcore_id: %d error: %d\n", port_id, lcore_id, rv);
             }
-            
+
             /* init one TX queue */
             fflush(stderr);
             rv = rte_eth_tx_queue_setup(
                 port_id, lcore_id /*queue_id*/, ss_conf->txd_count,
                 u_eth_socket_id, &tx_conf);
             if (rv < 0) {
-                rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: error: port: %u lcore: %d error: %d\n", port_id, lcore_id, rv);
+                rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup: error: port: %u lcore_id: %d error: %d\n", port_id, lcore_id, rv);
             }
         }
-        
-        /* Cache MAC address */
+
+        /* cache MAC address */
         rte_eth_macaddr_get(port_id, &port_eth_addrs[port_id]);
         
         /* Start port */
