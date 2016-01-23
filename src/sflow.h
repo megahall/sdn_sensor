@@ -514,8 +514,6 @@ typedef struct sflow_extended_wifi_tx_s sflow_extended_wifi_tx_t;
 
 // opaque = flow_data; enterprise = 0; format = 1016
 
-struct sflow_flow_pdu_s;
-
 struct sflow_extended_aggregation_s {
     uint32_t num_pdus;
     struct sflow_flow_pdu_s* pdus;

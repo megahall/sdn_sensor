@@ -33,7 +33,7 @@
 static struct rte_hash_parameters sflow_hash_params = {
     .name               = "sflow_hash_socket_0",
     .entries            = L4_SFLOW_HASH_SIZE,
-    .bucket_entries     = L4_SFLOW_BUCKET_SIZE,
+    //.bucket_entries     = L4_SFLOW_BUCKET_SIZE,
     .key_len            = sizeof(sflow_key_t),
     .hash_func          = rte_hash_crc,
     .hash_func_init_val = 0,

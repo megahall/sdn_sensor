@@ -10,10 +10,10 @@
 /* BEGIN PROTOTYPES */
 
 char sflow_nybble_to_hex(char x);
-char* sflow_print_uuid(uint8_t* uuid);
+char* sflow_print_uuid(uint8_t* u);
 char* sflow_url_encode(char* in, char* out, size_t out_len);
 char* sflow_mac_string(uint8_t* m);
-char* sflow_ip_string(sflow_ip_t* ip, char* ip_buf, size_t ip_buf_len);
+char* sflow_ip_string(sflow_ip_t* ip, char* i, size_t i_len);
 uint32_t sflow_get_data_32_nobswap(sflow_sample_t* sample);
 uint32_t sflow_get_data_32(sflow_sample_t* sample);
 float sflow_get_float(sflow_sample_t* sample);
