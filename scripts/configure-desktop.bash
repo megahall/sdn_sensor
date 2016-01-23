@@ -10,16 +10,20 @@ fi
 script_directory="$(dirname $(readlink -f ${BASH_SOURCE}))"
 source "${script_directory}/../sdn_sensor_rc"
 
-export RTE_SDK="${HOME}/src/dpdk"
+export RTE_SDK="${build_directory}/external/dpdk"
 export RTE_TOOLS="${RTE_SDK}/tools"
 export RTE_NIC_BIND="${RTE_TOOLS}/dpdk_nic_bind.py"
 
-export PCI_ID_1="0000:01:00.0"
-export PCI_ID_2="0000:01:00.1"
+export PCI_ID_1="0000:0a:00.0"
+export PCI_ID_2="0000:0a:00.1"
+
+depmod -a
+modprobe uio
+modprobe igb_uio
 
 "${RTE_NIC_BIND}" --status | fgrep "${PCI_ID_1}"
 "${RTE_NIC_BIND}" -b none          "${PCI_ID_1}"
-"${RTE_NIC_BIND}" -b igb           "${PCI_ID_1}"
+"${RTE_NIC_BIND}" -b igb_uio       "${PCI_ID_1}"
 "${RTE_NIC_BIND}" --status | fgrep "${PCI_ID_1}"
 
 "${RTE_NIC_BIND}" --status | fgrep "${PCI_ID_2}"
