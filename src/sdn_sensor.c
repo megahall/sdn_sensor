@@ -329,11 +329,26 @@ int ss_main_loop(__attribute__((unused)) void* arg) __attribute__ ((noreturn)) {
     lcore_id   = (uint16_t) rte_lcore_id();
     socket_id  = (uint16_t) rte_socket_id();
 
-    RTE_LOG(INFO, SS, "entering main loop on lcore %u\n", lcore_id);
+    rv = ss_power_irq_register(lcore_id);
+    if (rv) {
+        RTE_LOG(WARNING, SS, "rx_irq could not be enabled\n");
+    }
+    else {
+        RTE_LOG(INFO, SS, "rx_irq enabled successfully\n");
+        irq_enabled = 1;
+    }
+
+    RTE_LOG(INFO, SS, "entering main loop on lcore_id %u\n", lcore_id);
+
+    prev_tsc = 0;
 
     while (1) {
-        curr_tsc = rte_rdtsc();
+        core_statistics[lcore_id].loop_iterations++;
 
+        curr_tsc = rte_rdtsc();
+        curr_tsc_power = curr_tsc;
+
+start_tx:
         /* TX queue drain */
         diff_tsc = curr_tsc - prev_tsc;
         if (unlikely(diff_tsc > drain_tsc)) {
@@ -342,26 +357,90 @@ int ss_main_loop(__attribute__((unused)) void* arg) __attribute__ ((noreturn)) {
             prev_tsc = curr_tsc;
         }
 
+        diff_tsc_power = curr_tsc_power - prev_tsc_power;
+        if (diff_tsc_power > TIMER_RESOLUTION_CYCLES) {
+            rte_timer_manage();
+            prev_tsc_power = curr_tsc_power;
+        }
+
+start_rx:
         /* RX queue processing */
-        for (port_id = 0; port_id < rte_eth_dev_count(); port_id++) {
-            rx_count = rte_eth_rx_burst((uint8_t) port_id, lcore_id, mbufs, MAX_PKT_BURST);
+        freq_hint = FREQ_CURRENT;
+        idle_count = 0;
+        for (port_id = 0; port_id < port_count; port_id++) {
+            rx_count = rte_eth_rx_burst((uint8_t) port_id, lcore_id, mbufs, BURST_PACKETS_MAX);
+            core_statistics[lcore_id].rx_processed += rx_count;
+            if (unlikely(rx_count == 0)) {
+                // no rx packets
+                // allow lcore to enter C states
+                queue_statistics[port_id].zero_rx++;
+                if (queue_statistics[port_id].zero_rx <= ZERO_RX_MIN_COUNT)
+                    continue;
+                queue_statistics[port_id].idle_hint =
+                    ss_power_check_idle(queue_statistics[port_id].zero_rx);
+                idle_count++;
+            }
+            else {
+                queue_statistics[port_id].zero_rx = 0;
+
+                // scaling up has syscall overhead
+                // use heuristics to pick the right time
+                queue_statistics[port_id].freq_hint = ss_power_check_scale_up(lcore_id, port_id);
+            }
+
+
             if (rx_count == 0) {
                 continue;
             }
-            
+
             port_statistics[port_id].rx += rx_count;
-            
+
             for (i = 0; i < rx_count; i++) {
                 mbuf = mbufs[i];
                 rte_prefetch0(rte_pktmbuf_mtod(mbuf, void *));
                 ss_frame_handle(mbuf, lcore_id, port_id);
             }
         }
-    }
-}
 
-int ss_launch_one_lcore(__attribute__((unused)) void *dummy) __attribute__ ((noreturn)) {
-    ss_main_loop();
+        if (likely(idle_count != port_count)) {
+            for (port_id = 1, freq_hint = queue_statistics[0].freq_hint; port_id < port_count; ++port_id) {
+                if (queue_statistics[port_id].freq_hint > freq_hint) {
+                    freq_hint = queue_statistics[port_id].freq_hint;
+                }
+            }
+
+            if (freq_hint == FREQ_HIGHEST && rte_power_freq_max) {
+                rte_power_freq_max(lcore_id);
+            }
+            else if (freq_hint == FREQ_HIGHER && rte_power_freq_up) {
+                rte_power_freq_up(lcore_id);
+            }
+        }
+        else {
+            // all rx queues are empty recently;
+            // sleep as conservatively as possible
+            for (i = 1, idle_hint = queue_statistics[0].idle_hint; port_id < port_count; ++port_id) {
+                if (queue_statistics[port_id].idle_hint < idle_hint) {
+                    idle_hint = queue_statistics[port_id].idle_hint;
+                }
+            }
+
+            if (idle_hint < LCORE_SUSPEND_USECS)
+                // avoid context switching (hundreds of usecs)
+                rte_delay_us(idle_hint);
+            else {
+                // sleep until rx irq triggers
+                if (irq_enabled) {
+                    ss_power_irq_enable(lcore_id);
+                    ss_power_irq_handle();
+                }
+                // start receiving packets immediately
+                goto start_rx;
+            }
+            core_statistics[lcore_id].sleep_msecs += idle_hint;
+        }
+    }
+
     //return 0;
 }
 
