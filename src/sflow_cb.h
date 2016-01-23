@@ -1,5 +1,10 @@
 #pragma once
 
+#include <stdint.h>
+
+#include "common.h"
+#include "ioc.h"
+#include "nn_queue.h"
 #include "sflow.h"
 
 /* BEGIN PROTOTYPES */

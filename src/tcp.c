@@ -4,8 +4,6 @@
 #include <string.h>
 #include <sys/types.h>
 
-#include <bsd/string.h>
-
 #include <netinet/in.h>
 #include <netinet/ip6.h>
 #include <netinet/tcp.h>

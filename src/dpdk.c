@@ -1,9 +1,8 @@
-#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
-#include <rte_cycles.h>
 #include <rte_ethdev.h>
+#include <rte_cycles.h>
 #include <rte_log.h>
 
 #include "sdn_sensor.h"

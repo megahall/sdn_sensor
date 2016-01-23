@@ -19,8 +19,6 @@
 
 #include <sys/types.h>
 
-#include "netflow_common.h"
-
 /* NetFlow packet definitions */
 
 /*

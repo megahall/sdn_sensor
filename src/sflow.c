@@ -2,23 +2,16 @@
 // Licensed under the terms of the InMon sFlow license.
 // http://www.inmon.com/technology/sflowlicense.txt
 
-#include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <setjmp.h>
-#include <time.h>
+
+#include <netinet/in.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
 
 #include <rte_hexdump.h>
 #include <rte_log.h>
-
-#include <bsd/string.h>
-#include <jemalloc/jemalloc.h>
 
 #include "common.h"
 #include "sflow.h"

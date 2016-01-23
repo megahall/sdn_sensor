@@ -22,8 +22,6 @@
 #include <errno.h>
 #include <string.h>
 
-#include "netflow_common.h"
-#include "netflow.h"
 #include "netflow_log.h"
 
 #pragma clang diagnostic push

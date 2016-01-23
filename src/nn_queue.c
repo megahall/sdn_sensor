@@ -1,13 +1,9 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
-#include <strings.h>
-#include <sys/time.h>
 
 #include <bsd/string.h>
-#include <pcap/pcap.h>
 
 #include <rte_log.h>
 
@@ -29,7 +25,6 @@
 
 #include "common.h"
 #include "json.h"
-#include "sdn_sensor.h"
 
 int ss_nn_queue_create(json_object* items, nn_queue_t* nn_queue) {
     // int rv;

@@ -1,20 +1,15 @@
 #pragma once
 
-#include <stdbool.h>
 #include <stdint.h>
 
 #include <bsd/sys/queue.h>
-#include <pcap/pcap.h>
 
 #include <rte_memory.h>
 
 #include <pcre.h>
 #include <cre2.h>
 
-#include <jemalloc/jemalloc.h>
-
 #include "ioc.h"
-#include "ip_utils.h"
 #include "nn_queue.h"
 
 /* CONSTANTS */

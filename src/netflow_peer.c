@@ -17,24 +17,18 @@
 
 /* Peer tracking and state holding code, see peer.h for details */
 
-#include "netflow_common.h"
-
 #include <sys/types.h>
 #include <sys/time.h>
 
-#include <unistd.h>
-#include <stdlib.h>
 #include <syslog.h>
 #include <string.h>
 #include <stdio.h>
-#include <time.h>
 
 #include <bsd/sys/queue.h>
 #include <bsd/sys/tree.h>
 
 #include <jemalloc/jemalloc.h>
 
-#include "netflow.h"
 #include "netflow_log.h"
 #include "netflow_peer.h"
 #include "netflow_format.h"

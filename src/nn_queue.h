@@ -2,27 +2,8 @@
 
 #include <stdint.h>
 
-#include <bsd/sys/queue.h>
-
 #include <json-c/json.h>
 #include <json-c/json_object_private.h>
-
-#include <pcap/pcap.h>
-
-#include <net/if_arp.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
-#include <netinet/ip_icmp.h>
-#include <netinet/icmp6.h>
-#include <netinet/tcp.h>
-#include <netinet/udp.h>
-
-#include <rte_ether.h>
-#include <rte_log.h>
-#include <rte_lpm.h>
-#include <rte_memory.h>
-#include <rte_mempool.h>
-#include <rte_mbuf.h>
 
 /* should be enough for the nanomsg queue URL */
 #define NN_URL_MAX 256

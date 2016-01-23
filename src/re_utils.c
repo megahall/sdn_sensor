@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -15,7 +14,6 @@
 
 #include "common.h"
 #include "json.h"
-#include "metadata.h"
 #include "re_utils.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"

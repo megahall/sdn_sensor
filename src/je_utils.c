@@ -1,4 +1,3 @@
-#include <stdbool.h>
 #include <string.h>
 
 #include <rte_memcpy.h>

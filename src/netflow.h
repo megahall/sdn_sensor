@@ -18,16 +18,10 @@
 #pragma once
 
 #include <sys/types.h>
-#include <stdio.h>
-#include <stdarg.h>
 #include <stddef.h>
-#include <syslog.h>
-
-#include <bsd/sys/queue.h>
 
 #include "common.h"
 #include "netflow_addr.h"
-#include "netflow_common.h"
 #include "netflow_format.h"
 #include "netflow_packet.h"
 #include "netflow_peer.h"

@@ -1,6 +1,5 @@
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 
 #include <netinet/icmp6.h>
 #include <netinet/in.h>
@@ -19,7 +18,6 @@
 #include "icmp.h"
 #include "l4_utils.h"
 #include "sdn_sensor.h"
-#include "sensor_conf.h"
 
 // ICMPv6 Pseudo Header
 // 

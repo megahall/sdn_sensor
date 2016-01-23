@@ -3,19 +3,14 @@
 // http://www.inmon.com/technology/sflowlicense.txt
 
 #include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdarg.h>
+#include <inttypes.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
-#include <setjmp.h>
-#include <time.h>
+
+#include <netinet/in.h>
 
 #include <rte_log.h>
-#include <jemalloc/jemalloc.h>
 
 #include "common.h"
 #include "ip_utils.h"

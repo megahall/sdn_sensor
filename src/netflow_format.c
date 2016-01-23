@@ -15,14 +15,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <unistd.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdio.h>
 #include <time.h>
-#include <poll.h>
 #include <endian.h>
 
 #include <netinet/in.h>
@@ -35,11 +29,8 @@
 #include <jemalloc/jemalloc.h>
 
 #include "common.h"
-#include "ioc.h"
 #include "je_utils.h"
-#include "netflow_common.h"
 #include "netflow_format.h"
-#include "netflow_crc32.h"
 
 /* This is a useful abbreviation, used in several places below */
 #define SHASFIELD(flag) (fields & STORE_FIELD_##flag)

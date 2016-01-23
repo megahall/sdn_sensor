@@ -1,6 +1,4 @@
 #include <stdio.h>
-#include <string.h>
-#include <strings.h>
 
 #include <json-c/json.h>
 #include <json-c/json_object_private.h>

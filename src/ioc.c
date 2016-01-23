@@ -1,27 +1,25 @@
 #define _GNU_SOURCE /* strcasestr */
 
 #include <errno.h>
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include <netinet/in.h>
-#include <sys/time.h>
 #include <sys/types.h>
 
 #include <bsd/string.h>
 #include <bsd/sys/queue.h>
 
+#include <rte_byteorder.h>
+#include <rte_log.h>
+#include <rte_lpm.h>
+#include <rte_lpm6.h>
+
 #include <jemalloc/jemalloc.h>
 
 #include <json-c/json.h>
 #include <json-c/json_object_private.h>
-
-#include <rte_log.h>
-#include <rte_lpm.h>
-#include <rte_lpm6.h>
 
 #include "ioc.h"
 

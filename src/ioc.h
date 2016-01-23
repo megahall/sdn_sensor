@@ -5,6 +5,7 @@
 
 #include <rte_memory.h>
 
+#include <json-c/json.h>
 #include <uthash.h>
 
 #include "common.h"

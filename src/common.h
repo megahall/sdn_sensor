@@ -13,6 +13,7 @@
 #include <netinet/icmp6.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
+#include <pcap/bpf.h>
 
 #include <rte_ether.h>
 #include <rte_hash.h>
@@ -113,6 +114,8 @@ typedef struct rte_mbuf    rte_mbuf_t;
 typedef struct rte_mempool rte_mempool_t;
 
 typedef struct rte_hash    rte_hash_t;
+
+typedef struct rte_timer   rte_timer_t;
 
 typedef struct rte_lpm     rte_lpm4_t;
 typedef struct rte_lpm6    rte_lpm6_t;

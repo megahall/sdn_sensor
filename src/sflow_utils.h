@@ -1,6 +1,10 @@
 #ifndef __SFLOW_UTILS_H__
 #define __SFLOW_UTILS_H__
 
+#include <stddef.h>
+#include <stdint.h>
+
+#include "sflow.h"
 #include "ip_utils.h"
 
 /* BEGIN PROTOTYPES */

@@ -18,7 +18,6 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 
 #include <netdb.h>
 #include <string.h>
@@ -31,7 +30,6 @@
 
 #include "common.h"
 #include "ip_utils.h"
-#include "netflow_common.h"
 #include "netflow_addr.h"
 
 #define _SA(x)    ((struct sockaddr*)(x))

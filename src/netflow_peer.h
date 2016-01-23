@@ -30,7 +30,6 @@
 #include <bsd/sys/tree.h>
 #include <rte_spinlock.h>
 
-#include "netflow_common.h"
 #include "netflow_addr.h"
 
 /* NetFlow v.9 specific state */

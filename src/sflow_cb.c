@@ -1,9 +1,7 @@
-#include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <time.h>
-#include <sys/types.h>
 
 #include <rte_byteorder.h>
 #include <rte_cycles.h>

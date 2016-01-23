@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <getopt.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -16,13 +17,16 @@
 #include <rte_eal.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_interrupts.h>
 #include <rte_launch.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
-#include <rte_pci.h>
+#include <rte_power.h>
 #include <rte_prefetch.h>
+#include <rte_spinlock.h>
+#include <rte_timer.h>
 
 #include <pcap/pcap.h>
 

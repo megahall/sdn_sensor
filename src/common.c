@@ -1,9 +1,6 @@
-#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include <sys/time.h>
 
 #include <bsd/string.h>
@@ -17,16 +14,11 @@
 #include <pcap/pcap.h>
 
 #include <rte_byteorder.h>
-#include <rte_config.h>
-#include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_lpm.h>
 #include <rte_lpm6.h>
 
-#include <uthash.h>
-
 #include "common.h"
-#include "ioc.h"
 #include "json.h"
 #include "sdn_sensor.h"
 #include "sensor_conf.h"

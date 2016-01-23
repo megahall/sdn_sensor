@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <sys/types.h>
-
 #include <netinet/in.h>
 #include <netinet/ip6.h>
 #include <netinet/udp.h>
@@ -12,8 +10,6 @@
 #include <rte_hexdump.h>
 #include <rte_log.h>
 #include <rte_mbuf.h>
-
-#include <dns.h>
 
 #include "udp.h"
 
